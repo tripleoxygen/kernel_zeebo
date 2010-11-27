@@ -149,8 +149,24 @@
 #define MSM_TSSC_PHYS         0xAA300000
 #define MSM_TSSC_SIZE         SZ_4K
 
+#define MSM_AXIGS_BASE        IOMEM(0xF9009000)
+#define MSM_AXIGS_PHYS        0xA8250000
+#define MSM_AXIGS_SIZE        SZ_4K
+
+#define MSM_IMEM_BASE         IOMEM(0xF900A000)
+#define MSM_IMEM_PHYS         0xA8500000
+#define MSM_IMEM_SIZE         0x100
+
+#define MSM_GPIOCFG1_BASE     IOMEM(0xF900B000)
+#define MSM_GPIOCFG1_PHYS     0xA9000000
+#define MSM_GPIOCFG1_SIZE     SZ_4K
+
+#define MSM_GPIOCFG2_BASE     IOMEM(0xF900C000)
+#define MSM_GPIOCFG2_PHYS     0xA9100000
+#define MSM_GPIOCFG2_SIZE     SZ_4K
+
 #if defined(CONFIG_ARCH_MSM7X30)
-#define MSM_GCC_BASE          IOMEM(0xF8009000)
+#define MSM_GCC_BASE          IOMEM(0xF800D000)
 #define MSM_GCC_PHYS          0xC0182000
 #define MSM_GCC_SIZE          SZ_4K
 #endif
