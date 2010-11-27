@@ -21,8 +21,14 @@
 #include <linux/debugfs.h>
 #include <linux/string.h>
 #include <mach/vreg.h>
+#include <mach/msm_iomap.h>
+#include <asm/io.h>
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#include "proc_comm_wince.h"
+#else
 #include "proc_comm.h"
+#endif
 
 struct vreg {
 	const char *name;
@@ -102,10 +108,20 @@ void vreg_put(struct vreg *vreg)
 int vreg_enable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
-	unsigned enable = 1;
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	struct msm_dex_command dex;
+	id = 1U << id;
+	dex.cmd = PCOM_PMIC_REG_ON;
+	dex.has_data = 1;
+	dex.data = id;
 	if (vreg->refcnt == 0)
-		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+	vreg->status = msm_proc_comm_wince(&dex, 0);
+#else
+	unsigned enable = 1;
+	if (vreg->refcnt == 0)
+	vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+#endif
 
 	if ((vreg->refcnt < UINT_MAX) && (!vreg->status))
 		vreg->refcnt++;
@@ -116,13 +132,23 @@ int vreg_enable(struct vreg *vreg)
 int vreg_disable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
-	unsigned enable = 0;
 
 	if (!vreg->refcnt)
 		return 0;
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	struct msm_dex_command dex;
+	id = 1U << id;
+	dex.cmd = PCOM_PMIC_REG_OFF;
+	dex.has_data = 1;
+	dex.data = id;
 	if (vreg->refcnt == 1)
-		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+	vreg->status = msm_proc_comm_wince(&dex, 0);
+#else
+	unsigned enable = 0;
+	if (vreg->refcnt == 1)
+	vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+#endif
 
 	if (!vreg->status)
 		vreg->refcnt--;
@@ -134,7 +160,19 @@ int vreg_set_level(struct vreg *vreg, unsigned mv)
 {
 	unsigned id = vreg->id;
 
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	struct msm_dex_command dex = { 
+		.cmd = PCOM_PMIC_REG_VOLTAGE,
+		.has_data = 1, 
+		.data = (1U << id) };
+	// This reg appears to only be used by vreg_set_level()
+	writel(mv, MSM_SHARED_RAM_BASE + 0xfc130);
+	printk(KERN_DEBUG "vreg_set_level %d -> %u\n", id, mv);
+	vreg->status = msm_proc_comm_wince(&dex, 0);
+#else
 	vreg->status = msm_proc_comm(PCOM_VREG_SET_LEVEL, &id, &mv);
+#endif
 	return vreg->status;
 }
 
