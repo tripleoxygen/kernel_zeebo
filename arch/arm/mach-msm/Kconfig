@@ -206,6 +206,13 @@ config MACH_SAPPHIRE
 	default y
 	bool "Sapphire"
 
+config MACH_HTCTOPAZ
+	depends on ARCH_MSM7X00A
+	default n
+	bool "HTC Topaz cellphone"
+	help
+	  Support for the HTC Topaz cellphone
+
 config MACH_MAHIMAHI
 	depends on ARCH_QSD8X50
 	default y

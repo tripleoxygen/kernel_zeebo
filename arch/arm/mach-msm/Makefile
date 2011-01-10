@@ -65,6 +65,8 @@ obj-$(CONFIG_MACH_MSM7X30_SURF) += board-surf7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o
 obj-$(CONFIG_ARCH_QSD8X50) += board-qsd8x50.o devices-qsd8x50.o
 
+obj-$(CONFIG_MACH_HTCTOPAZ) += devices-msm7x00.o htc_acoustic.o
+
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_HTC_PWRSPLY) += htc_power_supply.o
 obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
