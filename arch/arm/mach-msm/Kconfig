@@ -73,16 +73,44 @@ config MSM_LEGACY_7X00A_AMSS
 
 config MSM_AMSS_VERSION
 	int
+	default 5225 if MSM_AMSS_VERSION_5225
+	default 6120 if MSM_AMSS_VERSION_6120
+	default 6125 if MSM_AMSS_VERSION_6125
+	default 6150 if MSM_AMSS_VERSION_6150
 	default 6210 if MSM_AMSS_VERSION_6210
 	default 6220 if MSM_AMSS_VERSION_6220
 	default 6225 if MSM_AMSS_VERSION_6225
 	default 6350 if MSM_AMSS_VERSION_6350
+
+config MSM_AMSS_VERSION_WINCE
+	bool
+	default y if MSM_AMSS_VERSION_5225
+	default y if MSM_AMSS_VERSION_6120
+	default y if MSM_AMSS_VERSION_6125
+	default y if MSM_AMSS_VERSION_6150
+
 
 choice
 	prompt "AMSS modem firmware version"
 
 	depends on ARCH_MSM7X00A
 	default MSM_AMSS_VERSION_6225
+
+	config MSM_AMSS_VERSION_5225
+		bool "5.2.25 - WinCE compatible AMSS (GSM)"
+		select MSM_LEGACY_7X00A_AMSS
+
+	config MSM_AMSS_VERSION_6120
+		bool "6.1.20"
+		select MSM_LEGACY_7X00A_AMSS
+
+	config MSM_AMSS_VERSION_6125
+		bool "6.1.25"
+		select MSM_LEGACY_7X00A_AMSS
+
+	config MSM_AMSS_VERSION_6150
+		bool "6.1.50 - WinCE compatible AMSS (CDMA) - experimental"
+		select MSM_LEGACY_7X00A_AMSS
 
 	config MSM_AMSS_VERSION_6210
 		bool "6.2.10"
