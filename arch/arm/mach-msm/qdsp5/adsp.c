@@ -49,7 +49,11 @@ static inline void allow_suspend(void)
 #include <mach/msm_iomap.h>
 #include "adsp.h"
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+uint32_t INT_ADSP = 0;
+#else
 #define INT_ADSP INT_ADSP_A9_A11
+#endif
 
 static struct adsp_info adsp_info;
 static struct msm_rpc_endpoint *rpc_cb_server_client;
@@ -1067,6 +1071,27 @@ static int msm_adsp_probe(struct platform_device *pdev)
 	pr_info("adsp: probe\n");
 
 	wake_lock_init(&adsp_wake_lock, WAKE_LOCK_SUSPEND, "adsp");
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	switch(__amss_version) {
+		case 5225:
+			rc = adsp_init_info_5225(&adsp_info);
+			INT_ADSP = INT_ADSP_A11;
+			break;
+		case 6125:
+			rc = adsp_init_info_6125(&adsp_info);
+			INT_ADSP = INT_ADSP_A9_A11;
+			break;
+		case 6150:
+			rc = adsp_init_info_6150(&adsp_info);
+			INT_ADSP = INT_ADSP_A11;
+			break;
+		default:
+			printk(KERN_ERR "adsp: Unsupported WinCE AMSS for adsp driver (version=%u)\n",
+				__amss_version);
+			rc=-ENODEV;
+			break;
+	}
+#else
 #if CONFIG_MSM_AMSS_VERSION >= 6350
 	adsp_info.init_info_ptr = kzalloc(
 		(sizeof(struct adsp_rtos_mp_mtoa_init_info_type)), GFP_KERNEL);
@@ -1075,6 +1100,7 @@ static int msm_adsp_probe(struct platform_device *pdev)
 #endif
 
 	rc = adsp_init_info(&adsp_info);
+#endif
 	if (rc)
 		return rc;
 	adsp_info.send_irq += (uint32_t) MSM_AD5_BASE;
@@ -1170,13 +1196,23 @@ fail_request_irq:
 static struct platform_driver msm_adsp_driver = {
 	.probe = msm_adsp_probe,
 	.driver = {
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 		.name = MSM_ADSP_DRIVER_NAME,
+#endif
 		.owner = THIS_MODULE,
 	},
 };
 
 static int __init adsp_init(void)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	char buf[50];
+	memset(buf, 0, 50);
+	amss_get_str_value(AMSS_ID_RPC_ADSP_RTOS_ATOM_PROG_VERS, buf, 50);
+	msm_adsp_driver.driver.name = buf;
+	printk(KERN_DEBUG "%s: Initialized MSM_ADSP_DRIVER_NAME to %s\n", __func__,
+		buf);
+#endif
 	return platform_driver_register(&msm_adsp_driver);
 }
 

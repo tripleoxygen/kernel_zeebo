@@ -27,6 +27,9 @@
 #define TIME_REMOTE_MTOA_VERS 0x9202a8e4
 #elif CONFIG_MSM_AMSS_VERSION==6350
 #define TIME_REMOTE_MTOA_VERS 0x00010000
+#elif (CONFIG_MSM_AMSS_VERSION_WINCE)
+#include <mach/amss_para.h>
+#define TIME_REMOTE_MTOA_VERS amss_get_num_value(AMSS_ID_TIME_REMOTE_MTOA_VERS)
 #else
 #error "Unknown AMSS version"
 #endif
@@ -63,12 +66,17 @@ static int handle_rpc_call(struct msm_rpc_server *server,
 
 static struct msm_rpc_server rpc_server = {
 	.prog = TIME_REMOTE_MTOA_PROG,
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	.vers = TIME_REMOTE_MTOA_VERS,
+#endif
 	.rpc_call = handle_rpc_call,
 };
 
 static int __init rpc_server_init(void)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	rpc_server.vers = TIME_REMOTE_MTOA_VERS;
+#endif
 	/* Dual server registration to support backwards compatibility vers */
 	return msm_rpc_create_server(&rpc_server);
 }

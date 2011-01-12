@@ -2,6 +2,11 @@ obj-y += adsp.o
 ifeq ($(CONFIG_MSM_AMSS_VERSION_6350),y)
 obj-y += adsp_info.o
 obj-y += audio_evrc.o audio_qcelp.o audio_amrnb.o audio_aac.o
+else ifeq ($(CONFIG_MSM_AMSS_VERSION_WINCE),y)
+obj-y += adsp_5225.o
+obj-y += adsp_6125.o
+obj-y += adsp_6150.o
+obj-y += amss_para.o
 else
 obj-y += adsp_6225.o
 endif

@@ -20,7 +20,7 @@ obj-$(CONFIG_MSM_DAL) += dal.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
 obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers.o
-obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_dog_keepalive.o
+obj-$(CONFIG_MSM_RPCSERVERS && !CONFIG_AMSS_VERSION_WINCE) += rpc_server_dog_keepalive.o
 obj-$(CONFIG_MSM_RPCSERVERS) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_ADSP) += qdsp5/
 obj-$(CONFIG_MSM_QDSP5V2) += qdsp5v2/
@@ -65,7 +65,7 @@ obj-$(CONFIG_MACH_MSM7X30_SURF) += board-surf7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o
 obj-$(CONFIG_ARCH_QSD8X50) += board-qsd8x50.o devices-qsd8x50.o
 
-obj-$(CONFIG_MACH_HTCTOPAZ) += devices-msm7x00.o htc_acoustic.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += devices-msm7x00.o htc_acoustic.o
 
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_HTC_PWRSPLY) += htc_power_supply.o

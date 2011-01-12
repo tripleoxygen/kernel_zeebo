@@ -46,6 +46,9 @@ static struct snd_ctxt the_snd;
 #define RPC_SND_VERS	0xaa2b1a44 /* 2854951492 */
 #elif CONFIG_MSM_AMSS_VERSION == 6350
 #define RPC_SND_VERS 	MSM_RPC_VERS(1,0)
+#elif defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#include <mach/amss_para.h>
+#define RPC_SND_VERS MSM_RPC_VERS(amss_get_num_value(AMSS_ID_RPC_SND_VERS), 0)
 #endif
 
 #define SND_SET_DEVICE_PROC 2

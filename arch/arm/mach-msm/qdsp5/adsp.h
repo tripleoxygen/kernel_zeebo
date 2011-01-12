@@ -139,6 +139,11 @@ struct adsp_info {
 #define RPC_ADSP_RTOS_ATOM_VERS MSM_RPC_VERS(0x20f17fd3, 0)
 #define RPC_ADSP_RTOS_MTOA_VERS MSM_RPC_VERS(0x75babbd6, 0)
 #define MSM_ADSP_DRIVER_NAME "rs3000000a:20f17fd3"
+#elif defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#include <mach/amss_para.h>
+#define RPC_ADSP_RTOS_ATOM_VERS MSM_RPC_VERS(amss_get_num_value(AMSS_ID_RPC_ADSP_RTOS_ATOM_VERS), 0)
+#define RPC_ADSP_RTOS_MTOA_VERS MSM_RPC_VERS(amss_get_num_value(AMSS_ID_RPC_ADSP_RTOS_MTOA_VERS), 0)
+// RPC_ADSP_RTOS_ATOM_PROG_VERS dynamically determined in adsp.c#adsp_init()
 #else
 #error "Unknown AMSS version"
 #endif
@@ -294,7 +299,13 @@ struct msm_adsp_module {
 };
 
 extern void msm_adsp_publish_cdevs(struct msm_adsp_module *, unsigned);
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+extern int adsp_init_info_5225(struct adsp_info *info);
+extern int adsp_init_info_6125(struct adsp_info *info);
+extern int adsp_init_info_6150(struct adsp_info *info);
+#else
 extern int adsp_init_info(struct adsp_info *info);
+#endif
 
 /* Value to indicate that a queue is not defined for a particular image */
 #if CONFIG_MSM_AMSS_VERSION >= 6350
