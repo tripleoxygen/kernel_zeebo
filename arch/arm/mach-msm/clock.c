@@ -31,8 +31,10 @@
 #include <mach/clk.h>
 
 #include "clock.h"
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #include "proc_comm.h"
 #include "clock-7x30.h"
+#endif
 
 static DEFINE_MUTEX(clocks_mutex);
 static DEFINE_SPINLOCK(clocks_lock);
@@ -158,7 +160,11 @@ EXPORT_SYMBOL(clk_disable);
 int clk_reset(struct clk *clk, enum clk_reset_action action)
 {
 	if (!clk->ops->reset)
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 		clk->ops->reset = &pc_clk_reset;
+#else
+		return 0;
+#endif
 	return clk->ops->reset(clk->remote_id, action);
 }
 EXPORT_SYMBOL(clk_reset);
@@ -508,6 +514,12 @@ static int __init clock_late_init(void)
 	struct clk *clk;
 	struct hlist_node *pos;
 	unsigned count = 0;
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	if (clk_ops_pcom.late_init_clk)
+		clk_ops_pcom.late_init_clk();
+	pr_info("%s: platform hook\n", __func__);
+#endif
 
 	mutex_lock(&clocks_mutex);
 	hlist_for_each_entry(clk, pos, &clocks, list) {

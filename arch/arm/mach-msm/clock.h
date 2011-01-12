@@ -20,8 +20,12 @@
 #include <linux/list.h>
 #include <mach/clk.h>
 
+#ifndef CONFIG_MSM_AMSS_VERSION_WINCE
 #include "clock-pcom.h"
 #include "clock-7x30.h"
+#else
+#include "clock-wince.h"
+#endif
 
 #define CLKFLAG_INVERT			0x00000001
 #define CLKFLAG_NOINVERT		0x00000002
@@ -47,6 +51,9 @@ struct clk_ops {
 	unsigned (*get_rate)(unsigned id);
 	unsigned (*is_enabled)(unsigned id);
 	long (*round_rate)(unsigned id, unsigned rate);
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	void (*late_init_clk)(void);
+#endif
 };
 
 struct clk {
