@@ -590,7 +590,9 @@ static uint32_t restart_reason = 0;
 
 static void msm_pm_power_off(void)
 {
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
+#endif
 	for (;;) ;
 }
 
@@ -629,9 +631,12 @@ static void msm_pm_restart(char str)
 	 */
 	if ((restart_reason == 0x776655AA) && msm_hw_reset_hook) {
 		msm_hw_reset_hook();
-	} else {
+	}
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	else {
 		msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
 	}
+#endif
 	for (;;) ;
 }
 

@@ -22,7 +22,11 @@
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 #include "devices.h"
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #include "proc_comm.h"
+#else
+#include "proc_comm_wince.h"
+#endif
 
 #include <asm/mach/flash.h>
 #include <linux/mtd/nand.h>
@@ -202,6 +206,9 @@ struct platform_device msm_device_i2c = {
 #define GPIO_I2C_DAT 61
 void msm_set_i2c_mux(bool gpio, int *gpio_clk, int *gpio_dat)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	printk(KERN_WARNING "%s: NOT IMPLEMENTED\n", __func__);
+#else
 	unsigned id;
 	if (gpio) {
 		id = PCOM_GPIO_CFG(GPIO_I2C_CLK, 0, GPIO_OUTPUT,
@@ -220,6 +227,7 @@ void msm_set_i2c_mux(bool gpio, int *gpio_clk, int *gpio_dat)
 				   GPIO_NO_PULL, GPIO_8MA);
 		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
 	}
+#endif
 }
 
 static struct resource resources_hsusb[] = {

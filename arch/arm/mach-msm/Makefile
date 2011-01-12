@@ -1,4 +1,5 @@
-obj-y += proc_comm.o
+obj-$(!CONFIG_MSM_AMSS_VERSION_WINCE) += proc_comm.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += proc_comm_wince.o
 obj-y += io.o irq.o timer.o dma.o memory.o
 obj-y += vreg.o
 obj-y += pmic.o

@@ -159,9 +159,11 @@ static int pc_pll_request(unsigned id, unsigned on)
 		printk(KERN_DEBUG "Disabling PLL %d\n", id);
 #endif
 
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	res = msm_proc_comm(PCOM_CLKCTL_RPC_PLL_REQUEST, &id, &on);
 	if (res < 0)
 		return res;
+#endif
 
 #if PERF_SWITCH_DEBUG
 	if (on)
