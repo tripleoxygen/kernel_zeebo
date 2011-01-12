@@ -28,6 +28,11 @@
 #define GPIOF_OUTPUT_LOW        0x00080000
 #define GPIOF_OUTPUT_HIGH       0x00100000
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#define GPIOF_OWNER_ARM9        0x00200000 /* Set owner to arm9 */
+#define GPIOF_OWNER_ARM11       0x00400000 /* Set owner to arm11 */
+#endif
+
 struct old_gpio_chip {
 	struct gpio_chip gpio_chip;
 #define gpio_chip old_gpio_chip

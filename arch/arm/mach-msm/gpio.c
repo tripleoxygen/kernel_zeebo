@@ -63,6 +63,9 @@ struct msm_gpio_regs {
 	void __iomem *int_edge;
 	void __iomem *int_pos;
 	void __iomem *oe;
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	void __iomem *owner;
+#endif
 };
 
 struct msm_gpio_chip {
@@ -732,6 +735,44 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 #endif
 }
 EXPORT_SYMBOL(gpio_tlmm_config);
+
+static DEFINE_SPINLOCK(gpio_flag_lock);
+
+void msm_gpio_set_flags(unsigned gpio, unsigned long flags)
+{
+
+	int i;
+	unsigned long irq_flags;
+	struct msm_gpio_chip *msm_chip;
+	unsigned b;
+	unsigned v;
+
+	spin_lock_irqsave(&gpio_flag_lock, irq_flags);
+	for (i = 0; i < ARRAY_SIZE(msm_gpio_chips); i++) {
+		msm_chip = &msm_gpio_chips[i];
+		if (msm_chip->chip.start <= gpio && msm_chip->chip.end >= gpio)
+			break;
+		msm_chip = NULL;
+
+	}
+
+	if (!msm_chip)
+		return;
+
+	b = 1U << (gpio - msm_chip->chip.start);
+
+	if (msm_chip->regs.owner) {
+		v = readl(msm_chip->regs.owner);
+		if (flags & GPIOF_OWNER_ARM11) {
+			writel(v | b, msm_chip->regs.owner);
+		} else {
+			writel(v & ~b, msm_chip->regs.owner);
+		}
+	}
+	spin_unlock_irqrestore(&gpio_flag_lock, irq_flags);
+}
+
+EXPORT_SYMBOL(msm_gpio_set_flags);
 
 int msm_gpios_enable(const struct msm_gpio *table, int size)
 {
