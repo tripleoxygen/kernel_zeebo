@@ -20,7 +20,11 @@
 #include <mach/gpio.h>
 #include "gpio_chip.h"
 #include "gpio_hw.h"
+#ifndef CONFIG_MSM_AMSS_VERSION_WINCE
 #include "proc_comm.h"
+#else
+#include "proc_comm_wince.h"
+#endif
 #include "smd_private.h"
 
 enum {
@@ -666,7 +670,66 @@ postcore_initcall(msm_init_gpio);
 
 int gpio_tlmm_config(unsigned config, unsigned disable)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	void __iomem *addr, __iomem *addr2;
+	struct msm_gpio_chip *msm_chip;
+	unsigned cfg, gpio, i;
+	unsigned long flags_gpio;
+
+	gpio = GPIO_PIN(config);
+
+	for (i = 0; i < ARRAY_SIZE(msm_gpio_chips); i++) {
+		msm_chip = &msm_gpio_chips[i];
+		if (msm_chip->chip.start <= gpio && msm_chip->chip.end >= gpio)
+			break;
+		msm_chip = NULL;
+
+	}
+	
+	if (!msm_chip) {
+		printk("%s: could not find the gpio %d\n", __func__, gpio);
+		return -EINVAL;
+	}
+
+	spin_lock_irqsave(&msm_chip->chip.lock, flags_gpio);
+
+	if (GPIO_PULL(config) < 16 || GPIO_PULL(config) > 42) {
+		addr = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x20);
+		addr2 = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x24);
+	}	
+	else {
+		addr = (void __iomem *)(MSM_GPIOCFG2_BASE + 0x410);
+		addr2 = (void __iomem *)(MSM_GPIOCFG2_BASE + 0x414);
+	}
+
+	if (!addr || !addr2) {
+		printk(KERN_WARNING "%s: could not find addr\n", __func__);
+		spin_unlock_irqrestore(&msm_chip->chip.lock, flags_gpio);
+		return 0;
+	}
+
+	writel(gpio, addr);
+	cfg =
+	    (GPIO_DRVSTR(config) << 6) | (GPIO_FUNC(config) << 2) |
+	    (GPIO_PULL(config));
+	writel(cfg, addr2);
+
+	printk("%s(%x, %x)\n", __func__, gpio, cfg);
+	if (readl(addr) != gpio)
+		printk(KERN_WARNING "%s: could not set alt func %u => %u\n",
+		       __func__, gpio, GPIO_FUNC(config));
+
+	spin_unlock_irqrestore(&msm_chip->chip.lock, flags_gpio);
+
+	if (GPIO_DIR(config))
+		gpio_direction_output(gpio, !disable);
+	else
+		gpio_direction_input(gpio);
+
+	return 0;
+#else
 	return msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, &disable);
+#endif
 }
 EXPORT_SYMBOL(gpio_tlmm_config);
 
