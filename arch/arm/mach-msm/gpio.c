@@ -89,6 +89,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_0,
 			.int_pos =     GPIO_INT_POS_0,
 			.oe =          GPIO_OE_0,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_0,
+#endif
 		},
 		.chip = {
 			.start = 0,
@@ -111,6 +114,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_1,
 			.int_pos =     GPIO_INT_POS_1,
 			.oe =          GPIO_OE_1,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_1,
+#endif
 		},
 		.chip = {
 			.start = 16,
@@ -137,6 +143,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_2,
 			.int_pos =     GPIO_INT_POS_2,
 			.oe =          GPIO_OE_2,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_2,
+#endif
 		},
 		.chip = {
 #if defined(CONFIG_ARCH_MSM7X30)
@@ -163,6 +172,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_3,
 			.int_pos =     GPIO_INT_POS_3,
 			.oe =          GPIO_OE_3,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_3,
+#endif
 		},
 		.chip = {
 			.start = 68,
@@ -185,6 +197,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_4,
 			.int_pos =     GPIO_INT_POS_4,
 			.oe =          GPIO_OE_4,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_4,
+#endif
 		},
 		.chip = {
 			.start = 95,
@@ -211,6 +226,9 @@ struct msm_gpio_chip msm_gpio_chips[] = {
 			.int_edge =    GPIO_INT_EDGE_5,
 			.int_pos =     GPIO_INT_POS_5,
 			.oe =          GPIO_OE_5,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+			.owner =       GPIO_OWNER_5,
+#endif
 		},
 		.chip = {
 #if defined(CONFIG_ARCH_QSD8X50)

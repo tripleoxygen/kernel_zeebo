@@ -40,6 +40,19 @@
 
 #if defined(CONFIG_ARCH_MSM7X00A)
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#define GPIO1_REG_R(off) (MSM_GPIOCFG1_BASE + 0x000 + (off))
+#define GPIO2_REG_R(off) (MSM_GPIOCFG2_BASE + 0x400 + (off))
+
+/* pin ownership */
+#define GPIO_OWNER_0       GPIO1_REG_R(0x100)
+#define GPIO_OWNER_1       GPIO2_REG_R(0x104)
+#define GPIO_OWNER_2       GPIO1_REG_R(0x108)
+#define GPIO_OWNER_3       GPIO1_REG_R(0x10c)
+#define GPIO_OWNER_4       GPIO1_REG_R(0x110)
+#define GPIO_OWNER_5       GPIO1_REG_R(0x114)
+#endif
+
 /* output value */
 #define GPIO_OUT_0         GPIO1_REG(0x00)  /* gpio  15-0  */
 #define GPIO_OUT_1         GPIO2_REG(0x00)  /* gpio  42-16 */
