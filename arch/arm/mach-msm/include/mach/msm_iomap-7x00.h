@@ -149,6 +149,7 @@
 #define MSM_TSSC_PHYS         0xAA300000
 #define MSM_TSSC_SIZE         SZ_4K
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #define MSM_AXIGS_BASE        IOMEM(0xF9009000)
 #define MSM_AXIGS_PHYS        0xA8250000
 #define MSM_AXIGS_SIZE        SZ_4K
@@ -164,6 +165,7 @@
 #define MSM_GPIOCFG2_BASE     IOMEM(0xF900C000)
 #define MSM_GPIOCFG2_PHYS     0xA9100000
 #define MSM_GPIOCFG2_SIZE     SZ_4K
+#endif
 
 #if defined(CONFIG_ARCH_MSM7X30)
 #define MSM_GCC_BASE          IOMEM(0xF800D000)
