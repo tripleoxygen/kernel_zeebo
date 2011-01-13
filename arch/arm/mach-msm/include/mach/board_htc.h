@@ -31,6 +31,10 @@ struct msm_pmem_setting{
 	resource_size_t pmem_camera_size;
 	resource_size_t ram_console_start;
 	resource_size_t ram_console_size;
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	resource_size_t fb_start;
+	resource_size_t fb_size;
+#endif
 };
 
 enum {
