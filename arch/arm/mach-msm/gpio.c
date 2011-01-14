@@ -714,7 +714,7 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 
 	spin_lock_irqsave(&msm_chip->chip.lock, flags_gpio);
 
-	if (GPIO_PULL(config) < 16 || GPIO_PULL(config) > 42) {
+	if (GPIO_PIN(config) < 16 || GPIO_PIN(config) > 42) {
 		addr = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x20);
 		addr2 = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x24);
 	}	
