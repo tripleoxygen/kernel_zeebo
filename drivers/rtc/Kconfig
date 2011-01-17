@@ -662,6 +662,13 @@ config RTC_DRV_MSM7X00A
 	help
 	  RTC driver for Qualcomm MSM7K chipsets
 
+config RTC_DRV_MSM7X01A
+	tristate "MSM7X01A"
+	depends on ARCH_MSM && !RTC_DRV_MSM7X00A
+	default y
+	help
+	  RTC driver for Qualcomm MSM7K chipsets
+
 config RTC_DRV_OMAP
 	tristate "TI OMAP1"
 	depends on ARCH_OMAP15XX || ARCH_OMAP16XX || ARCH_OMAP730 || ARCH_DAVINCI_DA8XX
