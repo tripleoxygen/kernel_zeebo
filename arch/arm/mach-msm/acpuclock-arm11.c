@@ -149,7 +149,7 @@ static struct cpufreq_frequency_table freq_table[] = {
 
 static int pc_pll_request(unsigned id, unsigned on)
 {
-	int res;
+	int res = 0;
 	on = !!on;
 
 #if PERF_SWITCH_DEBUG
