@@ -132,12 +132,14 @@ int vreg_enable(struct vreg *vreg)
 int vreg_disable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	struct msm_dex_command dex;
+#endif
 
 	if (!vreg->refcnt)
 		return 0;
 
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-	struct msm_dex_command dex;
 	id = 1U << id;
 	dex.cmd = PCOM_PMIC_REG_OFF;
 	dex.has_data = 1;

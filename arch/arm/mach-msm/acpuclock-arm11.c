@@ -31,7 +31,9 @@
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
 
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #include "proc_comm.h"
+#endif
 #include "acpuclock.h"
 
 

@@ -1211,7 +1211,7 @@ static int __init adsp_init(void)
 	amss_get_str_value(AMSS_ID_RPC_ADSP_RTOS_ATOM_PROG_VERS, buf, 50);
 	msm_adsp_driver.driver.name = buf;
 	printk(KERN_DEBUG "%s: Initialized MSM_ADSP_DRIVER_NAME to %s\n", __func__,
-		buf);
+		msm_adsp_driver.driver.name);
 #endif
 	return platform_driver_register(&msm_adsp_driver);
 }
