@@ -76,6 +76,8 @@ obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz.o board-htctopaz-panel.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz-keypad.o
 
+obj-$(CONFIG_MACH_HTCRHODIUM) += board-htcrhodium.o board-htcrhodium-panel.o
+
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_HTC_PWRSPLY) += htc_power_supply.o
 obj-$(CONFIG_HTC_HEADSET) += htc_headset.o

@@ -213,6 +213,13 @@ config MACH_HTCTOPAZ
 	help
 	  Support for the HTC Topaz cellphone
 
+config MACH_HTCRHODIUM
+	depends on ARCH_MSM7X00A
+	default n
+	bool "HTC Rhodium cellphone"
+	help
+	  Support for the HTC Rhodium cellphone
+
 config MACH_MAHIMAHI
 	depends on ARCH_QSD8X50
 	default y
