@@ -45,15 +45,15 @@
 #include <mach/msm_smd.h>
 #include "smd_rpcrouter.h"
 
-#define TRACE_R2R_MSG 0
-#define TRACE_R2R_RAW 0
-#define TRACE_RPC_MSG 0
+#define TRACE_R2R_MSG 1
+#define TRACE_R2R_RAW 1
+#define TRACE_RPC_MSG 1
 #define TRACE_NOTIFY_MSG 0
 
-#define MSM_RPCROUTER_DEBUG 0
-#define MSM_RPCROUTER_DEBUG_PKT 0
-#define MSM_RPCROUTER_R2R_DEBUG 0
-#define DUMP_ALL_RECEIVED_HEADERS 0
+#define MSM_RPCROUTER_DEBUG 1
+#define MSM_RPCROUTER_DEBUG_PKT 1
+#define MSM_RPCROUTER_R2R_DEBUG 1
+#define DUMP_ALL_RECEIVED_HEADERS 1
 
 #define DIAG(x...) printk("[RR] ERROR " x)
 
@@ -480,7 +480,7 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 		break;
 
 	case RPCROUTER_CTRL_CMD_REMOVE_SERVER:
-		RR("o REMOVE_SERVER prog=%08x:%d\n",
+		RR("o REMOVE_SERVER prog=%08x:%08x\n",
 		   msg->srv.prog, msg->srv.vers);
 		server = rpcrouter_lookup_server(msg->srv.prog, msg->srv.vers);
 		if (server)
@@ -1279,6 +1279,9 @@ int msm_rpc_unregister_server(struct msm_rpc_endpoint *ept,
 static int msm_rpcrouter_probe(struct platform_device *pdev)
 {
 	int rc;
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	union rr_control_msg msg = { 0 };
+#endif
 
 	/* Initialize what we need to start processing */
 	INIT_LIST_HEAD(&local_endpoints);
@@ -1296,13 +1299,25 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 	if (rc < 0)
 		goto fail_destroy_workqueue;
 
+	printk(KERN_DEBUG "%s: RPC Init done\n", __func__);
+
 	/* Open up SMD channel 2 */
 	initialized = 0;
 	rc = smd_open("SMD_RPCCALL", &smd_channel, NULL, rpcrouter_smdnotify);
 	if (rc < 0)
 		goto fail_remove_devices;
 
+	printk(KERN_DEBUG "%s: RPCCALL opened\n", __func__);
+
 	queue_work(rpcrouter_workqueue, &work_read_data);
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	printk(KERN_DEBUG "%s: sending CMD_HELLO\n", __func__);
+	msg.cmd = RPCROUTER_CTRL_CMD_HELLO;
+	process_control_msg(&msg, sizeof(msg));
+	msleep(50);
+#endif
+
 	return 0;
 
  fail_remove_devices:
