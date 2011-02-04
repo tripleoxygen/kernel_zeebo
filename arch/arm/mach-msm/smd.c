@@ -45,7 +45,7 @@ void (*msm_hw_reset_hook)(void);
 
 enum {
 	MSM_SMD_DEBUG = 1U << 0,
-	MSM_SMSM_DEBUG = 1U << 0,
+	MSM_SMSM_DEBUG = 1U << 1,
 };
 
 static int msm_smd_debug_mask;
@@ -520,7 +520,14 @@ static int smd_is_packet(int chn, unsigned type)
 		return 0;
 
 	/* older AMSS reports SMD_KIND_UNKNOWN always */
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	// Treat all our channels as stream channels? According to .27,
+	// smd1 of CDMA devices (except Rhodium) is treated as packet stream.
+	// ("(chn == 1)" check dropped here. Might need reestablishment.)
+	if (chn > 28)
+#else
 	if ((chn > 4) || (chn == 1))
+#endif
 		return 1;
 	else
 		return 0;
@@ -699,8 +706,9 @@ static int smd_alloc_channel(const char *name, uint32_t cid, uint32_t type)
 	ch->pdev.name = ch->name;
 	ch->pdev.id = -1;
 
-	pr_info("smd_alloc_channel() cid=%02d size=%05d '%s'\n",
-		ch->n, ch->fifo_size, ch->name);
+	pr_info("smd_alloc_channel() cid=%02d size=%05d type=%s '%s'\n",
+		ch->n, ch->fifo_size, smd_is_packet(cid, type) ? "PACKET" : "STREAM",
+		ch->name);
 
 	mutex_lock(&smd_creation_mutex);
 	list_add(&ch->ch_list, &smd_ch_closed_list);
@@ -787,7 +795,7 @@ int smd_close(smd_channel_t *ch)
 {
 	unsigned long flags;
 
-	pr_info("smd_close(%p)\n", ch);
+	pr_info("smd_close(%p, n=%d)\n", ch, ch->n);
 
 	if (ch == 0)
 		return -1;
