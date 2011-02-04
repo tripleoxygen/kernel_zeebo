@@ -26,6 +26,9 @@
 #include <linux/tty_flip.h>
 
 #include <mach/msm_smd.h>
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#include <asm/mach-types.h>
+#endif
 
 #define MAX_SMD_TTYS 32
 
@@ -42,6 +45,10 @@ static struct smd_tty_info smd_tty[MAX_SMD_TTYS];
 
 static const struct smd_tty_channel_desc smd_default_tty_channels[] = {
 	{ .id = 0, .name = "SMD_DS" },
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	{ .id = 1, .name = "SMD_DIAG" },
+	{ .id = 7, .name = "SMD_DATA1" },
+#endif
 	{ .id = 27, .name = "SMD_GPSNMEA" },
 };
 
@@ -99,6 +106,15 @@ static int smd_tty_open(struct tty_struct *tty, struct file *f)
 	struct smd_tty_info *info;
 	const char *name = NULL;
 	int i;
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	if (machine_is_htcdiamond() || machine_is_htcraphael() ||
+		machine_is_htcblackstone() || machine_is_htctopaz() ||
+		machine_is_htcrhodium() || machine_is_htckovsky()) {
+		if (n == 1)
+			n = 7; // map 7 to 1 for android compatability, on GSM
+	}
+#endif
 
 	for (i = 0; i < smd_tty_channels_len; i++) {
 		if (smd_tty_channels[i].id == n) {
