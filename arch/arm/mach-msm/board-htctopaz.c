@@ -199,13 +199,13 @@ static int usb_phy_init_seq_topa[] = {
 
 static void usb_phy_shutdown(void)
 {
-	printk("%s: %s\n", __FILE__, __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	gpio_set_value(TOPA100_USBPHY_RST, 1); 
 	gpio_set_value(TOPA100_USBPHY_RST, 0);
 }
 static void usb_phy_reset(void)
 {
-	printk("%s: %s\n", __FILE__, __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	usb_phy_shutdown();
 	gpio_set_value(TOPA100_USBPHY_RST, 0); 
 	mdelay(3);
@@ -215,7 +215,7 @@ static void usb_phy_reset(void)
 }
 
 static void usb_hw_reset(bool enable) {
-	printk("%s: %s what to do?. FIXME !!!\n", __FILE__, __func__);
+	printk(KERN_WARNING "%s(%d): TODO/FIXME!!!\n", __func__, enable ? 1 : 0);
 }
 
 static void usb_connected(int on) {
@@ -389,7 +389,6 @@ static struct i2c_board_info i2c_devices[] = {
 	},
 };
 
-#if 0
 #define SND(num, desc) { .name = desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
 	SND(0, "HANDSET"),
@@ -400,22 +399,56 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(10, "HEADSET_AND_SPEAKER"),
 	SND(256, "CURRENT"),
 
+	/* Bluetooth accessories. */
+#if 1
+	SND(12, "HTC BH S100"),
+	SND(13, "HTC BH M100"),
+	SND(14, "Motorola H500"),
+	SND(15, "Nokia HS-36W"),
+	SND(16, "PLT 510v.D"),
+	SND(17, "M2500 by Plantronics"),
+	SND(18, "Nokia HDW-3"),
+	SND(19, "HBH-608"),
+	SND(20, "HBH-DS970"),
+	SND(21, "i.Tech BlueBAND"),
+	SND(22, "Nokia BH-800"),
+	SND(23, "Motorola H700"),
+	SND(24, "HTC BH M200"),
+	SND(25, "Jabra JX10"),
+	SND(26, "320Plantronics"),
+	SND(27, "640Plantronics"),
+	SND(28, "Jabra BT500"),
+	SND(29, "Motorola HT820"),
+	SND(30, "HBH-IV840"),
+	SND(31, "6XXPlantronics"),
+	SND(32, "3XXPlantronics"),
+	SND(33, "HBH-PV710"),
+	SND(34, "Motorola H670"),
+	SND(35, "HBM-300"),
+	SND(36, "Nokia BH-208"),
+	SND(37, "Samsung WEP410"),
+	SND(38, "Jabra BT8010"),
+	SND(39, "Motorola S9"),
+	SND(40, "Jabra BT620s"),
+	SND(41, "Nokia BH-902"),
+	SND(42, "HBH-DS220"),
+	SND(43, "HBH-DS980"),
+#endif
 };
 #undef SND
 
-static struct msm_snd_endpoints topaz_snd_endpoints = {
-        .endpoints = snd_endpoints_list,
-        .num = ARRAY_SIZE(snd_endpoints_list),
+static struct msm_snd_endpoints htctopaz_snd_endpoints = {
+	.endpoints = snd_endpoints_list,
+	.num = ARRAY_SIZE(snd_endpoints_list),
 };
 
-static struct platform_device topaz_snd = {
+static struct platform_device htctopaz_snd = {
 	.name = "msm_snd",
 	.id = -1,
-	.dev	= {
-		.platform_data = &topaz_snd_endpoints,
+	.dev = {
+		.platform_data = &htctopaz_snd_endpoints,
 	},
 };
-#endif
 
 #if 0
 #ifdef CONFIG_HTC_HEADSET
@@ -520,7 +553,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 //	&msm_device_htc_hw,
 //	&msm_device_htc_battery,
-//	&topaz_snd,
+	&htctopaz_snd,
 #ifdef CONFIG_HTC_HEADSET
 //	&topaz_h2w,
 #endif
