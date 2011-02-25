@@ -124,8 +124,14 @@ struct adsp_info {
 #define RPC_ADSP_RTOS_MTOA_PROG 0x3000000b
 #define RPC_ADSP_RTOS_ATOM_NULL_PROC 0
 #define RPC_ADSP_RTOS_MTOA_NULL_PROC 0
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #define RPC_ADSP_RTOS_APP_TO_MODEM_PROC 2
 #define RPC_ADSP_RTOS_MODEM_TO_APP_PROC 2
+#else
+// FIXME dynamic lookup
+#define RPC_ADSP_RTOS_APP_TO_MODEM_PROC 1
+#define RPC_ADSP_RTOS_MODEM_TO_APP_PROC 1
+#endif
 
 #if CONFIG_MSM_AMSS_VERSION >= 6350
 #define RPC_ADSP_RTOS_ATOM_VERS MSM_RPC_VERS(1,0)
@@ -259,6 +265,10 @@ struct rpc_adsp_rtos_modem_to_app_args_t {
 	uint32_t proc_id; /* e.g., RPC_ADSP_RTOS_PROC_APPS */
 	uint32_t module; /* e.g., QDSP_MODULE_AUDPPTASK */
 	uint32_t image; /* RPC_QDSP_IMAGE_GAUDIO */
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	// FIXME this breaks non-AMSS6125
+	uint32_t unknown; /* unknown*/
+#endif
 };
 #endif /* CONFIG_MSM_AMSS_VERSION >= 6350 */
 
