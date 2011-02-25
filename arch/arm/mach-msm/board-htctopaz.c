@@ -400,7 +400,6 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(256, "CURRENT"),
 
 	/* Bluetooth accessories. */
-#if 1
 	SND(12, "HTC BH S100"),
 	SND(13, "HTC BH M100"),
 	SND(14, "Motorola H500"),
@@ -433,7 +432,6 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(41, "Nokia BH-902"),
 	SND(42, "HBH-DS220"),
 	SND(43, "HBH-DS980"),
-#endif
 };
 #undef SND
 
