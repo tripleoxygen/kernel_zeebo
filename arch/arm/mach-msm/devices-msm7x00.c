@@ -563,6 +563,13 @@ struct platform_device msm_device_touchscreen = {
 	.resource = resources_tssc,
 };
 
+#if defined(CONFIG_MSM_SMEM_BATTCHG)
+struct platform_device msm_device_htc_battery_smem = {
+	.name = "htc_battery_smem",
+	.id = -1,
+};
+#endif
+
 struct clk msm_clocks_7x01a[] = {
 	CLK_PCOM("adm_clk",	ADM_CLK,	NULL, 0),
 	CLK_PCOM("adsp_clk",	ADSP_CLK,	NULL, 0),

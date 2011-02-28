@@ -46,6 +46,9 @@ extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_touchscreen;
 extern struct platform_device msm_device_spi;
 extern struct platform_device msm_device_ssbi_pmic;
+#if defined(CONFIG_MSM_SMEM_BATTCHG)
+extern struct platform_device msm_device_htc_battery_smem;
+#endif
 
 extern struct clk msm_clocks_7x01a[];
 extern unsigned msm_num_clocks_7x01a;
