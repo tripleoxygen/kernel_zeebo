@@ -260,6 +260,11 @@ config TROUT_BATTCHG
 	default y
 	bool "Trout battery / charger driver"
 
+config MSM_SMEM_BATTCHG
+	depends on MSM_AMSS_VERSION_WINCE && POWER_SUPPLY
+	default y
+	bool "SMEM battery/charger API"
+
 config HTC_PWRSPLY
 	depends on MSM_ONCRPCROUTER && POWER_SUPPLY && !TROUT_BATTCHG
 	default y
