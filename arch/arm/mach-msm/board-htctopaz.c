@@ -32,7 +32,9 @@
 #include <mach/msm_serial_hs.h>
 
 #include <mach/board.h>
-//#include <mach/htc_battery.h>
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+#include <mach/htc_battery.h>
+#endif
 #include <mach/msm_iomap.h>
 #include <mach/system.h>
 #include <mach/msm_fb.h>
@@ -59,7 +61,6 @@
 //#include "htc-usb.h"
 #include "gpio_chip.h"
 
-//static void htctopaz_device_specific_fixes(void);
 
 extern int init_mmc(void);
 
@@ -502,13 +503,12 @@ static struct platform_device topaz_bt_rfkill = {
 #endif
 
 struct ts_virt_key ts_keys_y[] = {
-	// 3240 x-range / 5 = 648
 	// key      min   max
-	{KEY_UP,     420, 1068},
-	{KEY_DOWN,  1069, 1716},
-	{KEY_HOME,  1717, 2364},
-	{KEY_LEFT,  2365, 3012},
-	{KEY_RIGHT, 3013, 3660},
+	{KEY_UP,    105, 267}, //  420, 1068},
+	{KEY_DOWN,  268, 429}, // 1069, 1716},
+	{KEY_HOME,  430, 591}, // 1717, 2364},
+	{KEY_LEFT,  592, 753}, // 2365, 3012},
+	{KEY_RIGHT, 754, 915}, // 3013, 3660},
 };
 
 static struct msm_ts_virtual_keys htctopaz_ts_virtual_keys_y = {
@@ -517,15 +517,15 @@ static struct msm_ts_virtual_keys htctopaz_ts_virtual_keys_y = {
 };
 
 static struct msm_ts_platform_data htctopaz_ts_pdata = {
-	.min_x		= 420,
-	.max_x		= 3660,
-	.min_y		= 0,
-	.max_y		= 3350,
+	.min_x		= 105, // 420,
+	.max_x		= 915, // 3660,
+	.min_y		= 0, // 0,
+	.max_y		= 837, // 3350,
 	.min_press	= 0,
 	.max_press	= 256,
 	.inv_x		= 0,
-	.inv_y		= 3880,
-	.virt_y_start = 3450, // 3350 + space
+	.inv_y		= 970, // 3880,
+	.virt_y_start = 862, // 3450, // 3350 + space
 	.vkeys_y	= &htctopaz_ts_virtual_keys_y,
 };
 
@@ -550,7 +550,9 @@ static struct platform_device *devices[] __initdata = {
 	&usb_mass_storage_device,
 #endif
 //	&msm_device_htc_hw,
-//	&msm_device_htc_battery,
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+	&msm_device_htc_battery_smem,
+#endif
 	&htctopaz_snd,
 #ifdef CONFIG_HTC_HEADSET
 //	&topaz_h2w,
@@ -611,16 +613,19 @@ static void htctopaz_set_vibrate(uint32_t val)
 #if 0
 static htc_hw_pdata_t msm_htc_hw_pdata = {
 	.set_vibrate = topaz_set_vibrate,
-	.battery_smem_offset = 0xfc140,
-	.battery_smem_field_size = 4,
+	.battery_smem_offset = 0xfc110,
+	.battery_smem_field_size = 2,
 };
+#endif
 
-static smem_batt_t msm_battery_pdata = {
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+static smem_batt_t htctopaz_htc_battery_smem_pdata = {
 	.gpio_battery_detect = TOPA100_BAT_IN,
 	.gpio_charger_enable = TOPA100_CHARGE_EN_N,
 	.gpio_charger_current_select = TOPA100_USB_AC_PWR,
-	.smem_offset = 0xfc140,
-	.smem_field_size = 4,
+//	.gpio_ac_detect = -1,
+	.smem_offset = 0xfc110,
+	.smem_field_size = 2,
 };
 #endif
 
@@ -628,19 +633,17 @@ static void __init htctopaz_init(void)
 {
 	int i;
 
-	// Fix data in arrays depending on GSM/CDMA version
-//	htctopaz_device_specific_fixes();
-
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
 	msm_hw_reset_hook = htctopaz_reset;
 
 //	msm_device_htc_hw.dev.platform_data = &msm_htc_hw_pdata;
-//	msm_device_htc_battery.dev.platform_data = &msm_battery_pdata;
-	
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+	msm_device_htc_battery_smem.dev.platform_data = &htctopaz_htc_battery_smem_pdata;
+#endif
 	msm_device_touchscreen.dev.platform_data = &htctopaz_ts_pdata;
-	
+
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
@@ -698,16 +701,6 @@ static void __init htctopaz_fixup(struct machine_desc *desc, struct tag *tags,
 	printk(KERN_INFO "fixup: bank0 start=%08lx, node=%08x, size=%08lx\n", mi->bank[0].start, mi->bank[0].node, mi->bank[0].size);
 	printk(KERN_INFO "fixup: bank1 start=%08lx, node=%08x, size=%08lx\n", mi->bank[1].start, mi->bank[1].node, mi->bank[1].size);
 }
-
-#if 0
-static void htctopaz_device_specific_fixes(void)
-{
-	msm_htc_hw_pdata.battery_smem_offset = 0xfc110;
-	msm_htc_hw_pdata.battery_smem_field_size = 2;
-	msm_battery_pdata.smem_offset = 0xfc110;
-	msm_battery_pdata.smem_field_size = 2;
-}
-#endif
 
 MACHINE_START(HTCTOPAZ, "HTC Topaz cellphone (Topaz is a silicate mineral of aluminium and fluorine)")
 	.fixup = htctopaz_fixup,
