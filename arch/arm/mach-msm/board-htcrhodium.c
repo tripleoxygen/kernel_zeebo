@@ -701,22 +701,31 @@ static void __init halibut_map_io(void)
 	msm_clock_init(msm_clocks_7x01a, msm_num_clocks_7x01a);
 }
 
-static void __init htcrhodium_fixup(struct machine_desc *desc, struct tag *tags,
-                                    char **cmdline, struct meminfo *mi)
+static void __init htcrhodium_fixup(struct machine_desc *desc,
+		struct tag *tags, char **cmdline, struct meminfo *mi)
 {
-	mi->nr_banks = 1;
+	mi->nr_banks = 2;
 	mi->bank[0].start = PAGE_ALIGN(PHYS_OFFSET);
 	mi->bank[0].node = PHYS_TO_NID(mi->bank[0].start);
-	mi->bank[0].size = (99 * 1024 * 1024); 
+#ifdef CONFIG_HOLES_IN_ZONE
+	mi->bank[0].size = (99 * 1024 * 1024);
+#else
+	mi->bank[0].size = (96 * 1024 * 1024);
+#endif
 
-	mi->nr_banks++;
 	mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x10000000);
 	mi->bank[1].node = PHYS_TO_NID(mi->bank[1].start);
-	mi->bank[1].size = (128 * 1024 * 1024)-34*1024*1024;//See pmem.c for the value
+#ifdef CONFIG_HOLES_IN_ZONE
+	mi->bank[1].size = (128 - 34) * 1024 * 1024; // see pmem.c for the value
+#else
+	mi->bank[1].size = (128 - 36) * 1024 * 1024; // see pmem.c for the value
+#endif
 
-	printk(KERN_INFO "fixup: nr_banks = %d\n", mi->nr_banks);
-	printk(KERN_INFO "fixup: bank0 start=%08lx, node=%08x, size=%08lx\n", mi->bank[0].start, mi->bank[0].node, mi->bank[0].size);
-	printk(KERN_INFO "fixup: bank1 start=%08lx, node=%08x, size=%08lx\n", mi->bank[1].start, mi->bank[1].node, mi->bank[1].size);
+	printk(KERN_INFO "%s: nr_banks = %d\n", __func__, mi->nr_banks);
+	printk(KERN_INFO "%s: bank0 start=%08lx, node=%08x, size=%08lx\n", __func__,
+		mi->bank[0].start, mi->bank[0].node, mi->bank[0].size);
+	printk(KERN_INFO "%s: bank1 start=%08lx, node=%08x, size=%08lx\n", __func__,
+		mi->bank[1].start, mi->bank[1].node, mi->bank[1].size);
 }
 
 static void htcrhodium_device_specific_fixes(void)
