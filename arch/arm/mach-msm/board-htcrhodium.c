@@ -20,6 +20,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/i2c.h>
+#include <linux/gpio_keys.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -66,10 +67,17 @@ static void htcrhodium_device_specific_fixes(void);
 
 extern int init_mmc(void);
 
-
-
-
 #if 0
+static struct microp_keypad_platform_data rhodium_keypad_data = {
+	/*
+	.clamshell = {
+		.gpio = RHODIUM_KB_SLIDER_IRQ,
+		.irq = MSM_GPIO_TO_INT(RHODIUM_KB_SLIDER_IRQ),
+	},*/
+	//.backlight_gpio = RHODIUM_BKL_PWR,
+};
+#endif
+
 static struct resource rhodium_keypad_resources[] = {
 	{
 		.start = MSM_GPIO_TO_INT(RHODIUM_KPD_IRQ),
@@ -78,23 +86,14 @@ static struct resource rhodium_keypad_resources[] = {
 	},
 };
 
-static struct microp_keypad_platform_data rhodium_keypad_data = {
-	/*
-	.clamshell = {
-		.gpio = RHODIUM_KB_SLIDER_IRQ,
-		.irq = MSM_GPIO_TO_INT(RHODIUM_KB_SLIDER_IRQ),
-	},*/
-	.backlight_gpio = RHODIUM_BKL_PWR,
-};
-
 static struct platform_device rhodium_keypad_device = {
 	.name = "microp-keypad",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(rhodium_keypad_resources),
 	.resource = rhodium_keypad_resources,
-	.dev = { .platform_data = &rhodium_keypad_data, },
+//	.dev = { .platform_data = &rhodium_keypad_data, },
 };
-#endif
+
 #if 0
 static struct resource msm_serial0_resources[] = {
 	{
@@ -377,7 +376,7 @@ static struct platform_device rndis_device = {
 
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id	= 0x0bb4,
-	.product_id	= 0x0c01,
+	.product_id	= 0x0c02,
 	.version	= 0x0100,
 	.serial_number		= "000000000000",
 	.product_name		= "XDA",
@@ -523,6 +522,24 @@ static struct msm_ts_platform_data htcrhodium_ts_pdata = {
 	.inv_y		= 4096,
 };
 
+static struct gpio_keys_button rhodium_button_table[] = {
+	/*KEY                   GPIO    ACTIVE_LOW DESCRIPTION          type            wakeup  debounce*/
+	{KEY_POWER,                  RHODIUM_POWER_KEY,             1, "Power button",      EV_KEY,         1,      0},
+};
+
+static struct gpio_keys_platform_data gpio_keys_data = {
+	.buttons = rhodium_button_table,
+	.nbuttons=1, 
+};
+
+static struct platform_device gpio_keys = {
+	.name = "gpio-keys",
+	.dev  = {
+		.platform_data = &gpio_keys_data,
+	},
+	.id   = -1,
+};
+
 static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_hsusb,
@@ -541,8 +558,9 @@ static struct platform_device *devices[] __initdata = {
 //	&msm_device_htc_hw,
 //	&msm_device_htc_battery,
 	&blac_snd,
-//	&rhodium_keypad_device,
+ 	&rhodium_keypad_device,
 	&msm_device_touchscreen, //	&touchscreen,
+	&gpio_keys,
 //	&raphael_rfkill,
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,

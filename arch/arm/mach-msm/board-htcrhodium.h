@@ -25,6 +25,13 @@
 #define RHODIUM_BKL_PWR			86  //Keyboard blacklight  //Currently Unknown if this is right
 #define RHODIUM_POWER_KEY     		83  //Power key
 
+#define RHODIUM_KPD_ROW0 40
+#define RHODIUM_KPD_ROW1 39
+#define RHODIUM_KPD_ROW2 36
+#define RHODIUM_KPD_ROW3 18
+#define RHODIUM_KPD_COL0 102
+#define RHODIUM_KPD_COL1 101
+
 #define RHOD_LCD_VSYNC			97
 #define RHOD_LCD_PWR1			99	//0x63
 #define RHOD_LCD_PWR2			98	//0x62
