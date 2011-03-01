@@ -142,6 +142,7 @@ struct mmc_vdd_xlat {
 	int level;
 };
 
+#if 0
 static struct mmc_vdd_xlat mmc_vdd_table[] = {
 	{MMC_VDD_165_195, 1800},
 	{MMC_VDD_20_21, 2050},
@@ -155,6 +156,7 @@ static struct mmc_vdd_xlat mmc_vdd_table[] = {
 	{MMC_VDD_28_29, 2850},
 	{MMC_VDD_29_30, 2950},
 };
+#endif
 
 static unsigned int sdslot_vdd = 0xffffffff;
 static unsigned int sdslot_vreg_enabled;
@@ -182,6 +184,9 @@ static uint32_t sdslot_switchvdd(struct device *dev, unsigned int vdd)
 	}
 
 	if (!sdslot_vreg_enabled) {
+#if DEBUG_SDSLOT_VDD
+		printk("%s: Enabling SD slot power (%d)\n", __func__, sdslot_vdd);
+#endif
 		rc = vreg_enable(vreg_sdslot);
 		if (rc) {
 			printk(KERN_ERR "%s: Error enabling vreg (%d)\n",
@@ -478,7 +483,7 @@ static struct mmc_dev_data gsm_mmc_pdata = {
 	.sdc1_off_gpio_table_size = ARRAY_SIZE(sdc1_off_gpio_table),
 };
 
-static int mmc_request_gpios() {
+static int mmc_request_gpios(void) {
 	int n, w, ret = 0;
 	for (n = 0; n < 6; n++) {
 		ret = gpio_request(GPIO_PIN(mmc_pdata.sdcard_on_gpio_table[n]), "MSM SDCC");
