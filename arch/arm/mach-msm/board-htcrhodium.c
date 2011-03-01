@@ -33,7 +33,9 @@
 #include <mach/msm_serial_hs.h>
 
 #include <mach/board.h>
-//#include <mach/htc_battery.h>
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+#include <mach/htc_battery.h>
+#endif
 #include <mach/msm_iomap.h>
 #include <mach/msm_hsusb.h>
 
@@ -62,8 +64,6 @@
 #include "gpio_chip.h"
 #include "board-htcrhodium.h"
 
-
-static void htcrhodium_device_specific_fixes(void);
 
 extern int init_mmc(void);
 
@@ -400,10 +400,12 @@ static struct platform_device android_usb_device = {
  * End of android stuff
  ***************************************************************/
 
+#if 0
 static struct platform_device raphael_rfkill = {
 	.name = "htcraphael_rfkill",
 	.id = -1,
 };
+#endif
 
 static struct i2c_board_info i2c_devices[] = {
 	{
@@ -446,19 +448,20 @@ static struct snd_endpoint snd_endpoints_list[] = {
 };
 #undef SND
 
-static struct msm_snd_endpoints blac_snd_endpoints = {
+static struct msm_snd_endpoints htcrhodium_snd_endpoints = {
         .endpoints = snd_endpoints_list,
         .num = ARRAY_SIZE(snd_endpoints_list),
 };
 
-static struct platform_device blac_snd = {
+static struct platform_device htcrhodium_snd = {
 	.name = "msm_snd",
 	.id = -1,
 	.dev	= {
-		.platform_data = &blac_snd_endpoints,
+		.platform_data = &htcrhodium_snd_endpoints,
 	},
 };
 
+#if 0
 static struct platform_device rhod_prox = {
     .name       = "rhodium_proximity",
 };
@@ -467,6 +470,7 @@ static struct platform_device touchscreen = {
 	.name		= "tssc-manager",
 	.id		= -1,
 };
+#endif
 
 #ifdef CONFIG_HTC_HEADSET
 
@@ -556,8 +560,10 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_i2c,
 //	&msm_device_rtc,
 //	&msm_device_htc_hw,
-//	&msm_device_htc_battery,
-	&blac_snd,
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+	&msm_device_htc_battery_smem,
+#endif
+	&htcrhodium_snd,
  	&rhodium_keypad_device,
 	&msm_device_touchscreen, //	&touchscreen,
 	&gpio_keys,
@@ -573,7 +579,7 @@ static struct platform_device *devices[] __initdata = {
 
 extern struct sys_timer msm_timer;
 
-static void __init halibut_init_irq(void)
+static void __init htcrhodium_init_irq(void)
 {
 	msm_init_irq();
 }
@@ -634,24 +640,25 @@ int wifi_get_irq_number(int on, unsigned long msec) {
 
 static htc_hw_pdata_t msm_htc_hw_pdata = {
 	.set_vibrate = blac_set_vibrate,
-	.battery_smem_offset = 0xfc140,
-	.battery_smem_field_size = 4,
+	.battery_smem_offset = 0xfc110,
+	.battery_smem_field_size = 2,
 };
+*/
 
-static smem_batt_t msm_battery_pdata = {
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+static smem_batt_t htcrhodium_htc_battery_smem_pdata = {
 	.gpio_battery_detect = RHODIUM_BAT_IRQ,
 	.gpio_charger_enable = RHODIUM_CHARGE_EN_N,
 	.gpio_charger_current_select = RHODIUM_USB_AC_PWR,
 	//.gpio_ac_detect = RHODIUM_AC_DETECT,
-	.smem_offset = 0xfc140,
-	.smem_field_size = 4,
+	.smem_offset = 0xfc110,
+	.smem_field_size = 2,
 };
-*/
-static void __init halibut_init(void)
+#endif
+
+static void __init htcrhodium_init(void)
 {
 	int i;
-	// Fix data in arrays depending on GSM/CDMA version
-	//htcrhodium_device_specific_fixes();
 
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
@@ -659,8 +666,9 @@ static void __init halibut_init(void)
 	msm_hw_reset_hook = htcrhodium_reset;
 
 //	msm_device_htc_hw.dev.platform_data = &msm_htc_hw_pdata;
-//	msm_device_htc_battery.dev.platform_data = &msm_battery_pdata;
-	
+#ifdef CONFIG_MSM_SMEM_BATTCHG
+	msm_device_htc_battery_smem.dev.platform_data = &htcrhodium_htc_battery_smem_pdata;
+#endif
 	msm_device_touchscreen.dev.platform_data = &htcrhodium_ts_pdata;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
@@ -694,7 +702,7 @@ static void __init halibut_init(void)
 
 }
 
-static void __init halibut_map_io(void)
+static void __init htcrhodium_map_io(void)
 {
 	msm_map_common_io();
 	msm_clock_a11_fixup();
@@ -728,19 +736,11 @@ static void __init htcrhodium_fixup(struct machine_desc *desc,
 		mi->bank[1].start, mi->bank[1].node, mi->bank[1].size);
 }
 
-static void htcrhodium_device_specific_fixes(void)
-{
-//	msm_htc_hw_pdata.battery_smem_offset = 0xfc110;
-//	msm_htc_hw_pdata.battery_smem_field_size = 2;
-//	msm_battery_pdata.smem_offset = 0xfc110;
-//	msm_battery_pdata.smem_field_size = 2;
-}
-
 MACHINE_START(HTCRHODIUM, "HTC Rhodium cellphone")
-	.fixup 		= htcrhodium_fixup,
-	.boot_params	= 0x10000100,
-	.map_io		= halibut_map_io,
-	.init_irq	= halibut_init_irq,
-	.init_machine	= halibut_init,
-	.timer		= &msm_timer,
+	.fixup = htcrhodium_fixup,
+	.boot_params = 0x10000100,
+	.map_io = htcrhodium_map_io,
+	.init_irq = htcrhodium_init_irq,
+	.init_machine = htcrhodium_init,
+	.timer = &msm_timer,
 MACHINE_END
