@@ -20,7 +20,6 @@
 //#include <linux/microp-klt.h>
 
 #include "board-htctopaz.h"
-#include "proc_comm_wince.h"
 #include "devices.h"
 
 #define REG_WAIT	(0xffff)
@@ -179,8 +178,9 @@ static struct nov_regs nov_deinit_seq[] = {
 };
 
 //static struct clk *gp_clk;
-static struct vreg *vreg_lcd_1;	/* LCD1 */
-static struct vreg *vreg_lcd_2;	/* LCD2 */
+static struct vreg *vreg_aux;
+static struct vreg *vreg_rfrx2;
+static struct vreg *vreg_mddi;
 
 
 static int htctopaz_mddi_client_init(
@@ -260,13 +260,12 @@ static void htctopaz_mddi_power_client(
 	struct msm_mddi_client_data *client_data,
 	int on)
 {
-//	struct msm_dex_command dex;
-
 	printk(KERN_DEBUG "%s(%s)\n", __func__, on ? "on" : "off");
 
 	if (on) {
-		vreg_enable(vreg_lcd_1);
-		vreg_enable(vreg_lcd_2);
+		vreg_enable(vreg_aux);
+		vreg_enable(vreg_rfrx2);
+		vreg_enable(vreg_mddi);
 		mdelay(50);
 
 #if 0
@@ -275,37 +274,19 @@ static void htctopaz_mddi_power_client(
 		gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
 		gpio_set_value(58, 0);
 		msleep(5);
-
-		dex.cmd=PCOM_PMIC_REG_ON;
-		dex.has_data=1;
-		dex.data=0x80;
-		msm_proc_comm_wince(&dex,0);
-		msleep(5);
-
-		dex.data=0x2000;
-		msm_proc_comm_wince(&dex,0);
-		msleep(5);
-
-		gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-		gpio_set_value(87, 1);
-		msleep(10);
 #endif
+
+		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+		//gpio_set_value(87, 1);
+		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		msleep(10);
 	} else {
-#if 0
-		gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-		gpio_set_value(87, 0);
+		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+		//gpio_set_value(87, 0);
+		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 0);
 		msleep(10);
 
-		dex.cmd=PCOM_PMIC_REG_OFF;
-		dex.has_data=1;
-		dex.data=0x2000;
-		msm_proc_comm_wince(&dex,0);
-		msleep(5);
-
-		dex.data=0x80;
-		msm_proc_comm_wince(&dex,0);
-		msleep(5);
-
+#if 0
 		gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
 		gpio_set_value(57, 1);
 		gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
@@ -313,8 +294,9 @@ static void htctopaz_mddi_power_client(
 		msleep(5);
 #endif
 
-		vreg_disable(vreg_lcd_1);
-		vreg_disable(vreg_lcd_2);
+		vreg_disable(vreg_mddi);
+		vreg_disable(vreg_rfrx2);
+		vreg_disable(vreg_aux);
 		mdelay(50);
 	}
 }
@@ -386,13 +368,17 @@ int __init htctopaz_init_panel(void)
 		printk(KERN_ERR "%s: set clock rate failed\n", __func__);
 	}
 #endif
-	vreg_lcd_1 = vreg_get(0, "gp2");
-	if (IS_ERR(vreg_lcd_1))
-		return PTR_ERR(vreg_lcd_1);
+	vreg_aux = vreg_get(0, "gp4");
+	if (IS_ERR(vreg_aux))
+		return PTR_ERR(vreg_aux);
 
-	vreg_lcd_2 = vreg_get(0, "gp4");
-	if (IS_ERR(vreg_lcd_2))
-		return PTR_ERR(vreg_lcd_2);
+	vreg_rfrx2 = vreg_get(0, "rfrx2");
+	if (IS_ERR(vreg_rfrx2))
+		return PTR_ERR(vreg_rfrx2);
+
+	vreg_mddi = vreg_get(0, "gp2");
+	if (IS_ERR(vreg_mddi))
+		return PTR_ERR(vreg_mddi);
 
 	rc = gpio_request(TOPA100_LCD_VSYNC, "vsync");
 	if (rc)
