@@ -263,12 +263,6 @@ static void htctopaz_mddi_power_client(
 	printk(KERN_DEBUG "%s(%s)\n", __func__, on ? "on" : "off");
 
 	if (on) {
-		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-		gpio_tlmm_config(
-			GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-			GPIO_CFG_ENABLE);
-		msleep(10);
-
 		vreg_enable(vreg_aux);
 		vreg_enable(vreg_rfrx2);
 		vreg_enable(vreg_mddi);
@@ -281,7 +275,17 @@ static void htctopaz_mddi_power_client(
 		gpio_set_value(58, 0);
 		msleep(5);
 #endif
+
+		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+		//gpio_set_value(87, 1);
+		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		msleep(10);
 	} else {
+		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+		//gpio_set_value(87, 0);
+		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 0);
+		msleep(10);
+
 #if 0
 		gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
 		gpio_set_value(57, 1);
@@ -294,12 +298,6 @@ static void htctopaz_mddi_power_client(
 		vreg_disable(vreg_rfrx2);
 		vreg_disable(vreg_aux);
 		mdelay(50);
-
-		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-		gpio_tlmm_config(
-			GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-			GPIO_CFG_DISABLE);
-		msleep(10);
 	}
 }
 
