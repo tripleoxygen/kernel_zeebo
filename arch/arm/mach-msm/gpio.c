@@ -689,35 +689,38 @@ static int __init msm_init_gpio(void)
 
 postcore_initcall(msm_init_gpio);
 
+#ifdef CONFIG_MSM_AMSS_VERSION_WINCE
+//All tlmm operations go over just two registers, so no per-chip lock
+static DEFINE_SPINLOCK(gpio_tlmm_lock);
+#endif
+
 int gpio_tlmm_config(unsigned config, unsigned disable)
 {
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	void __iomem *addr, __iomem *addr2;
-	struct msm_gpio_chip *msm_chip;
+	bool chip_found = false;
 	unsigned cfg, gpio, i;
 	unsigned long flags_gpio;
 
 	gpio = GPIO_PIN(config);
 
 	for (i = 0; i < ARRAY_SIZE(msm_gpio_chips); i++) {
-		msm_chip = &msm_gpio_chips[i];
-		if (msm_chip->chip.start <= gpio && msm_chip->chip.end >= gpio)
-			break;
-		msm_chip = NULL;
-
+		if (msm_gpio_chips[i].chip.start <= gpio &&
+			msm_gpio_chips[i].chip.end >= gpio) {
+				chip_found = true;
+				break;
+			}
 	}
-	
-	if (!msm_chip) {
+
+	if (!chip_found) {
 		printk("%s: could not find the gpio %d\n", __func__, gpio);
 		return -EINVAL;
 	}
 
-	spin_lock_irqsave(&msm_chip->chip.lock, flags_gpio);
-
-	if (GPIO_PIN(config) < 16 || GPIO_PIN(config) > 42) {
+	if (gpio < 16 || gpio > 42) {
 		addr = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x20);
 		addr2 = (void __iomem *)(MSM_GPIOCFG1_BASE + 0x24);
-	}	
+	}
 	else {
 		addr = (void __iomem *)(MSM_GPIOCFG2_BASE + 0x410);
 		addr2 = (void __iomem *)(MSM_GPIOCFG2_BASE + 0x414);
@@ -725,24 +728,24 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 
 	if (!addr || !addr2) {
 		printk(KERN_WARNING "%s: could not find addr\n", __func__);
-		spin_unlock_irqrestore(&msm_chip->chip.lock, flags_gpio);
-		return 0;
+		return -EINVAL;
 	}
 
+	spin_lock_irqsave(&gpio_tlmm_lock, flags_gpio);
 	writel(gpio, addr);
 	cfg =
 	    (GPIO_DRVSTR(config) << 6) | (GPIO_FUNC(config) << 2) |
 	    (GPIO_PULL(config));
 	writel(cfg, addr2);
 
-	printk("%s(%x, %x)\n", __func__, gpio, cfg);
+	printk("%s(0x%x, 0x%x)\n", __func__, gpio, cfg);
 	if (readl(addr) != gpio)
 		printk(KERN_WARNING "%s: could not set alt func %u => %u\n",
 		       __func__, gpio, GPIO_FUNC(config));
 
-	spin_unlock_irqrestore(&msm_chip->chip.lock, flags_gpio);
+	spin_unlock_irqrestore(&gpio_tlmm_lock, flags_gpio);
 
-	if (GPIO_DIR(config))
+	if (GPIO_DIR(config) == GPIO_CFG_OUTPUT)
 		gpio_direction_output(gpio, !disable);
 	else
 		gpio_direction_input(gpio);
