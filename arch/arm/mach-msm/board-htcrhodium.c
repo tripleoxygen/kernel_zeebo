@@ -607,21 +607,6 @@ static void htcrhodium_reset(void)
 	printk(KERN_INFO "%s: Soft reset done.\n", __func__);
 }
 
-static void blac_set_vibrate(uint32_t val)
-{
-	struct msm_dex_command vibra;
-
-	if (val == 0) {
-		vibra.cmd = PCOM_VIBRA_OFF;
-		msm_proc_comm_wince(&vibra, 0);
-	} else if (val > 0) {
-		if (val == 1 || val > 0xb22)
-			val = 0xb22;
-		writel(val, MSM_SHARED_RAM_BASE + 0xfc130);
-		vibra.cmd = PCOM_VIBRA_ON;
-		msm_proc_comm_wince(&vibra, 0);
-	}
-}
 /*
 //TODO: use platform data
 int wifi_set_power(int on, unsigned long msec) {
@@ -692,14 +677,14 @@ static void __init htcrhodium_init(void)
 
 	//msm_hsusb_set_vbus_state(!!readl(MSM_SHARED_RAM_BASE+0xfc00c));
 	msm_init_pmic_vibrator();
-	/* A little vibrating welcome */
-	for (i=0; i<2; i++) {
-		blac_set_vibrate(1);
-		mdelay(150);
-		blac_set_vibrate(0);
-		mdelay(75);
-	}	
 
+	/* A little vibrating welcome */
+	for (i = 0; i < 2; i++) {
+		msm_proc_comm_wince_vibrate(1);
+		mdelay(150);
+		msm_proc_comm_wince_vibrate(0);
+		mdelay(75);
+	}
 }
 
 static void __init htcrhodium_map_io(void)

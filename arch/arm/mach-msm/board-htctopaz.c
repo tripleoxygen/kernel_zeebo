@@ -594,22 +594,6 @@ static void htctopaz_reset(void)
 	printk(KERN_INFO "%s: Soft reset done.\n", __func__);
 }
 
-static void htctopaz_set_vibrate(uint32_t val)
-{
-	struct msm_dex_command vibra;
-
-	if (val == 0) {
-		vibra.cmd = PCOM_VIBRA_OFF;
-		msm_proc_comm_wince(&vibra, 0);
-	} else if (val > 0) {
-		if (val == 1 || val > 0xb22)
-			val = 0xb22;
-		writel(val, MSM_SHARED_RAM_BASE + 0xfc130);
-		vibra.cmd = PCOM_VIBRA_ON;
-		msm_proc_comm_wince(&vibra, 0);
-	}
-}
-
 #if 0
 static htc_hw_pdata_t msm_htc_hw_pdata = {
 	.set_vibrate = topaz_set_vibrate,
@@ -665,9 +649,9 @@ static void __init htctopaz_init(void)
 
 	/* A little vibrating welcome */
 	for (i = 0; i < 2; i++) {
-		htctopaz_set_vibrate(1);
+		msm_proc_comm_wince_vibrate(1);
 		mdelay(150);
-		htctopaz_set_vibrate(0);
+		msm_proc_comm_wince_vibrate(0);
 		mdelay(75);
 	}
 }
@@ -695,7 +679,6 @@ static void __init htctopaz_fixup(struct machine_desc *desc,
 		mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x10000000);
 //	}
 	mi->bank[1].node = PHYS_TO_NID(mi->bank[1].start);
-
 #ifdef CONFIG_HOLES_IN_ZONE
 	mi->bank[1].size = (128 - 34) * 1024 * 1024; // see pmem.c for the value
 #else
