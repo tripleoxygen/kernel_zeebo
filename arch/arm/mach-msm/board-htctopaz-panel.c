@@ -268,31 +268,45 @@ static void htctopaz_mddi_power_client(
 		vreg_enable(vreg_mddi);
 		mdelay(50);
 
-#if 0
-		gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-		gpio_set_value(57, 0);
-		gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-		gpio_set_value(58, 0);
+		//gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_P1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
+
+		//gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_P2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
 		msleep(5);
-#endif
 
 		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-		//gpio_set_value(87, 1);
-		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_PWR, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		msleep(10);
 	} else {
 		//gpio_configure(87, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-		//gpio_set_value(87, 0);
-		//gpio_tlmm_config(GPIO_CFG(87, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 0);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_PWR, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
 		msleep(10);
 
-#if 0
-		gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-		gpio_set_value(57, 1);
-		gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-		gpio_set_value(58, 1);
+		//gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_P1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+
+		//gpio_configure(58, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+		gpio_tlmm_config(
+			GPIO_CFG(TOPA100_LCD_P2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
 		msleep(5);
-#endif
 
 		vreg_disable(vreg_mddi);
 		vreg_disable(vreg_rfrx2);
@@ -384,6 +398,16 @@ int __init htctopaz_init_panel(void)
 	if (rc)
 		return rc;
 	rc = gpio_direction_input(TOPA100_LCD_VSYNC);
+	if (rc)
+		return rc;
+
+	rc = gpio_request(TOPA100_LCD_PWR, "lcdpwr");
+	if (rc)
+		return rc;
+	rc = gpio_request(TOPA100_LCD_P1, "lcdp1");
+	if (rc)
+		return rc;
+	rc = gpio_request(TOPA100_LCD_P2, "lcdp2");
 	if (rc)
 		return rc;
 
