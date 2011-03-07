@@ -1,4 +1,4 @@
-/* linux/arch/arm/mach-msm/board-htctopaz.h
+/* linux/arch/arm/mach-msm/board-htcrhodium.h
  */
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_HTCRHODIUM_H
 #define __ARCH_ARM_MACH_MSM_BOARD_HTCRHODIUM_H

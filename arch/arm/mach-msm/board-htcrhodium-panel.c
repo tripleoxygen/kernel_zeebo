@@ -20,7 +20,6 @@
 #include <mach/vreg.h>
 //#include <linux/microp-klt.h>
 
-#include "board-htctopaz.h"
 #include "board-htcrhodium.h"
 #include "proc_comm_wince.h"
 #include "devices.h"
