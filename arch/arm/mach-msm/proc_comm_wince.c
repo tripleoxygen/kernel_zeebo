@@ -153,6 +153,22 @@ end:
 #endif
 }
 
+void msm_proc_comm_wince_vibrate(uint32_t val)
+{
+	struct msm_dex_command vibra;
+
+	if (val == 0) {
+		vibra.cmd = PCOM_VIBRA_OFF;
+		msm_proc_comm_wince(&vibra, 0);
+	} else if (val > 0) {
+		if (val == 1 || val > 0xb22)
+			val = 0xb22;
+		writel(val, MSM_SHARED_RAM_BASE + 0xfc130);
+		vibra.cmd = PCOM_VIBRA_ON;
+		msm_proc_comm_wince(&vibra, 0);
+	}
+}
+
 #define PLLn_BASE(n)		(MSM_CLK_CTL_BASE + 0x300 + 28 * (n))
 #define TCX0			19200000 // Hz
 #define PLL_FREQ(l, m, n)	(TCX0 * (l) + TCX0 * (m) / (n))

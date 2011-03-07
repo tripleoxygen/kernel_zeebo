@@ -122,5 +122,6 @@ struct msm_dex_command {
 
 int msm_proc_comm_wince(struct msm_dex_command *in, unsigned *out);
 int msm_proc_comm_wince_init(void);
+void msm_proc_comm_wince_vibrate(uint32_t val);
 
 #endif
