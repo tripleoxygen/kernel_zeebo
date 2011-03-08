@@ -596,17 +596,6 @@ static struct msm_acpu_clock_platform_data halibut_clock_data = {
 void msm_serial_debug_init(unsigned int base, int irq, 
 			   const char *clkname, int signal_irq);
 
-static void htcrhodium_reset(void)
-{
-	struct msm_dex_command dex = { .cmd = PCOM_NOTIFY_ARM9_REBOOT };
-	msm_proc_comm_wince(&dex, 0);
-	msleep(0x15e);
-	gpio_request(25, "MSM Reset");
-	msm_gpio_set_flags(25, GPIOF_OWNER_ARM11);
-	gpio_direction_output(25, 0);
-	printk(KERN_INFO "%s: Soft reset done.\n", __func__);
-}
-
 /*
 //TODO: use platform data
 int wifi_set_power(int on, unsigned long msec) {
@@ -647,8 +636,6 @@ static void __init htcrhodium_init(void)
 
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
-
-	msm_hw_reset_hook = htcrhodium_reset;
 
 //	msm_device_htc_hw.dev.platform_data = &msm_htc_hw_pdata;
 #ifdef CONFIG_MSM_SMEM_BATTCHG

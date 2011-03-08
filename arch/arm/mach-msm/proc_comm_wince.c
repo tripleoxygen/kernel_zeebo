@@ -23,6 +23,7 @@
 #include <mach/msm_iomap.h>
 #include <mach/system.h>
 
+#include "gpio_chip.h"
 #include "proc_comm_wince.h"
 
 #define MSM_A2M_INT(n) (MSM_CSR_BASE + 0x400 + (n) * 4)
@@ -169,6 +170,17 @@ void msm_proc_comm_wince_vibrate(uint32_t val)
 	}
 }
 
+static void msm_proc_comm_reset(void)
+{
+	struct msm_dex_command dex = {.cmd = PCOM_NOTIFY_ARM9_REBOOT };
+	msm_proc_comm_wince(&dex, 0);
+	mdelay(350);
+	gpio_request(25, "MSM Reset");
+	msm_gpio_set_flags(25, GPIOF_OWNER_ARM11);
+	gpio_direction_output(25, 0);
+	printk(KERN_INFO "%s: Soft reset done.\n", __func__);
+}
+
 #define PLLn_BASE(n)		(MSM_CLK_CTL_BASE + 0x300 + 28 * (n))
 #define TCX0			19200000 // Hz
 #define PLL_FREQ(l, m, n)	(TCX0 * (l) + TCX0 * (m) / (n))
@@ -225,6 +237,8 @@ int msm_proc_comm_wince_init()
 	writel(0, base + PC_SERIAL);
 	writel(0, base + PC_SERIAL_CHECK);
 	writel(0, base + PC_STATUS);
+
+	msm_hw_reset_hook = msm_proc_comm_reset;
 
 	spin_unlock_irqrestore(&proc_comm_lock, flags);
 	printk(KERN_INFO "%s: WinCE PCOM initialized.\n", __func__);
