@@ -215,6 +215,11 @@ msm_pm_wait_state(uint32_t wait_all_set, uint32_t wait_all_clear,
 static void
 msm_pm_enter_prep_hw(void)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	// tell ARM9 we are going to suspend
+	writel(1, MSM_SHARED_RAM_BASE + 0xfc100);
+	writel(readl(MSM_SHARED_RAM_BASE + 0xfc108) + 1,MSM_SHARED_RAM_BASE + 0xfc108);
+#endif
 #if defined(CONFIG_ARCH_MSM7X30)
 	writel(1, A11S_PWRDOWN);
 	writel(4, A11S_SECOP);
@@ -411,6 +416,7 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 			local_fiq_enable();
 			rv = 0;
 		}
+
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_POWER_COLLAPSE)
 			printk(KERN_INFO "msm_pm_collapse(): returned %d\n",
 			       collapsed);
@@ -805,6 +811,12 @@ static int __init msm_pm_init(void)
 	msm_pm_axi_init();
 
 	register_reboot_notifier(&msm_reboot_notifier);
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	// we need to disable SMI memory protection in order to able to write
+	// to the resume vector
+	writel(0, MSM_AXIGS_BASE + 0x800);
+#endif
 
 	msm_pm_reset_vector = ioremap(RESET_VECTOR, PAGE_SIZE);
 	if (msm_pm_reset_vector == NULL) {
