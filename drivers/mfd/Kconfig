@@ -490,6 +490,17 @@ config PM8058
 	  Say yes here if your board is equipped with the Qualcomm
 	  PM8058 PMIC.
 
+config MFD_MICROP_NG
+	tristate "MicroP driver for HTC Phones"
+	depends on I2C_MSM
+	default y
+	help
+	  If you say yes here you get support for the MicroP-NG driver
+	  which abstracts the i2c read/write functions for the multifunction
+	  chip in HTC phones and allows to register clients, i.e., LED driver
+	  This driver can also be built as a module.  If so, the module
+	  will be called microp-ng.
+
 endif # MFD_SUPPORT
 
 menu "Multimedia Capabilities Port drivers"

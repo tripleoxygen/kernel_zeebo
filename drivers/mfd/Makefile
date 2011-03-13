@@ -72,3 +72,4 @@ obj-$(CONFIG_LPC_SCH)		+= lpc_sch.o
 obj-$(CONFIG_MFD_RDC321X)	+= rdc321x-southbridge.o
 obj-$(CONFIG_MFD_JANZ_CMODIO)	+= janz-cmodio.o
 obj-$(CONFIG_PM8058)		+= pm8058-core.o
+obj-$(CONFIG_MFD_MICROP_NG) += microp-ng.o
