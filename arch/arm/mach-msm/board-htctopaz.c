@@ -46,6 +46,7 @@
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
+#include <linux/mfd/microp-ng.h>
 #ifdef CONFIG_USB_ANDROID
 #include <linux/usb/android_composite.h>
 #endif
@@ -379,10 +380,36 @@ static struct platform_device android_usb_device = {
  * End of android stuff
  ***************************************************************/
 
+/******************************************************************************
+ * MicroP
+ ******************************************************************************/
+static struct platform_device htckovsky_microp_leds = {
+  .id = -1,
+  .name = "htctopaz-microp-leds",
+};
+
+static struct platform_device* htckovsky_microp_clients[] = {
+    &htckovsky_microp_leds,
+};
+
+static uint16_t micropklt_compatible_versions[] = {
+	TOPA_MICROP_VERSION
+};
+
+static struct microp_platform_data htckovsky_microp_pdata = {
+	.version_reg = TOPA_MICROP_VERSION_REG,
+	.clients = htckovsky_microp_clients,
+	.nclients = ARRAY_SIZE(htckovsky_microp_clients),
+	.comp_versions = micropklt_compatible_versions,
+	.n_comp_versions = ARRAY_SIZE(micropklt_compatible_versions),
+};
+
 static struct i2c_board_info i2c_devices[] = {
 	{
 		// LED & Backlight controller
-		I2C_BOARD_INFO("microp-klt", 0x66),
+		.type = "microp-ng",
+		.addr = 0x66,
+		.platform_data = &htckovsky_microp_pdata,
 	},
 	{		
 		I2C_BOARD_INFO("mt9t013", 0x6c>>1),
