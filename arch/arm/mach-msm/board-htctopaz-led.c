@@ -89,30 +89,8 @@ static void htctopaz_microp_set_color_led(enum led_color led_color_value)
 	microp_ng_write(client, buf, ARRAY_SIZE(buf));
 }
 
-static void htctopaz_update_color_leds(struct work_struct* work)
-{
-	//printk(KERN_DEBUG "%s\n", __func__);
-}
-
-static void htctopaz_microp_update_backlight(struct work_struct* work)
-{
-	uint8_t buf[2] = { 0, 0 };
-	enum led_brightness brightness = htctopaz_leds[LCD].brightness;
-
-	if (!client || g_auto_backlight) {
-		return;
-	}
-
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
-
-	buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS;
-	buf[1] = brightness/2 & 0xf0;
-
-	microp_ng_write(client, buf, ARRAY_SIZE(buf));
-}
-
-static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
-	struct device_attribute *attr, char *ret_buf)
+static int htctopaz_microp_get_spi_auto_backlight_status(
+	uint8_t* auto_backlight_status, uint8_t* spi_status)
 {
 	int ret;
 	uint8_t buf[2] = { 0, 0 };
@@ -131,7 +109,73 @@ static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
 	printk(KERN_INFO "%s: auto_backlight=0x%02x SPI=0x%02x\n", __func__,
 		buf[0], buf[1]);
 
-	g_auto_backlight = buf[0] ? 1 : 0;
+	*auto_backlight_status = buf[0];
+	*spi_status = buf[1];
+
+	return ret;
+}
+
+#if 0
+static int microp_spi_enable(uint8_t on)
+{
+	int ret;
+	uint8_t buf[2] = { 0, 0 };
+
+	if (!client) {
+		return -EAGAIN;
+	}
+
+	printk(KERN_INFO "%s(%u)\n", __func__, on);
+
+	buf[0] = MICROP_I2C_WCMD_SPI_EN;
+	buf[1] = on;
+
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret < 0) {
+		printk(KERN_ERR "%s: Failed %s SPI bus. (%d)\n", __func__,
+			on ? "enabling" : "disabling", ret);
+		return ret;
+	}
+
+	return ret;
+}
+#endif
+
+static void htctopaz_update_color_leds(struct work_struct* work)
+{
+	//printk(KERN_DEBUG "%s\n", __func__);
+}
+
+static void htctopaz_microp_update_backlight(struct work_struct* work)
+{
+	uint8_t buf[2] = { 0, 0 };
+	enum led_brightness brightness = htctopaz_leds[LCD].brightness;
+
+	if (!client) {
+		return;
+	}
+
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+
+	buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS;
+	buf[1] = brightness/2 & 0xf0;
+
+	microp_ng_write(client, buf, ARRAY_SIZE(buf));
+}
+
+static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
+	struct device_attribute *attr, char *ret_buf)
+{
+	int ret;
+	uint8_t auto_backlight_status;
+	uint8_t spi_status;
+
+	ret = htctopaz_microp_get_spi_auto_backlight_status(&auto_backlight_status, &spi_status);
+	if (ret) {
+		return ret;
+	}
+
+	g_auto_backlight = auto_backlight_status ? 1 : 0;
 
 	return sprintf(ret_buf, "%u\n", g_auto_backlight);
 }
@@ -139,18 +183,24 @@ static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
 static ssize_t htctopaz_microp_auto_backlight_set(struct device *dev,
 	struct device_attribute *attr, const char *in_buf, size_t count)
 {
+	int ret;
 	uint8_t buf[3] = { 0, 0, 0 };
 	unsigned long val = simple_strtoul(in_buf, NULL, 10);
 
 	printk(KERN_DEBUG "%s: %lu\n", __func__, val);
 
-	g_auto_backlight = val ? 1 : 0;
-
 	buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL;
-	buf[1] = g_auto_backlight ? 0x01 : 0x00;
-	buf[2] = g_auto_backlight ? 0x01 : 0x00;
+	buf[1] = val ? 0x01 : 0x00;
+	buf[2] = val ? 0x01 : 0x00;
 
-	microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed writing auto backlight status (%d)\n",
+			__func__, ret);
+		return count;
+	}
+
+	g_auto_backlight = val ? 1 : 0;
 
 	return count;
 }
@@ -185,6 +235,8 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int i;
+	uint8_t auto_backlight_status;
+	uint8_t spi_status;
 
 	printk(KERN_INFO "%s\n", __func__);
 	client = dev_get_drvdata(&pdev->dev);
@@ -205,11 +257,23 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 		goto led_fail;
 	}
 
+	// init auto backlight global
+	ret = htctopaz_microp_get_spi_auto_backlight_status(&auto_backlight_status,
+		&spi_status);
+	if (ret) {
+		printk(KERN_ERR "%s: Failed reading auto_backlight status (%d)",
+			__func__, ret);
+		goto attr_fail;
+	}
+	g_auto_backlight = auto_backlight_status;
+
 	// reset the color led on boot
 	htctopaz_microp_set_color_led(COLOR_OFF);
 
 	return 0;
 
+attr_fail:
+	device_remove_file(htctopaz_leds[LCD].dev, &dev_attr_auto_backlight);
 led_fail:
 	for (i--; i >= 0; i--) {
 		led_classdev_unregister(&htctopaz_leds[i]);
@@ -235,11 +299,15 @@ static int htctopaz_microp_suspend(struct platform_device *pdev, pm_message_t me
 {
 	htctopaz_microp_set_color_led(COLOR_GREEN);
 
+	//microp_spi_enable(0);
+
 	return 0;
 }
 
 static int htctopaz_microp_resume(struct platform_device *pdev)
 {
+	//microp_spi_enable(1);
+
 	htctopaz_microp_set_color_led(COLOR_OFF);
 
 	return 0;
