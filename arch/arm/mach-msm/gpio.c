@@ -802,9 +802,9 @@ int msm_gpios_enable(const struct msm_gpio *table, int size)
 	const struct msm_gpio *g;
 	for (i = 0; i < size; i++) {
 		g = table + i;
-		rc = gpio_tlmm_config(g->gpio_cfg, GPIO_ENABLE);
+		rc = gpio_tlmm_config(g->gpio_cfg, GPIO_CFG_ENABLE);
 		if (rc) {
-			pr_err("gpio_tlmm_config(0x%08x, GPIO_ENABLE)"
+			pr_err("gpio_tlmm_config(0x%08x, GPIO_CFG_ENABLE)"
 			       " <%s> failed: %d\n",
 			       g->gpio_cfg, g->label ?: "?", rc);
 			pr_err("pin %d func %d dir %d pull %d drvstr %d\n",
@@ -828,9 +828,9 @@ void msm_gpios_disable(const struct msm_gpio *table, int size)
 	const struct msm_gpio *g;
 	for (i = size-1; i >= 0; i--) {
 		g = table + i;
-		rc = gpio_tlmm_config(g->gpio_cfg, GPIO_DISABLE);
+		rc = gpio_tlmm_config(g->gpio_cfg, GPIO_CFG_DISABLE);
 		if (rc) {
-			pr_err("gpio_tlmm_config(0x%08x, GPIO_DISABLE)"
+			pr_err("gpio_tlmm_config(0x%08x, GPIO_CFG_DISABLE)"
 			       " <%s> failed: %d\n",
 			       g->gpio_cfg, g->label ?: "?", rc);
 			pr_err("pin %d func %d dir %d pull %d drvstr %d\n",
