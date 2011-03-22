@@ -17,6 +17,9 @@
 #include <linux/types.h>
 #include <linux/list.h>
 #include <asm/setup.h>
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#include <mach/msm_hsusb.h>
+#endif
 
 struct msm_pmem_setting{
 	resource_size_t pmem_start;
@@ -51,7 +54,11 @@ enum {
 
 /* common init routines for use by arch/arm/mach-msm/board-*.c */
 
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 void __init msm_add_usb_devices(void (*phy_reset) (void));
+#else
+void __init msm_add_usb_devices(struct msm_hsusb_platform_data* board_pdata);
+#endif
 void __init msm_add_mem_devices(struct msm_pmem_setting *setting);
 void __init msm_init_pmic_vibrator(void);
 

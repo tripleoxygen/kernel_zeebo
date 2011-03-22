@@ -193,6 +193,7 @@ static struct platform_device android_usb_device = {
 	},
 };
 
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 void __init msm_add_usb_devices(void (*phy_reset) (void))
 {
 	/* setup */
@@ -206,6 +207,28 @@ void __init msm_add_usb_devices(void (*phy_reset) (void))
 	platform_device_register(&usb_mass_storage_device);
 	platform_device_register(&android_usb_device);
 }
+#else
+extern struct msm_hsusb_platform_data *msm_hsusb_board_pdata;
+
+void __init msm_add_usb_devices(struct msm_hsusb_platform_data* board_pdata)
+{
+	/* At this point, the msm_device_hsusb.dev.platform_data is already set
+	 * with the wrapping msm_hsusb_wrapper_pdata from devices-msm7x00.c.
+	 * If board_pdata is given, its hooks are called from the wrapper.
+	 */
+	if (board_pdata)
+		msm_hsusb_board_pdata = board_pdata;
+
+	platform_device_register(&msm_device_hsusb);
+#if 0 // TODO
+#ifdef CONFIG_USB_ANDROID_RNDIS
+	platform_device_register(&rndis_device);
+#endif
+	platform_device_register(&usb_mass_storage_device);
+	platform_device_register(&android_usb_device);
+#endif
+}
+#endif
 
 static struct android_pmem_platform_data pmem_pdata = {
 	.name = "pmem",
