@@ -25,7 +25,8 @@
 #if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #include "proc_comm.h"
 #else
-#include "proc_comm_wince.h"
+#include <mach/gpio.h>
+#include <mach/msm_hsusb.h>
 #endif
 
 #include <asm/mach/flash.h>
@@ -230,10 +231,95 @@ void msm_set_i2c_mux(bool gpio, int *gpio_clk, int *gpio_dat)
 #endif
 }
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+static struct msm_gpio msm72k_usb_on_table[] = {
+	{.gpio_cfg = GPIO_CFG(0x6f, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA0"},
+	{.gpio_cfg = GPIO_CFG(0x70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA1"},
+	{.gpio_cfg = GPIO_CFG(0x71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA2"},
+	{.gpio_cfg = GPIO_CFG(0x72, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA3"},
+	{.gpio_cfg = GPIO_CFG(0x73, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA4"},
+	{.gpio_cfg = GPIO_CFG(0x74, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA5"},
+	{.gpio_cfg = GPIO_CFG(0x75, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA6"},
+	{.gpio_cfg = GPIO_CFG(0x76, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DATA7"},
+	{.gpio_cfg = GPIO_CFG(0x77, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DIR"},
+	{.gpio_cfg = GPIO_CFG(0x78, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI NEXT"},
+	{.gpio_cfg = GPIO_CFG(0x79, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI STOP"},
+};
+
+static struct msm_gpio msm72k_usb_off_table[] = {
+	{.gpio_cfg = GPIO_CFG(0x6f, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA0"},
+	{.gpio_cfg = GPIO_CFG(0x70, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA1"},
+	{.gpio_cfg = GPIO_CFG(0x71, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA2"},
+	{.gpio_cfg = GPIO_CFG(0x72, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA3"},
+	{.gpio_cfg = GPIO_CFG(0x73, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA4"},
+	{.gpio_cfg = GPIO_CFG(0x74, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA5"},
+	{.gpio_cfg = GPIO_CFG(0x75, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA6"},
+	{.gpio_cfg = GPIO_CFG(0x76, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI DATA7"},
+	{.gpio_cfg = GPIO_CFG(0x77, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),.label = "ULPI DIR"},
+	{.gpio_cfg = GPIO_CFG(0x78, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),.label = "ULPI NEXT"},
+	{.gpio_cfg = GPIO_CFG(0x79, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),.label = "ULPI STOP"},
+};
+
+struct msm_hsusb_platform_data *msm_hsusb_board_pdata = NULL;
+
+static void msm72k_usb_connected(int enable)
+{
+	static bool gpios_requested = false;
+	int rc;
+
+	printk(KERN_DEBUG "%s(%d)\n", __func__, enable);
+
+	if (!gpios_requested) {
+		rc = msm_gpios_request(msm72k_usb_on_table,
+								ARRAY_SIZE(msm72k_usb_on_table));
+		if (rc) {
+			pr_err("%s: failed to request gpios\n", __func__);
+			return;
+		}
+		gpios_requested = true;
+	}
+
+	if (enable) {
+		if (msm_hsusb_board_pdata && msm_hsusb_board_pdata->usb_connected)
+			msm_hsusb_board_pdata->usb_connected(enable);
+		msm_gpios_enable(msm72k_usb_on_table, ARRAY_SIZE(msm72k_usb_on_table));
+	} else {
+		msm_gpios_disable(msm72k_usb_off_table, ARRAY_SIZE(msm72k_usb_off_table));
+		if (msm_hsusb_board_pdata && msm_hsusb_board_pdata->usb_connected)
+			msm_hsusb_board_pdata->usb_connected(enable);
+	}
+}
+
+static void msm72k_usb_phy_reset(void) {
+	if (msm_hsusb_board_pdata && msm_hsusb_board_pdata->phy_reset)
+		msm_hsusb_board_pdata->phy_reset();
+}
+
+static void msm72k_usb_hw_reset(bool enable) {
+	if (msm_hsusb_board_pdata && msm_hsusb_board_pdata->hw_reset)
+		msm_hsusb_board_pdata->hw_reset(enable);
+}
+
+static int usb_phy_init_seq_msm72k[] = {
+	0x40, 0x31,		/* High Speed TX Boost */
+	0x1D, 0x0D,		/* Rising edge interrupts control register */
+	0x1D, 0x10,		/* Falling edge interrupts control register */
+	0x5, 0xA,		/* OTG Control register */
+	-1
+};
+
+static struct msm_hsusb_platform_data msm_hsusb_wrapper_pdata = {
+	.phy_init_seq = usb_phy_init_seq_msm72k,
+	.phy_reset = msm72k_usb_phy_reset,
+	.hw_reset = msm72k_usb_hw_reset,
+	.usb_connected = msm72k_usb_connected,
+};
+#endif
+
 static struct resource resources_hsusb[] = {
 	{
 		.start	= MSM_HSUSB_PHYS,
-		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE,
+		.end	= MSM_HSUSB_PHYS + MSM_HSUSB_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -249,6 +335,9 @@ struct platform_device msm_device_hsusb = {
 	.num_resources	= ARRAY_SIZE(resources_hsusb),
 	.resource	= resources_hsusb,
 	.dev		= {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+		.platform_data = &msm_hsusb_wrapper_pdata,
+#endif
 		.coherent_dma_mask	= 0xffffffff,
 	},
 };
