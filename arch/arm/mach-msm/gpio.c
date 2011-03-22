@@ -22,8 +22,6 @@
 #include "gpio_hw.h"
 #ifndef CONFIG_MSM_AMSS_VERSION_WINCE
 #include "proc_comm.h"
-#else
-#include "proc_comm_wince.h"
 #endif
 #include "smd_private.h"
 
@@ -692,11 +690,9 @@ postcore_initcall(msm_init_gpio);
 #ifdef CONFIG_MSM_AMSS_VERSION_WINCE
 //All tlmm operations go over just two registers, so no per-chip lock
 static DEFINE_SPINLOCK(gpio_tlmm_lock);
-#endif
 
 int gpio_tlmm_config(unsigned config, unsigned disable)
 {
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	void __iomem *addr, __iomem *addr2;
 	bool chip_found = false;
 	unsigned cfg, gpio, i;
@@ -751,10 +747,13 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 		gpio_direction_input(gpio);
 
 	return 0;
-#else
-	return msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, &disable);
-#endif
 }
+#else
+int gpio_tlmm_config(unsigned config, unsigned disable)
+{
+	return msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, &disable);
+}
+#endif
 EXPORT_SYMBOL(gpio_tlmm_config);
 
 static DEFINE_SPINLOCK(gpio_flag_lock);
@@ -792,7 +791,6 @@ void msm_gpio_set_flags(unsigned gpio, unsigned long flags)
 	}
 	spin_unlock_irqrestore(&gpio_flag_lock, irq_flags);
 }
-
 EXPORT_SYMBOL(msm_gpio_set_flags);
 
 int msm_gpios_enable(const struct msm_gpio *table, int size)
@@ -842,9 +840,44 @@ void msm_gpios_disable(const struct msm_gpio *table, int size)
 }
 EXPORT_SYMBOL(msm_gpios_disable);
 
+int msm_gpios_request(const struct msm_gpio *table, int size)
+{
+	int i, rc;
+	for (i = 0; i < size; i++) {
+		rc = gpio_request(GPIO_PIN(table[i].gpio_cfg), table[i].label);
+		if (rc)
+			goto err;
+	}
+
+	return 0;
+err:
+	for (i--; i >= 0;i--)
+		gpio_free(GPIO_PIN(table[i].gpio_cfg));
+	return rc;
+}
+EXPORT_SYMBOL(msm_gpios_request);
+
+void msm_gpios_free(const struct msm_gpio *table, int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		gpio_free(GPIO_PIN(table[i].gpio_cfg));
+}
+EXPORT_SYMBOL(msm_gpios_free);
+
 int msm_gpios_request_enable(const struct msm_gpio *table, int size)
 {
-	int rc = msm_gpios_enable(table, size);
+	int rc;
+	rc = msm_gpios_request(table, size);
+	if (rc) {
+		printk(KERN_ERR "%s: failed to request gpios\n", __func__);
+		return rc;
+	}
+	rc = msm_gpios_enable(table, size);
+	if (rc) {
+		printk(KERN_ERR "%s: failed to enable gpios\n", __func__);
+		msm_gpios_free(table, size);
+	}
 	return rc;
 }
 EXPORT_SYMBOL(msm_gpios_request_enable);
@@ -852,5 +885,6 @@ EXPORT_SYMBOL(msm_gpios_request_enable);
 void msm_gpios_disable_free(const struct msm_gpio *table, int size)
 {
 	msm_gpios_disable(table, size);
+	msm_gpios_free(table, size);
 }
 EXPORT_SYMBOL(msm_gpios_disable_free);
