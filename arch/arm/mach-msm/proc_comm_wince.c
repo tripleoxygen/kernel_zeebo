@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/gpio.h>
 #include <linux/spinlock.h>
+#include <linux/earlysuspend.h>
 #include <mach/msm_iomap.h>
 #include <mach/system.h>
 
@@ -221,6 +222,30 @@ void dump_debug_stuff(void)
 	printk(KERN_INFO "AMSS version: %s\n", amss_ver);
 }
 
+static void msm_proc_comm_wince_early_suspend(struct early_suspend *h) {
+	struct msm_dex_command dex;
+	printk("Sending arm9_low_speed 2\n");
+	dex.cmd = PCOM_ARM9_LOW_SPEED;
+	dex.has_data = 1;
+	dex.data = 2;
+	msm_proc_comm_wince(&dex, 0);
+}
+
+static void msm_proc_comm_wince_late_resume(struct early_suspend *h) {
+	struct msm_dex_command dex;
+	printk("Sending arm9_low_speed 7\n");
+	dex.cmd = PCOM_ARM9_LOW_SPEED;
+	dex.has_data = 1;
+	dex.data = 7;
+	msm_proc_comm_wince(&dex, 0);
+}
+
+static struct early_suspend early_suspend = {
+	.suspend = msm_proc_comm_wince_early_suspend,
+	.resume = msm_proc_comm_wince_late_resume,
+	.level = 48,
+};
+
 // Initialize PCOM registers
 int msm_proc_comm_wince_init()
 {
@@ -238,9 +263,11 @@ int msm_proc_comm_wince_init()
 	writel(0, base + PC_SERIAL_CHECK);
 	writel(0, base + PC_STATUS);
 
-	msm_hw_reset_hook = msm_proc_comm_reset;
-
 	spin_unlock_irqrestore(&proc_comm_lock, flags);
+
+	msm_hw_reset_hook = msm_proc_comm_reset;
+	register_early_suspend(&early_suspend);
+
 	printk(KERN_INFO "%s: WinCE PCOM initialized.\n", __func__);
 
 	dump_debug_stuff();
