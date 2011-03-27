@@ -201,19 +201,11 @@ msm_pm_wait_state(uint32_t wait_all_set, uint32_t wait_all_clear,
 
 	for (i = 0; i < 100000; i++) {
 		state = smsm_get_state(PM_SMSM_READ_STATE);
-#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 		if (((wait_all_set || wait_all_clear) && 
 		     !(~state & wait_all_set) && !(state & wait_all_clear)) ||
 		    (state & wait_any_set) || (~state & wait_any_clear))
 			return 0;
 		udelay(1);
-#else
-		if (((state & wait_state_all_set) == wait_state_all_set) &&
-		    ((~state & wait_state_all_clear) == wait_state_all_clear) &&
-		    (wait_state_any_set == 0 || (state & wait_state_any_set) ||
-		     wait_state_any_clear == 0 || (state & wait_state_any_clear)))
-			return 0;
-#endif
 	}
 	pr_err("msm_pm_wait_state(%x, %x, %x, %x) failed %x\n",	wait_all_set,
 		wait_all_clear, wait_any_set, wait_any_clear, state);
