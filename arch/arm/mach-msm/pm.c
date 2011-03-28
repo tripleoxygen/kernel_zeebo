@@ -256,6 +256,10 @@ msm_pm_exit_restore_hw(void)
 	writel(0x00, A11S_CLK_SLEEP_EN);
 	writel(0, A11S_PWRDOWN);
 #endif
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	writel(0, MSM_SHARED_RAM_BASE + 0xfc100);
+	writel(0, MSM_SHARED_RAM_BASE + 0xfc128);
+#endif
 }
 
 #ifdef CONFIG_MSM_FIQ_SUPPORT
