@@ -734,7 +734,7 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 	    (GPIO_PULL(config));
 	writel(cfg, addr2);
 
-	printk("%s(0x%x, 0x%x)\n", __func__, gpio, cfg);
+	//printk("%s(0x%x, 0x%x)\n", __func__, gpio, cfg);
 	if (readl(addr) != gpio)
 		printk(KERN_WARNING "%s: could not set alt func %u => %u\n",
 		       __func__, gpio, GPIO_FUNC(config));
