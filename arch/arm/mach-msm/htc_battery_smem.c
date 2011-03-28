@@ -749,6 +749,8 @@ int htc_cable_status_update(int status)
 and notify USB charging again when receiving usb connected notification from usb driver. */
 void notify_usb_connected(int online)
 {
+	printk(KERN_DEBUG "%s: online=%d\n", __func__, online);
+
 	g_usb_online = online;
 	if (not_yet_started) return;
 	
@@ -1875,7 +1877,11 @@ static struct platform_driver htc_battery_driver = {
 
 static int __init htc_battery_init(void)
 {
-	wake_lock_init(&vbus_wake_lock, WAKE_LOCK_SUSPEND, "vbus_present");
+	// this used to be WAKE_LOCK_SUSPEND, but make it an idle lock in order to
+	// prevent msm_sleep() try to collapse arm11 (using idle_sleep mode) several
+	// times a second which sooner or later get's the device to freeze when usb
+	// is connected
+	wake_lock_init(&vbus_wake_lock, WAKE_LOCK_IDLE, "vbus_present");
 	mutex_init(&htc_batt_info.lock);
 	platform_driver_register(&htc_battery_driver);
 	BATT("HTC Battery Driver initialized\n");
