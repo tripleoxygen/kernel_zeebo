@@ -162,6 +162,10 @@
 #define MSM_IMEM_PHYS         0xA8500000
 #define MSM_IMEM_SIZE         0x100
 
+#define MSM_SPL_BASE          IOMEM(0xFA000000)
+#define MSM_SPL_PHYS          0x00000000
+#define MSM_SPL_SIZE          SZ_1M
+
 #define MSM_GPIOCFG1_BASE     IOMEM(0xF900B000)
 #define MSM_GPIOCFG1_PHYS     0xA9000000
 #define MSM_GPIOCFG1_SIZE     SZ_4K
