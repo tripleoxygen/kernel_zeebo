@@ -92,8 +92,13 @@ struct msm_hsusb_platform_data msm_hsusb_pdata = {
 
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns = 1,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	.vendor = "HTC",
+	.product = "XDA",
+#else
 	.vendor = "HTC     ",
 	.product = "Android Phone   ",
+#endif
 	.release = 0x0100,
 };
 
@@ -177,7 +182,12 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id	= 0x0bb4,
 	.product_id	= 0x0c01,
 	.version	= 0x0100,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	.serial_number		= "000000000000",
+	.product_name		= "XDA",
+#else
 	.product_name	= "Android Phone",
+#endif
 	.manufacturer_name = "HTC",
 	.num_products = ARRAY_SIZE(usb_products),
 	.products = usb_products,
@@ -220,13 +230,14 @@ void __init msm_add_usb_devices(struct msm_hsusb_platform_data* board_pdata)
 		msm_hsusb_board_pdata = board_pdata;
 
 	platform_device_register(&msm_device_hsusb);
-#if 0 // TODO
 #ifdef CONFIG_USB_ANDROID_RNDIS
 	platform_device_register(&rndis_device);
 #endif
 	platform_device_register(&usb_mass_storage_device);
 	platform_device_register(&android_usb_device);
-#endif
+
+	// set vbus state accordingly
+	msm_hsusb_set_vbus_state(!!readl(MSM_SHARED_RAM_BASE + 0xfc00c));
 }
 #endif
 
