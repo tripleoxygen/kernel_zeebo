@@ -72,12 +72,17 @@ static struct led_classdev htctopaz_leds[] = {
 	}
 };
 
-static void htctopaz_microp_set_color_led(enum led_color led_color_value)
+/*
+ * Helper functions
+ */
+
+static int htctopaz_microp_set_color_led(enum led_color led_color_value)
 {
+	int ret;
 	uint8_t buf[5] = { 0, 0, 0, 0, 0 };
 
 	if (!client) {
-		return;
+		return -EAGAIN;
 	}
 
 	buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS;
@@ -86,7 +91,33 @@ static void htctopaz_microp_set_color_led(enum led_color led_color_value)
 	buf[3] = 0xff;
 	buf[4] = 0xff;
 
-	microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting color led value (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+
+static int htctopaz_microp_set_auto_backlight(int on)
+{
+	int ret;
+	uint8_t buf[3] = { 0, 0, 0 };
+
+	if (!client) {
+		return -EAGAIN;
+	}
+
+	buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL;
+	buf[1] = on ? 0x01 : 0x00;
+	buf[2] = on ? 0x01 : 0x00;
+
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed writing auto backlight status (%d)\n",
+			__func__, ret);
+	}
+	return ret;
 }
 
 static int htctopaz_microp_get_spi_auto_backlight_status(
@@ -141,6 +172,10 @@ static int microp_spi_enable(uint8_t on)
 }
 #endif
 
+/*
+ * Worker functions
+ */
+
 static void htctopaz_update_color_leds(struct work_struct* work)
 {
 	//printk(KERN_DEBUG "%s\n", __func__);
@@ -155,7 +190,7 @@ static void htctopaz_microp_update_backlight(struct work_struct* work)
 		return;
 	}
 
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+	//printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
 
 	buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS;
 	buf[1] = brightness/2 & 0xf0;
@@ -183,25 +218,15 @@ static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
 static ssize_t htctopaz_microp_auto_backlight_set(struct device *dev,
 	struct device_attribute *attr, const char *in_buf, size_t count)
 {
-	int ret;
-	uint8_t buf[3] = { 0, 0, 0 };
 	unsigned long val = simple_strtoul(in_buf, NULL, 10);
 
 	printk(KERN_DEBUG "%s: %lu\n", __func__, val);
 
-	buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL;
-	buf[1] = val ? 0x01 : 0x00;
-	buf[2] = val ? 0x01 : 0x00;
-
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
-	if (ret) {
-		printk(KERN_ERR "%s: Failed writing auto backlight status (%d)\n",
-			__func__, ret);
+	if (htctopaz_microp_set_auto_backlight(val ? 1 : 0)) {
 		return count;
 	}
 
 	g_auto_backlight = val ? 1 : 0;
-
 	return count;
 }
 
