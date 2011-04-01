@@ -48,9 +48,6 @@
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
-#ifdef CONFIG_USB_ANDROID
-#include <linux/usb/android_composite.h>
-#endif
 #ifdef CONFIG_HTC_HEADSET
 #include <mach/htc_headset.h>
 #endif
@@ -126,279 +123,31 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 };
 #endif
 
-static unsigned ulpi_on_gpio_table[] = {
-	GPIO_CFG(0x6f, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x72, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x73, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x74, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x75, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x76, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x77, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x78, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(0x79, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-};
-
-static unsigned ulpi_off_gpio_table[] = {
-	GPIO_CFG(0x6f, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x70, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x71, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x72, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x73, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x74, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x75, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x76, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x77, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x78, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(0x79, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-};
-
-static void usb_gpio_init(void)
+/******************************************************************************
+ * USB
+ ******************************************************************************/
+static void htcrhodium_usb_hw_reset(bool enable)
 {
-	if (gpio_request(0x6f, "ulpi_data_0"))
-		pr_err("failed to request gpio ulpi_data_0\n");
-	if (gpio_request(0x70, "ulpi_data_1"))
-		pr_err("failed to request gpio ulpi_data_1\n");
-	if (gpio_request(0x71, "ulpi_data_2"))
-		pr_err("failed to request gpio ulpi_data_2\n");
-	if (gpio_request(0x72, "ulpi_data_3"))
-		pr_err("failed to request gpio ulpi_data_3\n");
-	if (gpio_request(0x73, "ulpi_data_4"))
-		pr_err("failed to request gpio ulpi_data_4\n");
-	if (gpio_request(0x74, "ulpi_data_5"))
-		pr_err("failed to request gpio ulpi_data_5\n");
-	if (gpio_request(0x75, "ulpi_data_6"))
-		pr_err("failed to request gpio ulpi_data_6\n");
-	if (gpio_request(0x76, "ulpi_data_7"))
-		pr_err("failed to request gpio ulpi_data_7\n");
-	if (gpio_request(0x77, "ulpi_dir"))
-		pr_err("failed to request gpio ulpi_dir\n");
-	if (gpio_request(0x78, "ulpi_next"))
-		pr_err("failed to request gpio ulpi_next\n");
-	if (gpio_request(0x79, "ulpi_stop"))
-		pr_err("failed to request gpio ulpi_stop\n");
+	printk(KERN_WARNING "%s(%d): NOT IMPLEMENTED\n", __func__, enable ? 1 : 0);
 }
 
-static int usb_config_gpio(int config)
+static void htcrhodium_usb_phy_reset(void)
 {
-	int pin, rc;
+	printk(KERN_DEBUG "%s\n", __func__);
 
-	if (config) {
-		for (pin = 0; pin < ARRAY_SIZE(ulpi_on_gpio_table); pin++) {			
-			rc = gpio_tlmm_config(ulpi_on_gpio_table[pin],
-					      GPIO_CFG_ENABLE);
-			if (rc) {
-				printk(KERN_ERR
-				       "%s: gpio_tlmm_config(%#x)=%d\n",
-				       __func__, ulpi_off_gpio_table[pin], rc);
-				return -EIO;
-			}
-		}
-	} else {
-		for (pin = 0; pin < ARRAY_SIZE(ulpi_off_gpio_table); pin++) {
-			rc = gpio_tlmm_config(ulpi_off_gpio_table[pin],
-					      GPIO_CFG_ENABLE);
-			if (rc) {
-				printk(KERN_ERR
-				       "%s: gpio_tlmm_config(%#x)=%d\n",
-				       __func__, ulpi_on_gpio_table[pin], rc);
-				return -EIO;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static int usb_phy_init_seq_rhod[] = {
-        0x40, 0x31, /* Leave this pair out for USB Host Mode */
-        0x1D, 0x0D,
-        0x1D, 0x10,
-	0x5, 0xA,
-        -1
-};
-
-static void usb_phy_shutdown(void)
-{
-	printk("%s: %s\n", __FILE__, __func__);
 	gpio_set_value(RHODIUM_USBPHY_RST, 1); 
 	gpio_set_value(RHODIUM_USBPHY_RST, 0);
-}
-static void usb_phy_reset(void)
-{
-	printk("%s: %s\n", __FILE__, __func__);
-	usb_phy_shutdown();
 	gpio_set_value(RHODIUM_USBPHY_RST, 0); 
 	mdelay(3);
 	gpio_set_value(RHODIUM_USBPHY_RST, 1);
 	mdelay(3);
-	usb_config_gpio(1);
 }
 
-static void usb_hw_reset(bool enable) {
-	printk("%s: %s what to do?. FIXME !!!\n", __FILE__, __func__);
-}
-
-static void usb_connected(int on) {
-	printk("Rhodium: Connected usb == %x\n", on);
-	
-	switch (on) {
-	case 2: /* ac power? */
-
-	break;
-	case 1:	/* usb plugged in */
-		//notify_usb_connected(1);
-	break;
-	case 0:
-		notify_usb_connected(0);
-		usb_config_gpio(0);
-	break;
-	default:
-		printk(KERN_WARNING "%s: FIXME! value for ON? %u ?\n", __func__, on);
-    	}
-	
-}
-
-static struct msm_hsusb_platform_data msm_hsusb_pdata = {
-	.phy_init_seq	= usb_phy_init_seq_rhod,
-	.phy_reset     	= usb_phy_reset,
-	.hw_reset	= usb_hw_reset,
-	.usb_connected	= usb_connected,
+static struct msm_hsusb_platform_data htcrhodium_hsusb_board_pdata = {
+	.hw_reset = htcrhodium_usb_hw_reset,
+	.phy_reset = htcrhodium_usb_phy_reset,
+	.usb_connected = notify_usb_connected,
 };
-/***************************************************************
- * Android usb defines should be removed as google did for .35
- * All usb stuff should be moved to new usb platform that has
- * yet to be made. For debugging keep in board file for now.
- ***************************************************************/
-#ifdef CONFIG_USB_ANDROID
-static char *usb_functions_ums[] = {
-	"usb_mass_storage",
-};
-
-static char *usb_functions_ums_adb[] = {
-	"usb_mass_storage",
-	"adb",
-};
-
-static char *usb_functions_rndis[] = {
-	"rndis",
-};
-
-static char *usb_functions_rndis_adb[] = {
-	"rndis",
-	"adb",
-};
-
-#ifdef CONFIG_USB_ANDROID_DIAG
-static char *usb_functions_adb_diag[] = {
-	"usb_mass_storage",
-	"adb",
-	"diag",
-};
-#endif
-
-static char *usb_functions_all[] = {
-#ifdef CONFIG_USB_ANDROID_RNDIS
-	"rndis",
-#endif
-	"usb_mass_storage",
-	"adb",
-#ifdef CONFIG_USB_ANDROID_ACM
-	"acm",
-#endif
-#ifdef CONFIG_USB_ANDROID_DIAG
-	"diag",
-#endif
-};
-
-static struct android_usb_product usb_products[] = {
-	{
-		.product_id	= 0x0ffe,
-		.num_functions	= ARRAY_SIZE(usb_functions_rndis),
-		.functions	= usb_functions_rndis,
-	},	
-	{
-		.product_id	= 0x0c01,
-		.num_functions	= ARRAY_SIZE(usb_functions_ums),
-		.functions	= usb_functions_ums,
-	},
-	{
-		.product_id	= 0x0c02,
-		.num_functions	= ARRAY_SIZE(usb_functions_ums_adb),
-		.functions	= usb_functions_ums_adb,
-	},
-	{
-		.product_id	= 0x0ffc,
-		.num_functions	= ARRAY_SIZE(usb_functions_rndis_adb),
-		.functions	= usb_functions_rndis_adb,
-	},
-#ifdef CONFIG_USB_ANDROID_DIAG
-	{
-		.product_id	= 0x0fff,
-		.num_functions	= ARRAY_SIZE(usb_functions_adb_diag),
-		.functions	= usb_functions_adb_diag,
-	},
-#endif
-};
-
-static struct usb_mass_storage_platform_data mass_storage_pdata = {
-	.nluns		= 1,
-	.vendor		= "HTC",
-	.product	= "XDA",
-	.release	= 0x0100,
-};
-
-static struct platform_device usb_mass_storage_device = {
-	.name	= "usb_mass_storage",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mass_storage_pdata,
-	},
-};
-
-#ifdef CONFIG_USB_ANDROID_RNDIS
-static struct usb_ether_platform_data rndis_pdata = {
-	/* ethaddr is filled by board_serialno_setup */
-	.vendorID	= 0x18d1,
-	.vendorDescr	= "HTC",
-};
-
-static struct platform_device rndis_device = {
-	.name	= "rndis",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &rndis_pdata,
-	},
-};
-#endif
-
-
-static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x0bb4,
-	.product_id	= 0x0c02,
-	.version	= 0x0100,
-	.serial_number		= "000000000000",
-	.product_name		= "XDA",
-	.manufacturer_name	= "HTC",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,
-};
-
-static struct platform_device android_usb_device = {
-	.name	= "android_usb",
-	.id		= -1,
-	.dev		= {
-		.platform_data = &android_usb_pdata,
-	},
-};
-#endif
-
-/***************************************************************
- * End of android stuff
- ***************************************************************/
 
 #if 0
 static struct platform_device raphael_rfkill = {
@@ -546,16 +295,6 @@ static struct platform_device gpio_keys = {
 
 static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
-	&msm_device_hsusb,
-#ifdef CONFIG_USB_ANDROID
-	&android_usb_device,
-#endif
-#ifdef CONFIG_USB_ANDROID_RNDIS
-	&rndis_device,
-#endif
-#ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-	&usb_mass_storage_device,
-#endif
 	&msm_device_nand,
 	&msm_device_i2c,
 //	&msm_device_rtc,
@@ -645,24 +384,15 @@ static void __init htcrhodium_init(void)
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
-	
-
-	msm_device_hsusb.dev.platform_data = &msm_hsusb_pdata;
-	init_mmc();
-	usb_gpio_init();
 
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
 #endif
 
+	msm_add_usb_devices(&htcrhodium_hsusb_board_pdata);
 
-	/* TODO: detect vbus and correctly notify USB about its presence 
-	 * For now we just declare that VBUS is present at boot and USB
-	 * copes, but this is not ideal.
-	 */
-	msm_hsusb_set_vbus_state(1);
+	init_mmc();
 
-	//msm_hsusb_set_vbus_state(!!readl(MSM_SHARED_RAM_BASE+0xfc00c));
 	msm_init_pmic_vibrator();
 
 	/* A little vibrating welcome */
