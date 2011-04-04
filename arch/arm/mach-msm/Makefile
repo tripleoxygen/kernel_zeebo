@@ -72,7 +72,7 @@ obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += amss_para.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += devices_htc.o devices-msm7x00.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE && (CONFIG_HTC_HEADSET || CONFIG_HTC_35MM_JACK)) += htc_acoustic.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += mmc.o msm_vibrator.o
-obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o pwrsink.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz.o board-htctopaz-panel.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz-keypad.o board-htctopaz-led.o
 
