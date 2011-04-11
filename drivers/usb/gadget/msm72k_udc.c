@@ -1259,6 +1259,11 @@ static void usb_do_work(struct work_struct *w)
 				/* power down phy, clock down usb */
 				spin_lock_irqsave(&ui->lock, iflags);
 				usb_suspend_phy(ui);
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+				if (ui->hw_reset)
+					ui->hw_reset(1);
+#endif
+
 				clk_disable(ui->pclk);
 				clk_disable(ui->clk);
 				if (ui->otgclk)
@@ -1741,6 +1746,9 @@ static int msm72k_probe(struct platform_device *pdev)
 		ui->phy_reset = pdata->phy_reset;
 		ui->phy_init_seq = pdata->phy_init_seq;
 		ui->usb_connected = pdata->usb_connected;
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+		ui->hw_reset = pdata->hw_reset;
+#endif
 	}
 
 	irq = platform_get_irq(pdev, 0);

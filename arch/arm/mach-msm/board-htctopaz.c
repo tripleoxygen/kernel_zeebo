@@ -97,19 +97,35 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 /******************************************************************************
  * USB
  ******************************************************************************/
-static void htctopaz_usb_hw_reset(bool enable)
+static void htctopaz_usb_disable()
 {
-	printk(KERN_WARNING "%s(%d): NOT IMPLEMENTED\n", __func__, enable ? 1 : 0);
+	gpio_set_value(TOPA100_USBPHY_RST, 0); 
+	mdelay(3);
+}
+
+static void htctopaz_usb_enable()
+{
+	gpio_set_value(TOPA100_USBPHY_RST, 1);
+	mdelay(3);
+}
+
+static void htctopaz_usb_hw_reset(bool off)
+{
+	printk(KERN_WARNING "%s(%d)\n", __func__, off ? 1 : 0);
+
+	if (off) {
+		htctopaz_usb_disable();
+	} else {
+		htctopaz_usb_enable();
+	}
 }
 
 static void htctopaz_usb_phy_reset(void)
 {
 	printk(KERN_DEBUG "%s\n", __func__);
 
-	gpio_set_value(TOPA100_USBPHY_RST, 0); 
-	mdelay(3);
-	gpio_set_value(TOPA100_USBPHY_RST, 1);
-	mdelay(3);
+	htctopaz_usb_disable();
+	htctopaz_usb_enable();
 }
 
 static struct msm_hsusb_platform_data htctopaz_hsusb_board_pdata = {
