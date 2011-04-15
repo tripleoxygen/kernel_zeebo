@@ -653,10 +653,6 @@ static int a11_clk_enable(unsigned id)
 	struct msm_clock_params params;
 	int done = 0;
 
-	if (id == PMDH_CLK || id == USB_HS_CLK || id == USB_HS_P_CLK || id == USB_OTG_CLK) {
-		D("%s: id=%u\n", __func__, id);
-	}
-
 	params = msm_clk_get_params(id);
 	switch (id) {
 	case MDP_CLK:
