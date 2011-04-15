@@ -226,7 +226,14 @@ msm_pm_enter_prep_hw(void)
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	// tell ARM9 we are going to suspend
 	writel(1, MSM_SHARED_RAM_BASE + 0xfc100);
-	writel(readl(MSM_SHARED_RAM_BASE + 0xfc108) + 1,MSM_SHARED_RAM_BASE + 0xfc108);
+	writel(readl(MSM_SHARED_RAM_BASE + 0xfc108) + 1, MSM_SHARED_RAM_BASE + 0xfc108);
+
+	writel(0x7f, A11S_CLK_SLEEP_EN); // halt all clocks
+	writel(1, A11S_PWRDOWN); // power down and wait for interrupt
+	writel(0x08, A11S_STANDBY_CTL); // hw control back bias on, wait 0 clks after interrupt
+	writel(0, A11RAMBACKBIAS);
+
+	return;
 #endif
 #if defined(CONFIG_ARCH_MSM7X30)
 	writel(1, A11S_PWRDOWN);
@@ -249,16 +256,16 @@ msm_pm_enter_prep_hw(void)
 static void
 msm_pm_exit_restore_hw(void)
 {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	writel(0, MSM_SHARED_RAM_BASE + 0xfc100);
+	writel(0, MSM_SHARED_RAM_BASE + 0xfc128);
+#endif
 #if defined(CONFIG_ARCH_MSM7X30)
 	writel(0, A11S_SECOP);
 	writel(0, A11S_PWRDOWN);
 #else
 	writel(0x00, A11S_CLK_SLEEP_EN);
 	writel(0, A11S_PWRDOWN);
-#endif
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-	writel(0, MSM_SHARED_RAM_BASE + 0xfc100);
-	writel(0, MSM_SHARED_RAM_BASE + 0xfc128);
 #endif
 }
 
@@ -440,6 +447,14 @@ static int msm_sleep(int sleep_mode, uint32_t sleep_delay, int from_idle)
 	}
 
 	if (sleep_mode <= MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT) {
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+		/* Instead of having acpuclk_set_rate() ramp up until the
+		 * clock speed before power collapse is reached, set the lowest
+		 * stepping frequency. (This also seems to fix some rare devices
+		 * which won't survive a ramp up to 528MHz.)
+		 */
+		pm_saved_acpu_clk_rate = 122880 * 1000;
+#endif
 		if (msm_pm_debug_mask & MSM_PM_DEBUG_CLOCK)
 			printk(KERN_INFO "msm_sleep(): exit power collapse %ld"
 			       "\n", pm_saved_acpu_clk_rate);
