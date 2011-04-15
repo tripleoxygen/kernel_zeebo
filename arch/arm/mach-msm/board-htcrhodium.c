@@ -41,13 +41,14 @@
 #include <mach/system.h>
 #include <mach/msm_fb.h>
 #include <mach/msm_hsusb.h>
-#include <mach/msm_ts.h>
 #include <mach/vreg.h>
 
 #include <mach/gpio.h>
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
+#include <linux/input/msm_ts.h>
+
 #ifdef CONFIG_HTC_HEADSET
 #include <mach/htc_headset.h>
 #endif

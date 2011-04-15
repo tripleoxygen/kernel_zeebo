@@ -33,7 +33,7 @@
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_hsusb.h>
-#include <mach/msm_ts.h>
+#include <linux/input/msm_ts.h>
 #include <linux/usb/android_composite.h>
 
 #include "board-swordfish.h"

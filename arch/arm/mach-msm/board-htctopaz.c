@@ -39,13 +39,13 @@
 #include <mach/system.h>
 #include <mach/msm_fb.h>
 #include <mach/msm_hsusb.h>
-#include <mach/msm_ts.h>
 #include <mach/vreg.h>
 
 #include <mach/gpio.h>
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
+#include <linux/input/msm_ts.h>
 #include <linux/mfd/microp-ng.h>
 
 //#include <linux/microp-keypad.h>
@@ -225,7 +225,7 @@ static struct platform_device topaz_bt_rfkill = {
 };
 #endif
 
-struct ts_virt_key ts_keys_y[] = {
+static struct ts_virt_key htctopaz_ts_keys_y[] = {
 	// key      min   max
 	{KEY_UP,    105, 267}, //  420, 1068},
 	{KEY_DOWN,  268, 429}, // 1069, 1716},
@@ -235,7 +235,7 @@ struct ts_virt_key ts_keys_y[] = {
 };
 
 static struct msm_ts_virtual_keys htctopaz_ts_virtual_keys_y = {
-	.keys = &ts_keys_y[0],
+	.keys = &htctopaz_ts_keys_y[0],
 	.num_keys = 5,
 };
 
