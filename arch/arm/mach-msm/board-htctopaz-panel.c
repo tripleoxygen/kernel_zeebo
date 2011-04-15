@@ -16,6 +16,7 @@
 #include <asm/mach-types.h>
 
 #include <mach/msm_fb.h>
+#include <mach/msm_iomap.h>
 #include <mach/vreg.h>
 //#include <linux/microp-klt.h>
 
@@ -266,7 +267,7 @@ static void htctopaz_mddi_power_client(
 		vreg_enable(vreg_aux);
 		vreg_enable(vreg_rfrx2);
 		vreg_enable(vreg_mddi);
-		mdelay(50);
+		mdelay(5);
 
 		//gpio_configure(57, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
 		gpio_tlmm_config(
@@ -311,7 +312,7 @@ static void htctopaz_mddi_power_client(
 		vreg_disable(vreg_mddi);
 		vreg_disable(vreg_rfrx2);
 		vreg_disable(vreg_aux);
-		mdelay(50);
+		mdelay(5);
 	}
 }
 
@@ -362,13 +363,16 @@ struct msm_mddi_platform_data mddi_pdata = {
 int __init htctopaz_init_panel(void)
 {
 	int rc;
+	int panel_id;
 
 	if(!machine_is_htctopaz()) {
 		printk(KERN_INFO "%s: panel does not apply to this device, aborted\n", __func__);
 		return -1;
 	}
 
-	printk(KERN_INFO "%s: Initializing panel\n", __func__);
+	panel_id = readl(MSM_SPL_BASE + 0x81034);
+
+	printk(KERN_INFO "%s: Initializing panel type 0x%x\n", __func__, panel_id);
 
 #if 0
 	gp_clk = clk_get(NULL, "gp_clk");
