@@ -88,7 +88,7 @@ static struct platform_device msm_serial0_device = {
 
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
-	.rx_wakeup_irq = MSM_GPIO_TO_INT(21),
+	.rx_wakeup_irq = MSM_GPIO_TO_INT(TOPA100_UART2DM_RX),
 	.inject_rx_on_wakeup = 1,
 	.rx_to_inject = 0x32,
 };
@@ -97,13 +97,13 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 /******************************************************************************
  * USB
  ******************************************************************************/
-static void htctopaz_usb_disable()
+static void htctopaz_usb_disable(void)
 {
 	gpio_set_value(TOPA100_USBPHY_RST, 0); 
 	mdelay(3);
 }
 
-static void htctopaz_usb_enable()
+static void htctopaz_usb_enable(void)
 {
 	gpio_set_value(TOPA100_USBPHY_RST, 1);
 	mdelay(3);
@@ -138,12 +138,12 @@ static struct msm_hsusb_platform_data htctopaz_hsusb_board_pdata = {
  * MicroP
  ******************************************************************************/
 static struct platform_device htctopaz_microp_leds = {
-  .id = -1,
-  .name = "htctopaz-microp-leds",
+	.id = -1,
+	.name = "htctopaz-microp-leds",
 };
 
 static struct platform_device* htctopaz_microp_clients[] = {
-    &htctopaz_microp_leds,
+	&htctopaz_microp_leds,
 };
 
 static uint16_t micropklt_compatible_versions[] = {
