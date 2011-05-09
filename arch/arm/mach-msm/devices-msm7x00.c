@@ -654,7 +654,7 @@ struct platform_device msm_device_touchscreen = {
 
 #if defined(CONFIG_MSM_SMEM_BATTCHG)
 struct platform_device msm_device_htc_battery_smem = {
-	.name = "htc_battery_smem",
+	.name = "htc_battery",
 	.id = -1,
 };
 #endif

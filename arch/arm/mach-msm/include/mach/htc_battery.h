@@ -8,3 +8,6 @@ struct smem_battery_resources {
 };
 
 typedef struct smem_battery_resources smem_batt_t;
+
+/* This can get called by the proc_comm interrupt routine */
+extern int htc_cable_status_update(int status);

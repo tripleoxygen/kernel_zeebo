@@ -42,8 +42,6 @@ static int bat_suspended = 0;
 
 static int htc_pcb_id = 0xFF, htc_hwboard_id = 0xFF, batt_vref = 0, batt_vref_half = 0;
 
-static int topaz_discharge = 0;
-
 static int g_usb_online;
 static int fake_charger=0;
 module_param_named(fake, fake_charger, int, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -72,7 +70,7 @@ module_param_named(debug, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
  */
 static struct sBattery_Parameters* batt_param = (struct sBattery_Parameters*)&sBatParams_1800mAh;
 
-#define MODULE_NAME "htc_battery_smem"
+#define MODULE_NAME "htc_battery"
 
 #define TRACE_BATT 1
 
@@ -749,8 +747,6 @@ int htc_cable_status_update(int status)
 and notify USB charging again when receiving usb connected notification from usb driver. */
 void notify_usb_connected(int online)
 {
-	printk(KERN_DEBUG "%s: online=%d\n", __func__, online);
-
 	g_usb_online = online;
 	if (not_yet_started) return;
 	
@@ -773,13 +769,13 @@ static void htc_bat_work(struct work_struct *work) {
 		return;
 
 	ac_detect = gpio_get_value(htc_batt_info.resources->gpio_ac_detect);
-	if(debug_mask&DEBUG_LOG) BATT("ac_detect=%d\n", ac_detect);
+	if (debug_mask & DEBUG_CABLE) BATT("ac_detect=%d\n", ac_detect);
 	if (ac_detect == 0) {
 		rc = battery_charging_ctrl(ENABLE_SLOW_CHG);
-		if(debug_mask&DEBUG_LOG) BATT("charging enable rc=%d\n", rc);
+		if (debug_mask & DEBUG_CABLE) BATT("charging enable rc=%d\n", rc);
 	} else {
 		rc = battery_charging_ctrl(DISABLE);
-		if(debug_mask&DEBUG_LOG) BATT("charging disable rc=%d\n", rc);
+		if (debug_mask & DEBUG_CABLE) BATT("charging disable rc=%d\n", rc);
 	}
 }
 
@@ -1422,8 +1418,6 @@ static int htc_get_batt_smem_info(struct battery_info_reply *buffer)
 	dex.cmd = PCOM_GET_BATTERY_DATA;
 	msm_proc_comm_wince(&dex, 0);
 
-	mutex_lock(&htc_batt_info.lock);
-
 	if (htc_batt_info.resources->smem_field_size == 4) {
 		batt_32 = (void *)(MSM_SHARED_RAM_BASE + htc_batt_info.resources->smem_offset);
 
@@ -1437,16 +1431,10 @@ static int htc_get_batt_smem_info(struct battery_info_reply *buffer)
 
 		buffer->batt_vol = batt_16->batt_vol;
 		buffer->batt_current = batt_16->batt_charge;
-		//CAMEL buffer->batt_temp = batt_16->batt_temp;
 		buffer->batt_tempRAW = batt_16->batt_temp;
 		buffer->batt_id = batt_16->batt_id;
-		if( machine_is_htctopaz() ) {
-			topaz_discharge = batt_16->batt_discharge;
-		}
-
 	} else {
 		BATT_ERR("[BATT]: unsupported smem_field_size\n");
-		mutex_unlock(&htc_batt_info.lock);
 		return -ENOTSUPP;
 	}
 
@@ -1459,6 +1447,7 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 
 	int volt_lowest_val = 0xFFFF, volt_highest_val = 0, current_lowest_val = 0xFFFF, current_highest_val = 0;
 	int volt_sum = 0, current_sum = 0;
+	int last_source, new_source;
 
 	if ( buffer == NULL )
 		return -EINVAL;
@@ -1467,6 +1456,8 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 		BATT_ERR("smem_offset not set\n" );
 		return -EINVAL;
 	}
+
+	last_source = htc_batt_info.rep.charging_source;
 
 	/* Don't know why, diamond battdrvr.dll reads 5 times ADC level,
 	 * removes the highest and lowest value and use the average value
@@ -1502,8 +1493,6 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 			i++;
 
 			mdelay(2);
-
-			mutex_unlock(&htc_batt_info.lock);
 		}
 		while(i < 5);
 
@@ -1552,9 +1541,9 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 //	}
                                    
 	/* should it be done before correction */
-	mutex_unlock(&htc_batt_info.lock);
-	htc_cable_status_update(buffer->charging_source);
-	mutex_lock(&htc_batt_info.lock);
+	new_source = buffer->charging_source;
+	buffer->charging_source = last_source;
+	htc_cable_status_update(new_source);
 
 	/* platform spec battery correction */
 	if ( machine_is_htcraphael() || machine_is_htcraphael_cdma() || machine_is_htcraphael_cdma500() ||
@@ -1587,9 +1576,7 @@ static int htc_power_get_property(struct power_supply *psy,
 {
 	charger_type_t charger;
 
-	mutex_lock(&htc_batt_info.lock);
 	charger = htc_batt_info.rep.charging_source;
-	mutex_unlock(&htc_batt_info.lock);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -1613,7 +1600,6 @@ static int htc_battery_get_charging_status(void)
 	charger_type_t charger;
 	int ret;
 
-	mutex_lock(&htc_batt_info.lock);
 	charger = htc_batt_info.rep.charging_source;
 
 	switch (charger) {
@@ -1631,7 +1617,6 @@ static int htc_battery_get_charging_status(void)
 	default:
 		ret = POWER_SUPPLY_STATUS_UNKNOWN;
 	}
-	mutex_unlock(&htc_batt_info.lock);
 	return ret;
 }
 
@@ -1653,9 +1638,7 @@ static int htc_battery_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		mutex_lock(&htc_batt_info.lock);
 		val->intval = htc_batt_info.rep.level;
-		mutex_unlock(&htc_batt_info.lock);
 		break;
 	default:
 		return -EINVAL;
@@ -1665,7 +1648,7 @@ static int htc_battery_get_property(struct power_supply *psy,
 }
 
 void htc_battery_external_power_changed(struct power_supply *psy) {
-	if(debug_mask&DEBUG_LOG)
+	if (debug_mask & DEBUG_CABLE)
 		BATT("external power changed\n");
 	maf_clear();
 	schedule_work(&bat_work);
@@ -1673,7 +1656,7 @@ void htc_battery_external_power_changed(struct power_supply *psy) {
 }
 
 static irqreturn_t htc_bat_gpio_isr(int irq, void *data) {
-	if(debug_mask&DEBUG_LOG)
+	if (debug_mask & DEBUG_CABLE)
 		BATT("IRQ %d for GPIO \n", irq);
 	schedule_work(&bat_work);
 	return IRQ_HANDLED;
@@ -1744,7 +1727,6 @@ static ssize_t htc_battery_show_property(struct device *dev,
 		htc_batt_info.update_time = jiffies;
 	}
 dont_need_update:
-
 	mutex_lock(&htc_batt_info.lock);
 	switch (off) {
 	case BATT_ID:
@@ -1785,13 +1767,16 @@ dont_need_update:
 
 static int htc_battery_thread(void *data)
 {
+	struct battery_info_reply buffer;
 	daemonize("battery");
 	allow_signal(SIGKILL);
 
 	while (!signal_pending((struct task_struct *)current)) {
 		msleep(10000);
-		if (!bat_suspended)
-			power_supply_changed(&htc_power_supplies[CHARGER_BATTERY]);
+		if (!bat_suspended && !htc_get_batt_info(&buffer)) {
+			htc_batt_info.update_time = jiffies;
+			htc_battery_status_update(buffer.level);
+		}
 	}
 	return 0;
 }
