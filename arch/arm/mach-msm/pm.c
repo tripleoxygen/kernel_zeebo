@@ -258,7 +258,8 @@ msm_pm_exit_restore_hw(void)
 {
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	writel(0, MSM_SHARED_RAM_BASE + 0xfc100);
-	writel(0, MSM_SHARED_RAM_BASE + 0xfc128);
+	/* ARM9 puts the irq status here. We need this on wake up to know if some interrupts were triggered. */
+	//~ writel(0, MSM_SHARED_RAM_BASE + 0xfc128);
 #endif
 #if defined(CONFIG_ARCH_MSM7X30)
 	writel(0, A11S_SECOP);
@@ -609,6 +610,20 @@ abort_idle:
 #endif
 }
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+/* This function is called just before device enter in "deep sleep" */
+static void msm_pm_finish(void)
+{
+    msm_proc_comm_wince_enter_sleep();
+}
+
+/* this function is called when the device has finished waking up */
+static void msm_pm_end(void)
+{
+    msm_proc_comm_wince_exit_sleep();
+}
+#endif
+
 static int msm_pm_enter(suspend_state_t state)
 {
 	msm_sleep(msm_pm_sleep_mode, msm_pm_max_sleep_time, 0);
@@ -618,6 +633,10 @@ static int msm_pm_enter(suspend_state_t state)
 static struct platform_suspend_ops msm_pm_ops = {
 	.enter		= msm_pm_enter,
 	.valid		= suspend_valid_only_mem,
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	.finish		= msm_pm_finish,
+	.end		= msm_pm_end,
+#endif
 };
 
 #if defined(CONFIG_ARCH_MSM7X00A)
@@ -840,8 +859,9 @@ static int __init msm_pm_init(void)
 	register_reboot_notifier(&msm_reboot_notifier);
 
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-	// we need to disable SMI memory protection in order to able to write
-	// to the resume vector
+	/* We need to disable SMI memory protection in order to be able to write
+	 * to the resume vector.
+	 */
 	writel(0, MSM_AXIGS_BASE + 0x800);
 #endif
 

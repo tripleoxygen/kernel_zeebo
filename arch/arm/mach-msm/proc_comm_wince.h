@@ -78,9 +78,9 @@ enum {
 
 	PCOM_NOTIFY_ARM9_REBOOT = 0x8e,
 
-	PCOM_GET_TX_POWER = 0x90,
-	PCOM_GET_NETWORK_BAND = 0x91,
-	PCOM_GET_GSM_TX_BAND = 0x92,
+	PCOM_GET_TX_POWER = 0x91,   // 0x90
+	PCOM_GET_NETWORK_BAND = 0x92,   // 0x91
+	PCOM_GET_GSM_TX_BAND = 0x93,    // 0x92
 
 	PCOM_GET_SLEEP_CLOCK = 0xa2,
 
@@ -96,6 +96,11 @@ struct msm_dex_command {
 
 int msm_proc_comm_wince(struct msm_dex_command *in, unsigned *out);
 int msm_proc_comm_wince_init(void);
+
 void msm_proc_comm_wince_vibrate(uint32_t val);
+void msm_proc_comm_wince_vibrate_welcome(void);
+
+void msm_proc_comm_wince_enter_sleep(void);
+void msm_proc_comm_wince_exit_sleep(void);
 
 #endif
