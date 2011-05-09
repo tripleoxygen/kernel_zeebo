@@ -99,13 +99,13 @@ static uint32_t qdsp_image0_queue_offset_table[] = {
 	0x632,               /* QDSP_uPAudPreProcCmdQueue         */
 	0x63a,               /* QDSP_uPAudRecBitStreamQueue       */
 	0x636,               /* QDSP_uPAudRecCmdQueue         */
-        0x60a,               /* QDSP_uPJpegActionCmdQueue */
-	0x656,               /* QDSP_uPJpegCfgCmdQueue            */
-	0x652,               /* QDSP_uPVocProcQueue             */
-	0x5f6,               /* QDSP_vfeCommandQueue               */
-	0x60e,               /* QDSP_vfeCommandScaleQueue              */
-	0x616,               /* QDSP_vfeCommandTableQueue         */
-	0x612                /* QDSP_uPDiagQueue         */
+	0x656,               /* QDSP_uPJpegActionCmdQueue */
+	0x652,               /* QDSP_uPJpegCfgCmdQueue            */
+	0x5f6,               /* QDSP_uPVocProcQueue             */
+	0x60e,               /* QDSP_vfeCommandQueue               */
+	0x616,               /* QDSP_vfeCommandScaleQueue              */
+	0x612,               /* QDSP_vfeCommandTableQueue         */
+	0x60a                /* QDSP_uPDiagQueue         */
 };
 
 /* Table of modules indexed by task ID for the COMBO image */
@@ -167,13 +167,13 @@ static uint32_t qdsp_combo_queue_offset_table[] = {
 	0x632,               /* QDSP_uPAudPreProcCmdQueue         */
 	0x63a,               /* QDSP_uPAudRecBitStreamQueue       */
 	0x636,               /* QDSP_uPAudRecCmdQueue         */
-        0x60a,               /* QDSP_uPJpegActionCmdQueue */
-	0x656,               /* QDSP_uPJpegCfgCmdQueue            */
-	0x652,               /* QDSP_uPVocProcQueue             */
-	0x5f6,               /* QDSP_vfeCommandQueue               */
-	0x60e,               /* QDSP_vfeCommandScaleQueue              */
-	0x616,               /* QDSP_vfeCommandTableQueue         */
-	0x612                /* QDSP_uPDiagQueue         */
+	0x656,               /* QDSP_uPJpegActionCmdQueue */
+	0x652,               /* QDSP_uPJpegCfgCmdQueue            */
+	0x5f6,               /* QDSP_uPVocProcQueue             */
+	0x60e,               /* QDSP_vfeCommandQueue               */
+	0x616,               /* QDSP_vfeCommandScaleQueue              */
+	0x612,               /* QDSP_vfeCommandTableQueue         */
+	0x60a                /* QDSP_uPDiagQueue         */
 };
 
 /* Table of modules indexed by task ID for the GAUDIO image */
@@ -479,20 +479,23 @@ static uint32_t *qdsp_queue_offset_table[] = {
 	qdsp_image5_queue_offset_table,
 };
 
-#define QDSP_MODULE(n) \
-	{ .name = #n, .pdev_name = "adsp_" #n, .id = QDSP_MODULE_##n }
+#define QDSP_MODULE(n, clkname, clkrate, verify_cmd_func, patch_event_func) \
+        { .name = #n, .pdev_name = "adsp_" #n, .id = QDSP_MODULE_##n, \
+          .clk_name = clkname, .clk_rate = clkrate, \
+          .verify_cmd = verify_cmd_func, .patch_event = patch_event_func }
 
 static struct adsp_module_info module_info[] = {
-	QDSP_MODULE(AUDPLAY0TASK),
-	QDSP_MODULE(AUDPPTASK),
-	QDSP_MODULE(AUDRECTASK),
-	QDSP_MODULE(AUDPREPROCTASK),
-	QDSP_MODULE(VFETASK),
-	QDSP_MODULE(QCAMTASK),
-	QDSP_MODULE(LPMTASK),
-	QDSP_MODULE(JPEGTASK), 
-	QDSP_MODULE(VIDEOTASK),
-/*	QDSP_MODULE(VDEC_LP_MODE),	*/
+        QDSP_MODULE(AUDPLAY0TASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(AUDPPTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(AUDRECTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(AUDPREPROCTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(VFETASK, "vfe_clk", 0, adsp_vfe_verify_cmd, adsp_vfe_patch_event),
+        QDSP_MODULE(QCAMTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(LPMTASK, NULL, 0, adsp_lpm_verify_cmd, NULL),
+        QDSP_MODULE(JPEGTASK, "vdc_clk", 0, adsp_jpeg_verify_cmd, adsp_jpeg_patch_event), 
+        QDSP_MODULE(VIDEOTASK, "vdc_clk", 96000000, adsp_video_verify_cmd, NULL),
+        QDSP_MODULE(VIDEOENCTASK, "vdc_clk", 96000000, adsp_videoenc_verify_cmd, NULL),
+/*      QDSP_MODULE(VDEC_LP_MODE, NULL, 0, NULL, NULL), */
 };
 
 int adsp_init_info_6125(struct adsp_info *info)

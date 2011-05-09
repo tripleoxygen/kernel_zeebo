@@ -17,54 +17,55 @@
 
 /* Firmware modules */
 typedef enum { 
-	QDSP_MODULE_KERNEL=0x0,		// 0x0
-	QDSP_MODULE_AFETASK=0x1,		// 0x1
-	QDSP_MODULE_AUDPLAY0TASK=0x2,	// 0x2+
-	QDSP_MODULE_AUDPLAY1TASK=0x3,	// 0x3
-	QDSP_MODULE_AUDPPTASK=0x4,		// 0x4+
-	QDSP_MODULE_VIDEOTASK=0x5,		// 0x5
-	QDSP_MODULE_AUDRECTASK=0xc,		// 0xc+
-	QDSP_MODULE_AUDPREPROCTASK=0xd,	// 0xd+
-	QDSP_MODULE_VOCENCTASK=0x14,		// 0x12
-	QDSP_MODULE_VOCDECTASK=0x15,		// 0x13
-	QDSP_MODULE_VOICEPROCTASK=0x16,	// 0x14
-	QDSP_MODULE_VIDEOENCTASK=0x17,	// 0x15
-	QDSP_MODULE_VFETASK=0x18,		// 0x16+
-	QDSP_MODULE_JPEGTASK=0x20,		// 0x1f+
-	QDSP_MODULE_LPMTASK=0x21,		// 0x20+
-	QDSP_MODULE_MODMATHTASK=0x22,		// 0x22+ (0x22 23 from below, tmzt)
-	QDSP_MODULE_AUDPLAY2TASK=0x27,	// 0x23
-	QDSP_MODULE_AUDPLAY3TASK=0x28,	// 0x24
-	QDSP_MODULE_AUDPLAY4TASK=0x29,	// 0x25
-	QDSP_MODULE_GRAPHICSTASK=0x2a,	// 0x26
-	QDSP_MODULE_MAX=0x2e,		// 0x2e
+	QDSP_MODULE_KERNEL=0x0,         // 0x0
+	QDSP_MODULE_AFETASK=0x1,        // 0x1
+	QDSP_MODULE_AUDPLAY0TASK=0x2,   // 0x2+
+	QDSP_MODULE_AUDPLAY1TASK=0x3,   // 0x3
+	QDSP_MODULE_AUDPPTASK=0x4,      // 0x4+
+	QDSP_MODULE_VIDEOTASK=0x5,      // 0x5
+	QDSP_MODULE_AUDRECTASK=0xc,     // 0xc+
+	QDSP_MODULE_AUDPREPROCTASK=0xd, // 0xd+
+	QDSP_MODULE_VOCENCTASK=0x14,    // 0x12
+	QDSP_MODULE_VOCDECTASK=0x15,    // 0x13
+	QDSP_MODULE_VOICEPROCTASK=0x16, // 0x14
+	QDSP_MODULE_VIDEOENCTASK=0x17,  // 0x15
+	QDSP_MODULE_VFETASK=0x18,       // 0x16+
+	QDSP_MODULE_JPEGTASK=0x20,      // 0x1f+
+	QDSP_MODULE_LPMTASK=0x21,       // 0x20+
+    QDSP_MODULE_QCAMTASK=0x22,      // 0x22
+	QDSP_MODULE_MODMATHTASK=0x23,   // 0x23+ (TBC)
+	QDSP_MODULE_AUDPLAY2TASK=0x27,  // 0x23
+	QDSP_MODULE_AUDPLAY3TASK=0x28,  // 0x24
+	QDSP_MODULE_AUDPLAY4TASK=0x29,  // 0x25
+	QDSP_MODULE_GRAPHICSTASK=0x2a,  // 0x26
+	QDSP_MODULE_MAX=0x2e,           // 0x2e
 } qdsp_module_type;
 
 #define QDSP_RTOS_MAX_TASK_ID  19U
 
 /* Table of modules indexed by task ID for the GAUDIO image */
 static qdsp_module_type qdsp_gaudio_task_to_module_table[] = {
-	QDSP_MODULE_KERNEL,		// 0x0  0
-	QDSP_MODULE_AFETASK,		// 0x1  1
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_AUDPPTASK,		// 0x4 4
-	QDSP_MODULE_AUDPLAY0TASK,	// 0x2 2
-	QDSP_MODULE_AUDPLAY1TASK,	// 0x3 3
-	QDSP_MODULE_AUDPLAY2TASK,	// 0x23 27
-	QDSP_MODULE_AUDPLAY3TASK,	// 0x24 28
-	QDSP_MODULE_AUDPLAY4TASK,	// 0x25 29
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_AUDRECTASK,		// 0xd c
-	QDSP_MODULE_AUDPREPROCTASK,	// 0xe d
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_GRAPHICSTASK,	// 0x26 2a
-	QDSP_MODULE_MAX			// 0x2a
+	QDSP_MODULE_KERNEL,         // 0x0  0
+	QDSP_MODULE_AFETASK,        // 0x1  1
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_AUDPPTASK,      // 0x4 4
+	QDSP_MODULE_AUDPLAY0TASK,   // 0x2 2
+	QDSP_MODULE_AUDPLAY1TASK,   // 0x3 3
+	QDSP_MODULE_AUDPLAY2TASK,   // 0x23 27
+	QDSP_MODULE_AUDPLAY3TASK,   // 0x24 28
+	QDSP_MODULE_AUDPLAY4TASK,   // 0x25 29
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_AUDRECTASK,     // 0xd c
+	QDSP_MODULE_AUDPREPROCTASK, // 0xe d
+	QDSP_MODULE_MAX,            // 0x2a
+	QDSP_MODULE_GRAPHICSTASK,   // 0x26 2a
+	QDSP_MODULE_MAX             // 0x2a
 };
 
 /* Queue offset table indexed by queue ID for the GAUDIO image */
@@ -100,27 +101,27 @@ static uint32_t qdsp_gaudio_queue_offset_table[] = {
 
 /* Table of modules indexed by task ID for the COMBO image */
 static qdsp_module_type qdsp_combo_task_to_module_table[] = {
-	QDSP_MODULE_KERNEL,		// 0x0  0
-	QDSP_MODULE_AFETASK,		// 0x1  1
-	QDSP_MODULE_VOCDECTASK,		// 0x13 15
-	QDSP_MODULE_VOCENCTASK,		// 0x12 14
-	QDSP_MODULE_VIDEOTASK,		// 0x5 5
-	QDSP_MODULE_VIDEOENCTASK,	// 0x15 17
-	QDSP_MODULE_VOICEPROCTASK,	// 0x14 16
-	QDSP_MODULE_VFETASK,		// 0x16 18
-	QDSP_MODULE_JPEGTASK,		// 0x1f 20
-	QDSP_MODULE_AUDPPTASK,		// 0x4 4
-	QDSP_MODULE_AUDPLAY0TASK,	// 0x2 2
-	QDSP_MODULE_AUDPLAY1TASK,	// 0x3 3
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_LPMTASK,		// 0x20 21
-	QDSP_MODULE_AUDRECTASK,		// 0xd c
-	QDSP_MODULE_AUDPREPROCTASK,	// 0xe d
-	QDSP_MODULE_MODMATHTASK,	// 0x22 23
-	QDSP_MODULE_MAX,		// 0x2a
-	QDSP_MODULE_MAX			// 0x2a
+	QDSP_MODULE_KERNEL,         // 0x0
+	QDSP_MODULE_AFETASK,        // 0x1
+	QDSP_MODULE_VOCDECTASK,     // 0x15
+	QDSP_MODULE_VOCENCTASK,     // 0x14
+	QDSP_MODULE_VIDEOTASK,      // 0x5
+	QDSP_MODULE_VIDEOENCTASK,   // 0x17
+	QDSP_MODULE_VOICEPROCTASK,  // 0x16
+	QDSP_MODULE_VFETASK,        // 0x18
+	QDSP_MODULE_JPEGTASK,       // 0x20
+	QDSP_MODULE_AUDPPTASK,      // 0x4
+	QDSP_MODULE_AUDPLAY0TASK,   // 0x2
+	QDSP_MODULE_AUDPLAY1TASK,   // 0x3
+	QDSP_MODULE_MAX,            // 0x2e
+	QDSP_MODULE_MAX,            // 0x2e
+	QDSP_MODULE_MAX,            // 0x2e
+	QDSP_MODULE_LPMTASK,        // 0x21
+	QDSP_MODULE_AUDRECTASK,     // 0xc
+	QDSP_MODULE_AUDPREPROCTASK, // 0xd
+	QDSP_MODULE_MODMATHTASK,    // 0x23
+	QDSP_MODULE_MAX,            // 0x2e
+	QDSP_MODULE_MAX             // 0x2e
 };
 
 /* Queue offset table indexed by queue ID for the COMBO image */
@@ -284,19 +285,22 @@ static uint32_t *qdsp_queue_offset_table[] = {
 	qdsp_image4_queue_offset_table,
 };
 
-#define QDSP_MODULE(n) \
-	{ .name = #n, .pdev_name = "adsp_" #n, .id = QDSP_MODULE_##n }
+#define QDSP_MODULE(n, clkname, clkrate, verify_cmd_func, patch_event_func) \
+        { .name = #n, .pdev_name = "adsp_" #n, .id = QDSP_MODULE_##n, \
+          .clk_name = clkname, .clk_rate = clkrate, \
+          .verify_cmd = verify_cmd_func, .patch_event = patch_event_func }
 
 static struct adsp_module_info module_info[] = {
-	QDSP_MODULE(AUDPPTASK),
-	QDSP_MODULE(AUDRECTASK),
-	QDSP_MODULE(AUDPREPROCTASK),
-	QDSP_MODULE(VFETASK),
-/*	QDSP_MODULE(QCAMTASK),		*/
-	QDSP_MODULE(LPMTASK),
-	QDSP_MODULE(JPEGTASK),
-	QDSP_MODULE(VIDEOTASK),
-/*	QDSP_MODULE(VDEC_LP_MODE),	*/
+        QDSP_MODULE(AUDPPTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(AUDRECTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(AUDPREPROCTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(VFETASK, "vfe_clk", 0, adsp_vfe_verify_cmd, adsp_vfe_patch_event),
+        QDSP_MODULE(QCAMTASK, NULL, 0, NULL, NULL),
+        QDSP_MODULE(LPMTASK, NULL, 0, adsp_lpm_verify_cmd, NULL),
+        QDSP_MODULE(JPEGTASK, "vdc_clk", 0, adsp_jpeg_verify_cmd, adsp_jpeg_patch_event), 
+        QDSP_MODULE(VIDEOTASK, "vdc_clk", 96000000, adsp_video_verify_cmd, NULL),
+        QDSP_MODULE(VIDEOENCTASK, "vdc_clk", 96000000, adsp_videoenc_verify_cmd, NULL),
+/*      QDSP_MODULE(VDEC_LP_MODE, NULL, 0, NULL, NULL), */
 };
 
 int adsp_init_info_6150(struct adsp_info *info)
