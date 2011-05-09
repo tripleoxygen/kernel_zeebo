@@ -42,9 +42,6 @@ enum {
 static int debug_mask = 0;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-int nand_boot = 0;
-module_param_named(nand_boot, nand_boot, int, 0);
-
 static unsigned a11_clk_is_enabled(unsigned id);
 static int a11_clk_enable(unsigned id);
 static void a11_clk_disable(unsigned id);
@@ -145,7 +142,7 @@ unsigned int pll_get_rate(enum pll pll, bool dump)
  * like, we use MicroP instead of GP CLK
  */
 static struct msm_clock_params msm_clock_parameters[NR_CLKS] = {
-	[ADSP_CLK] = {.offset = 0x34,.name = "ADSP_CLK",},
+//	[ADSP_CLK] = {.offset = 0x34,.name = "ADSP_CLK",},
 	[EMDH_CLK] = {.offset = 0x50,.name = "EMDH_CLK",},
 	[GP_CLK] = {.offset = 0x5c,.name = "GP_CLK",},
 	[GRP_3D_CLK] = {.idx = 3, .offset = 0x84, .name = "GRP_3D_CLK",},
@@ -154,7 +151,7 @@ static struct msm_clock_params msm_clock_parameters[NR_CLKS] = {
 	[MDC_CLK] = {.offset = 0x7c,.name = "MDC_CLK",},
 	[MDP_CLK] = {.idx = 9,.name = "MDP_CLK",},
 	[PMDH_CLK] = {.offset = 0x8c,.name = "PMDH_CLK",},
-	[SDAC_CLK] = {.offset = 0x9c,.name = "SDAC_CLK",},
+//	[SDAC_CLK] = {.offset = 0x9c,.name = "SDAC_CLK",},
 	[SDC1_CLK] = {.offset = 0xa4,.setup_mdns = 1,.name = "SDC1_CLK",},
 	[SDC2_CLK] = {.offset = 0xac,.setup_mdns = 1,.name = "SDC2_CLK",},
 	[SDC3_CLK] = {.offset = 0xb4,.setup_mdns = 1,.name = "SDC3_CLK",},
@@ -163,9 +160,9 @@ static struct msm_clock_params msm_clock_parameters[NR_CLKS] = {
 	[SDC2_P_CLK] = {.idx = 8,.name = "SDC2_P_CLK",},
 	[SDC3_P_CLK] = {.idx = 27,.name = "SDC3_P_CLK",},
 	[SDC4_P_CLK] = {.idx = 28,.name = "SDC4_P_CLK",},
-	[UART1_CLK] = {.offset = 0xe0,.name = "UART1_CLK",},
-	[UART2_CLK] = {.offset = 0xe0,.name = "UART2_CLK",},
-	[UART3_CLK] = {.offset = 0xe0,.name = "UART3_CLK",},
+//	[UART1_CLK] = {.offset = 0xe0,.name = "UART1_CLK",},
+//	[UART2_CLK] = {.offset = 0xe0,.name = "UART2_CLK",},
+//	[UART3_CLK] = {.offset = 0xe0,.name = "UART3_CLK",},
 	[UART1DM_CLK] = {.idx = 17,.offset = 0xd4,.setup_mdns = 1,.name =
 			 "UART1DM_CLK",},
 	[UART2DM_CLK] = {.idx = 26,.offset = 0xdc,.setup_mdns = 1,.name =
@@ -686,29 +683,29 @@ static int a11_clk_enable(unsigned id)
 		done = 1;
 		break;
 
-	case UART1_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
-
-	case UART2_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x400,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x800,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
-
-	case UART3_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10000,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20000,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
+//	case UART1_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
+//
+//	case UART2_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x400,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x800,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
+//
+//	case UART3_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10000,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20000,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
 
 	case SDAC_CLK:
 	case SDC1_CLK:
@@ -785,7 +782,7 @@ static void a11_clk_disable(unsigned id)
 	//GRP and IMEM use special order.But do they really need it?
 	if (params.idx && (id != GRP_3D_CLK && id != IMEM_CLK)) {
 		writel(readl(MSM_CLK_CTL_BASE) & ~(1U << params.idx),
-		       MSM_CLK_CTL_BASE);
+				MSM_CLK_CTL_BASE);
 		done = 1;
 	}
 
@@ -796,31 +793,31 @@ static void a11_clk_disable(unsigned id)
 		return;
 		break;
 
-	case UART1_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
+//	case UART1_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
+//
+//	case UART2_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x800,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x400,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
+//
+//	case UART3_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20000,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10000,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
 
-	case UART2_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x800,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x400,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
-
-	case UART3_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20000,
-		       MSM_CLK_CTL_BASE + params.offset);
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10000,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
-
-	case SDAC_CLK:
+//	case SDAC_CLK:
 	case SDC1_CLK:
 	case SDC2_CLK:
 	case SDC3_CLK:
@@ -844,18 +841,18 @@ static void a11_clk_disable(unsigned id)
 		done = 1;
 		break;
 
-	case ADSP_CLK:
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & 0x6fffff,
-		       MSM_CLK_CTL_BASE + params.offset);
-		if (readl(MSM_CLK_CTL_BASE + params.offset) & 0x280) {
-			done = 1;
-			break;
-		}
-		writel(readl(MSM_CLK_CTL_BASE + params.offset) & 0x7ff7ff,
-		       MSM_CLK_CTL_BASE + params.offset);
-		done = 1;
-		break;
-
+//	case ADSP_CLK:
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & 0x6fffff,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		if (readl(MSM_CLK_CTL_BASE + params.offset) & 0x280) {
+//			done = 1;
+//			break;
+//		}
+//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & 0x7ff7ff,
+//		       MSM_CLK_CTL_BASE + params.offset);
+//		done = 1;
+//		break;
+//
 	case PMDH_CLK:
 		writel(readl(MSM_CLK_CTL_BASE + params.offset) & 0xc7f,
 		       MSM_CLK_CTL_BASE + params.offset);
@@ -1004,9 +1001,6 @@ int a11_clk_reset(unsigned id, enum clk_reset_action action)
 
 void __init msm_clock_a11_fixup(void)
 {
-	if (nand_boot)
-		mdelay(6000);
-
 	mutex_lock(&clocks_mutex);
 
 	if (pll_get_rate(PLL0, true) == 196608000) {
