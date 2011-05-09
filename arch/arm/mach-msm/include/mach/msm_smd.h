@@ -65,6 +65,9 @@ int smd_wait_until_readable(smd_channel_t *ch, int bytes);
 int smd_wait_until_writable(smd_channel_t *ch, int bytes);
 #endif
 
+void smem_semaphore_down(void* address, char marker);
+void smem_semaphore_up(void* address, char marker);
+
 typedef enum {
 	SMD_PORT_DS = 0,
 	SMD_PORT_DIAG,

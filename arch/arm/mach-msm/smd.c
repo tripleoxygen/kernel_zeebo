@@ -1067,6 +1067,28 @@ int smd_core_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+/* Semaphore shared between arm9 and arm11 */
+void smem_semaphore_down(void* address, char marker)
+{
+    int current_value;
+    do {
+        current_value = readb(address);
+        writeb(1, address);
+    } while (current_value == 1);
+    writeb(marker, address+3);
+    return;
+}
+
+void smem_semaphore_up(void* address, char marker)
+{
+    int current_marker = readb(address+3);
+    if ( current_marker == marker ) {
+        writeb(0, address);
+    }
+}
+#endif
+
 extern void msm_init_last_radio_log(struct module *);
 
 static int msm_smd_probe(struct platform_device *pdev)
