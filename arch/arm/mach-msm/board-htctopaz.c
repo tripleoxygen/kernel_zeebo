@@ -62,30 +62,6 @@
 
 extern int init_mmc(void);
 
-#if 0
-static struct resource msm_serial0_resources[] = {
-	{
-		.start	= INT_UART1,
-		.end	= INT_UART1,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= MSM_UART1_PHYS,
-		.end	= MSM_UART1_PHYS + MSM_UART1_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-#endif
-
-#if 0
-static struct platform_device msm_serial0_device = {
-	.name	= "msm_serial",
-	.id	= 0,
-	.num_resources	= ARRAY_SIZE(msm_serial0_resources),
-	.resource	= msm_serial0_resources,
-};
-#endif
-
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 	.rx_wakeup_irq = MSM_GPIO_TO_INT(TOPA100_UART2DM_RX),
@@ -165,10 +141,11 @@ static struct i2c_board_info i2c_devices[] = {
 		.addr = 0x66,
 		.platform_data = &htctopaz_microp_pdata,
 	},
+#if defined(CONFIG_MSM_CAMERA) && defined(CONFIG_MT9P012)
 	{		
-		I2C_BOARD_INFO("mt9t013", 0x6c>>1),
-		/* .irq = TROUT_GPIO_TO_INT(TROUT_GPIO_CAM_BTN_STEP1_N), */
+		I2C_BOARD_INFO("mt9p012", 0x6c >> 1),
 	},
+#endif
 };
 
 #define SND(num, desc) { .name = desc, .id = num }
@@ -176,44 +153,12 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(0, "HANDSET"),
 	SND(1, "SPEAKER"),
 	SND(2, "HEADSET"),
+	SND(2, "NO_MIC_HEADSET"),
 	SND(3, "BT"),
-	SND(44, "BT_EC_OFF"),
-	SND(10, "HEADSET_AND_SPEAKER"),
-	SND(256, "CURRENT"),
+	SND(3, "BT_EC_OFF"),
 
-	/* Bluetooth accessories. */
-	SND(12, "HTC BH S100"),
-	SND(13, "HTC BH M100"),
-	SND(14, "Motorola H500"),
-	SND(15, "Nokia HS-36W"),
-	SND(16, "PLT 510v.D"),
-	SND(17, "M2500 by Plantronics"),
-	SND(18, "Nokia HDW-3"),
-	SND(19, "HBH-608"),
-	SND(20, "HBH-DS970"),
-	SND(21, "i.Tech BlueBAND"),
-	SND(22, "Nokia BH-800"),
-	SND(23, "Motorola H700"),
-	SND(24, "HTC BH M200"),
-	SND(25, "Jabra JX10"),
-	SND(26, "320Plantronics"),
-	SND(27, "640Plantronics"),
-	SND(28, "Jabra BT500"),
-	SND(29, "Motorola HT820"),
-	SND(30, "HBH-IV840"),
-	SND(31, "6XXPlantronics"),
-	SND(32, "3XXPlantronics"),
-	SND(33, "HBH-PV710"),
-	SND(34, "Motorola H670"),
-	SND(35, "HBM-300"),
-	SND(36, "Nokia BH-208"),
-	SND(37, "Samsung WEP410"),
-	SND(38, "Jabra BT8010"),
-	SND(39, "Motorola S9"),
-	SND(40, "Jabra BT620s"),
-	SND(41, "Nokia BH-902"),
-	SND(42, "HBH-DS220"),
-	SND(43, "HBH-DS980"),
+	SND(0x11, "IDLE"),
+	SND(256, "CURRENT"),
 };
 #undef SND
 
@@ -375,8 +320,6 @@ static smem_batt_t htctopaz_htc_battery_smem_pdata = {
 
 static void __init htctopaz_init(void)
 {
-	int i;
-
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
@@ -399,13 +342,7 @@ static void __init htctopaz_init(void)
 
 	msm_init_pmic_vibrator();
 
-	/* A little vibrating welcome */
-	for (i = 0; i < 2; i++) {
-		msm_proc_comm_wince_vibrate(1);
-		mdelay(150);
-		msm_proc_comm_wince_vibrate(0);
-		mdelay(75);
-	}
+	msm_proc_comm_wince_vibrate_welcome();
 }
 
 static void __init htctopaz_map_io(void)
