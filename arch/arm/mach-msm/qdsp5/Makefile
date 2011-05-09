@@ -6,6 +6,7 @@ else ifeq ($(CONFIG_MSM_AMSS_VERSION_WINCE),y)
 obj-y += adsp_5225.o
 obj-y += adsp_6125.o
 obj-y += adsp_6150.o
+obj-y += external.o
 else
 obj-y += adsp_6225.o
 endif
