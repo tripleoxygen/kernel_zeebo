@@ -22,15 +22,23 @@
 #include <linux/types.h>
 #include <linux/rtc.h>
 
+#ifdef CONFIG_QUICK_WAKEUP
+#include <linux/quickwakeup.h>
+#endif
+
 #include "../../arch/arm/mach-msm/proc_comm_wince.h"
 
 #define PDEV_NAME "msm_rtc"
 
 #define SECSFROM_1970_TO_1980 315532800
 
+static int msmrtc_resume(struct platform_device *dev);
+static unsigned long msmrtc_get_seconds(void);
+
 static struct rtc_device *rtc;
 
 static unsigned long rtcalarm_time;
+static unsigned int max_diff;
 
 static int
 msmrtc_pmlib_set_time(struct device *dev, struct rtc_time *tm)
@@ -102,6 +110,33 @@ msmrtc_alarmtimer_expired(unsigned long _data)
 	rtcalarm_time = 0;
 }
 
+#ifdef CONFIG_QUICK_WAKEUP
+int msmrtc_check(void)
+{
+	//Force complete resume is rtc alarm time has passed
+	unsigned long int secs = msmrtc_get_seconds();
+	if(rtcalarm_time && rtcalarm_time <= secs)
+	{
+//		printk("msmrtc: alarm went off: %d, %d\n", rtcalarm_time, secs);
+		return 1;
+	}
+//	printk("msmrtc: alarm not yet: %d, %d\n", rtcalarm_time, secs);
+	return 0;
+}
+
+int msmrtc_callback(void)
+{
+	//Abort the quick sleep
+//	printk("msmrtc callback\n");
+	return 1;
+}
+
+static struct quickwakeup_ops quick_ops = {
+	.qw_callback = msmrtc_callback,
+	.qw_check = msmrtc_check,
+};
+#endif
+
 static int
 msmrtc_probe(struct platform_device *pdev)
 {
@@ -115,6 +150,16 @@ msmrtc_probe(struct platform_device *pdev)
 		       pdev->name, PTR_ERR(rtc));
 		return PTR_ERR(rtc);
 	}
+
+#ifdef CONFIG_QUICK_WAKEUP
+	if(quickwakeup_register(&quick_ops))
+	{
+		printk(KERN_ERR "%s: Can't register quickwakeup events\n",
+			pdev->name);
+		return 1;
+	}
+#endif
+ 
 	printk("MSM RTC started\n");
 	return 0;
 }
@@ -129,6 +174,35 @@ static unsigned long msmrtc_get_seconds(void)
 	return now;
 }
 
+void msmrtc_maxdiff(unsigned int diff)
+{
+	max_diff = diff;
+}
+EXPORT_SYMBOL(max_diff);
+
+int msmrtc_rewake(int diff)
+{
+	unsigned secs;
+	struct msm_dex_command dex;
+
+	
+	dex.cmd = PCOM_READ_RTC;
+	msm_proc_comm_wince(&dex, &secs);
+
+	if(diff)
+	{
+//		printk("Wake up in %d seconds\n",diff);
+
+		dex.cmd = PCOM_SET_ALARM_RTC;
+		dex.has_data = 1;
+		dex.data = secs + diff;
+		msm_proc_comm_wince(&dex, 0);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(msmrtc_rewake);
+
 static int
 msmrtc_suspend(struct platform_device *dev, pm_message_t state)
 {
@@ -141,6 +215,9 @@ msmrtc_suspend(struct platform_device *dev, pm_message_t state)
 			msmrtc_alarmtimer_expired(1);
 			return 0;
 		}
+
+		if(max_diff)
+			diff = max_diff;
 
 		dex.cmd = PCOM_READ_RTC;
 		msm_proc_comm_wince(&dex, &secs);
