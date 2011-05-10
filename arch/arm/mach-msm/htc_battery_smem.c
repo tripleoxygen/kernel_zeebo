@@ -649,6 +649,7 @@ result:
 int htc_battery_status_update(u32 curr_level)
 {
 	int notify;
+	unsigned charge = 0;
 
 	if (!htc_battery_initial)
 		return 0;
@@ -656,10 +657,19 @@ int htc_battery_status_update(u32 curr_level)
 	mutex_lock(&htc_batt_info.lock);
 	notify = (htc_batt_info.rep.level != curr_level);
 	htc_batt_info.rep.level = curr_level;
+	/* If battery is above 95%, switch to slow charging.
+	 * If battery is below 90%, switch to fast charging.
+	 */
+	if (curr_level > 95 && htc_batt_info.rep.charging_enabled == ENABLE_FAST_CHG)
+		charge = ENABLE_SLOW_CHG;
+	else if (curr_level < 90 && htc_batt_info.rep.charging_enabled == ENABLE_SLOW_CHG)
+		charge = ENABLE_FAST_CHG;
 	mutex_unlock(&htc_batt_info.lock);
 
 	if (notify)
 		power_supply_changed(&htc_power_supplies[CHARGER_BATTERY]);
+	if (charge)
+		htc_battery_set_charging(charge);
 	return 0;
 }
 
@@ -670,6 +680,7 @@ int htc_cable_status_update(int status)
 	unsigned source;
 	unsigned last_source;
 	unsigned vbus_status;
+	unsigned charger;
 	vbus_status = readl(MSM_SHARED_RAM_BASE+0xfc00c);
 
 	if (!htc_battery_initial)
@@ -679,13 +690,16 @@ int htc_cable_status_update(int status)
 	if(vbus_status && g_usb_online) {
 		status=CHARGER_USB;	/* vbus present, usb connection online (perhaps breaks kovsky ?) */
 		on_battery = false;
+		charger = ENABLE_FAST_CHG;
 	} else if (vbus_status && !g_usb_online) {
 		status=CHARGER_AC;	/* vbus present, no usb */
 		on_battery = false;
+		charger = ENABLE_FAST_CHG;
 	} else {
 		g_usb_online = 0;
 		status=CHARGER_BATTERY;
 		on_battery = true;
+		charger = DISABLE;
 	}
 
 	if ( fake_charger && (status == CHARGER_BATTERY) ) {
@@ -717,7 +731,9 @@ int htc_cable_status_update(int status)
 	source = htc_batt_info.rep.charging_source;
 	mutex_unlock(&htc_batt_info.lock);
 
-	htc_battery_set_charging(status);
+	if (charger == ENABLE_FAST_CHG && htc_batt_info.rep.level > 95)
+		charger = ENABLE_SLOW_CHG;
+	htc_battery_set_charging(charger);
 	msm_hsusb_set_vbus_state((source==CHARGER_USB) || (source==CHARGER_AC));
 
 	if (  source == CHARGER_USB || source==CHARGER_AC ) {
@@ -1780,6 +1796,7 @@ static int htc_battery_thread(void *data)
 	}
 	return 0;
 }
+
 static int htc_battery_probe(struct platform_device *pdev)
 {
 	int i, rc;
