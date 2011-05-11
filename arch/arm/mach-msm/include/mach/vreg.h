@@ -19,6 +19,7 @@
 
 struct vreg;
 
+struct vreg *vreg_get_by_id(struct device *dev, int id);
 struct vreg *vreg_get(struct device *dev, const char *id);
 void vreg_put(struct vreg *vreg);
 
