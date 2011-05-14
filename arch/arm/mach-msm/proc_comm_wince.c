@@ -280,58 +280,72 @@ static void msm_proc_comm_wince_interrupt_do_work(struct work_struct *work)
     DDEX_INT("pending ints = 0x%08x", msm_proc_comm_wince_pending_ints);
     if ( msm_proc_comm_wince_pending_ints & DEX_INT_RTC_ALARM ) {
         DDEX_INT("DEX_RTC_ALARM");
-        processed_int = DEX_INT_RTC_ALARM;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_VBUS ) {
+        processed_int |= DEX_INT_RTC_ALARM;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_VBUS ) {
         DDEX_INT("DEX_VBUS");
         /* In case the device was woken up by the vbus irq, delay the vbus notification
          * so that device can finish wakeup before otherwise, usb will be notified
          * that vbus has changed and will start its power sequence before device is
-         * fully out of sleep. It introduce a delay up to 10 seconds (something must
+         * fully out of sleep. It introduce a delay up to 10 seconds (something must 
          * be locking up in the usb power sequence)
          */
         if ( msm_proc_comm_wince_device_sleeping == false ) {
             htc_cable_status_update(0);
-            processed_int = DEX_INT_VBUS;
+            processed_int |= DEX_INT_VBUS;
         }
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_ACK ) {
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_ACK ) {
         DDEX_INT("DEX_ACK");
-        processed_int = DEX_INT_ACK;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_BATT ) {
+        processed_int |= DEX_INT_ACK;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_BATT ) {
         DDEX_INT("DEX_BATT");
-        processed_int = DEX_INT_BATT;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_USB_ID ) {
+        processed_int |= DEX_INT_BATT;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_USB_ID ) {
         DDEX_INT("DEX_USB_ID");
-        processed_int = DEX_INT_USB_ID;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_RX_OUTPUT_BUF ) {
+        processed_int |= DEX_INT_USB_ID;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_RX_OUTPUT_BUF ) {
         DDEX_INT("DEX_SND_TEST_RX_OUTPUT_BUF");
-        processed_int = DEX_INT_SND_TEST_RX_OUTPUT_BUF;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_RX_INPUT_BUF ) {
+        processed_int |= DEX_INT_SND_TEST_RX_OUTPUT_BUF;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_RX_INPUT_BUF ) {
         DDEX_INT("DEX_SND_TEST_RX_INPUT_BUF");
-        processed_int = DEX_INT_SND_TEST_RX_INPUT_BUF;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_TX_OUTPUT_BUF ) {
+        processed_int |= DEX_INT_SND_TEST_RX_INPUT_BUF;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_TX_OUTPUT_BUF ) {
         DDEX_INT("DEX_SND_TEST_TX_OUTPUT_BUF");
-        processed_int = DEX_INT_SND_TEST_TX_OUTPUT_BUF;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_TX_INPUT_BUF ) {
+        processed_int |= DEX_INT_SND_TEST_TX_OUTPUT_BUF;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_SND_TEST_TX_INPUT_BUF ) {
         DDEX_INT("DEX_SND_TEST_TX_INPUT_BUF");
-        processed_int = DEX_INT_SND_TEST_TX_INPUT_BUF;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_AUD_REC_GET_BUF ) {
+        processed_int |= DEX_INT_SND_TEST_TX_INPUT_BUF;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_AUD_REC_GET_BUF ) {
         DDEX_INT("DEX_AUD_REC_GET_BUF");
-        processed_int = DEX_INT_AUD_REC_GET_BUF;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK0 ) {
-        processed_int = DEX_INT_UNK0;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK1 ) {
-        processed_int = DEX_INT_UNK1;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_M2A_NOTIFY_ARM9_REQ_RESTART ) {
+        processed_int |= DEX_INT_AUD_REC_GET_BUF;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK0 ) {
+        processed_int |= DEX_INT_UNK0;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK1 ) {
+        processed_int |= DEX_INT_UNK1;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_M2A_NOTIFY_ARM9_REQ_RESTART ) {
         DDEX_INT("DEX_M2A_NOTIFY_ARM9_REQ_RESTART");
         /* Arm9 will generate INT_A9_M2A_6 interrupt until this bit to be cleared.
          * Should we reboot before clearing or does it ask for himself to be rebooted ??
          */
-        processed_int = DEX_INT_M2A_NOTIFY_ARM9_REQ_RESTART;
-    } else if ( msm_proc_comm_wince_pending_ints & DEX_INT_M2A_NOTIFY_ARM9_AT_CMD_READY ) {
+        processed_int |= DEX_INT_M2A_NOTIFY_ARM9_REQ_RESTART;
+    }
+    if ( msm_proc_comm_wince_pending_ints & DEX_INT_M2A_NOTIFY_ARM9_AT_CMD_READY ) {
         DDEX_INT("DEX_M2A_NOTIFY_ARM9_AT_CMD_READY");
-        processed_int = DEX_INT_M2A_NOTIFY_ARM9_AT_CMD_READY;
-    } else {
-        printk("DEX_UNKNOWN_NOTIFY %x\n", msm_proc_comm_wince_pending_ints);
+        processed_int |= DEX_INT_M2A_NOTIFY_ARM9_AT_CMD_READY;
+    }
+    if ( msm_proc_comm_wince_pending_ints > DEX_INT_M2A_NOTIFY_ARM9_AT_CMD_READY) {
+        printk(KERN_WARNING "DEX_UNKNOWN_NOTIFY %x\n", msm_proc_comm_wince_pending_ints);
     }
 
     /* Clear pending interrupt flag of the processed interrupt */
@@ -340,33 +354,25 @@ static void msm_proc_comm_wince_interrupt_do_work(struct work_struct *work)
 
 static irqreturn_t msm_proc_comm_wince_irq(int irq, void *dev_id)
 {
-    int i;
     int dex_pending_ints = readl(DEX_A9_M2A_6_PENDING_INT_ADDR);
 
-    /* Search for pending int */
-    for (i = 0; i < 32; i++) {
-        if ( (1 << i) & dex_pending_ints ) {
-            break;
-        }
-    }
-
-    if ( i != 32 ) {
+    if ( dex_pending_ints ) {
         /* Update pending ints flags for the scheduled work */
-        msm_proc_comm_wince_pending_ints |= (1 << i) ;
+        msm_proc_comm_wince_pending_ints |= dex_pending_ints;
         schedule_work(&msm_proc_comm_wince_interrupt_work);
     }
 
     /* Clear the matching flag in smem */
     smem_semaphore_down(DEX_A9_M2A_6_SHARED_MUTEX_ADDR, DEX_ARM11_MUTEX_ID);
-    writel(readl(DEX_A9_M2A_6_PENDING_INT_ADDR) & ~(1 << i),
+    writel(readl(DEX_A9_M2A_6_PENDING_INT_ADDR) & ~dex_pending_ints,
                  DEX_A9_M2A_6_PENDING_INT_ADDR );
     smem_semaphore_up(DEX_A9_M2A_6_SHARED_MUTEX_ADDR, DEX_ARM11_MUTEX_ID);
 
     /* No more interrupts pending, clear the irq bit */
     if ( readl(DEX_A9_M2A_6_PENDING_INT_ADDR) == 0 ) {
-        writel(1U << INT_A9_M2A_6, VIC_INT_ENCLEAR0);
+        disable_irq_nosync(INT_A9_M2A_6);
         writel(1U << INT_A9_M2A_6, VIC_INT_CLEAR0);
-        writel(1U << INT_A9_M2A_6, VIC_INT_ENSET0);
+        enable_irq(INT_A9_M2A_6);
     }
 
     return IRQ_HANDLED;
@@ -432,7 +438,7 @@ int msm_proc_comm_wince_init()
 
 	if (request_irq(INT_A9_M2A_6, msm_proc_comm_wince_irq, IRQF_TRIGGER_RISING,
 					"proc_comm", NULL) < 0 ) {
-		printk("%s: Error requesting proc_comm irq\n", __func__);
+		printk("%s: Error requesting proc_comm irq\n", __func__); 
 	}
 
 	spin_unlock_irqrestore(&proc_comm_lock, flags);
