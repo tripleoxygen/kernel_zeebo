@@ -1434,6 +1434,8 @@ static int htc_get_batt_smem_info(struct battery_info_reply *buffer)
 	dex.cmd = PCOM_GET_BATTERY_DATA;
 	msm_proc_comm_wince(&dex, 0);
 
+	mutex_lock(&htc_batt_info.lock);
+
 	if (htc_batt_info.resources->smem_field_size == 4) {
 		batt_32 = (void *)(MSM_SHARED_RAM_BASE + htc_batt_info.resources->smem_offset);
 
@@ -1451,6 +1453,7 @@ static int htc_get_batt_smem_info(struct battery_info_reply *buffer)
 		buffer->batt_id = batt_16->batt_id;
 	} else {
 		BATT_ERR("[BATT]: unsupported smem_field_size\n");
+		mutex_unlock(&htc_batt_info.lock);
 		return -ENOTSUPP;
 	}
 
@@ -1509,6 +1512,8 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 			i++;
 
 			mdelay(2);
+
+			mutex_unlock(&htc_batt_info.lock);
 		}
 		while(i < 5);
 
@@ -1559,7 +1564,9 @@ static int htc_get_batt_info(struct battery_info_reply *buffer)
 	/* should it be done before correction */
 	new_source = buffer->charging_source;
 	buffer->charging_source = last_source;
+	mutex_unlock(&htc_batt_info.lock);
 	htc_cable_status_update(new_source);
+	mutex_lock(&htc_batt_info.lock);
 
 	/* platform spec battery correction */
 	if ( machine_is_htcraphael() || machine_is_htcraphael_cdma() || machine_is_htcraphael_cdma500() ||
@@ -1592,7 +1599,9 @@ static int htc_power_get_property(struct power_supply *psy,
 {
 	charger_type_t charger;
 
+	mutex_lock(&htc_batt_info.lock);
 	charger = htc_batt_info.rep.charging_source;
+	mutex_unlock(&htc_batt_info.lock);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -1616,6 +1625,7 @@ static int htc_battery_get_charging_status(void)
 	charger_type_t charger;
 	int ret;
 
+	mutex_lock(&htc_batt_info.lock);
 	charger = htc_batt_info.rep.charging_source;
 
 	switch (charger) {
@@ -1633,6 +1643,7 @@ static int htc_battery_get_charging_status(void)
 	default:
 		ret = POWER_SUPPLY_STATUS_UNKNOWN;
 	}
+	mutex_unlock(&htc_batt_info.lock);
 	return ret;
 }
 
@@ -1654,7 +1665,9 @@ static int htc_battery_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
+		mutex_lock(&htc_batt_info.lock);
 		val->intval = htc_batt_info.rep.level;
+		mutex_unlock(&htc_batt_info.lock);
 		break;
 	default:
 		return -EINVAL;
