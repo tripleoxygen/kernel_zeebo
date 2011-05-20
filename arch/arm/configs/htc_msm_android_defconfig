@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.7
-# Mon May  9 22:40:47 2011
+# Fri May 20 23:12:52 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -278,7 +278,7 @@ CONFIG_MSM_SMD_PKG3=y
 # CONFIG_MACH_SAPPHIRE is not set
 CONFIG_MACH_HTCTOPAZ=y
 CONFIG_MACH_HTCRHODIUM=y
-# CONFIG_HTC_HEADSET is not set
+CONFIG_HTC_HEADSET=y
 # CONFIG_HTC_35MM_JACK is not set
 CONFIG_MSM_SMEM_BATTCHG=y
 # CONFIG_HTC_PWRSPLY is not set
