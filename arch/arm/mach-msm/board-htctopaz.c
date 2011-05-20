@@ -175,50 +175,47 @@ static struct platform_device htctopaz_snd = {
 	},
 };
 
-#if 0
 #ifdef CONFIG_HTC_HEADSET
-static void h2w_config_cpld(int route);
-static void h2w_init_cpld(void);
-static struct h2w_platform_data topaz_h2w_data = {
+static void htctopaz_h2w_config_cpld(int route)
+{
+	printk(KERN_DEBUG "%s: route=%d\n", __func__, route);
+	switch (route) {
+		case H2W_UART3:
+			//~ gpio_set_value(103, 1); // TODO wrong GPIO?
+			break;
+		case H2W_GPIO:
+			//~ gpio_set_value(103, 0); // TODO wrong GPIO?
+			break;
+		default:
+			printk(KERN_ERR "%s: unknown route=%d\n", __func__, route);
+	}
+}
+
+static void htctopaz_h2w_init_cpld(void)
+{
+	htctopaz_h2w_config_cpld(H2W_UART3);
+	gpio_set_value(TOPA100_H2W_CLK, 0);
+	gpio_set_value(TOPA100_H2W_DATA, 0);
+}
+
+static struct h2w_platform_data htctopaz_h2w_pdata = {
 	.cable_in1              = TOPA100_CABLE_IN1,
 	.cable_in2              = TOPA100_CABLE_IN2,
 	.h2w_clk                = TOPA100_H2W_CLK,
 	.h2w_data               = TOPA100_H2W_DATA,
 	.debug_uart             = H2W_UART3,
-	.config_cpld            = h2w_config_cpld,
-	.init_cpld              = h2w_init_cpld,
+	.config_cpld            = htctopaz_h2w_config_cpld,
+	.init_cpld              = htctopaz_h2w_init_cpld,
 	.headset_mic_35mm       = TOPA100_AUD_HSMIC_DET_N,
 };
 
-static void h2w_config_cpld(int route)
-{
-	printk(KERN_INFO "htctopaz %s: route=%d TODO\n",
-		__func__, route);
-	switch (route) {
-		case H2W_UART3:
-			//gpio_set_value(0, 1); 	/*TODO wrong GPIO*/
-			break;
-		case H2W_GPIO:
-			//gpio_set_value(0, 0); 	/*TODO wrong GPIO*/
-			break;
-	}
-}
-
-static void h2w_init_cpld(void)
-{
-	h2w_config_cpld(H2W_UART3);
-	gpio_set_value(topaz_h2w_data.h2w_clk, 0);
-	gpio_set_value(topaz_h2w_data.h2w_data, 0);
-}
-
-static struct platform_device topaz_h2w = {
-	.name           = "h2w",
-	.id             = -1,
-	.dev            = {
-		.platform_data  = &topaz_h2w_data,
+static struct platform_device htctopaz_h2w = {
+	.name = "h2w",
+	.id = -1,
+	.dev = {
+		.platform_data  = &htctopaz_h2w_pdata,
 	},
 };
-#endif
 #endif
 
 #if 0
@@ -271,7 +268,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&htctopaz_snd,
 #ifdef CONFIG_HTC_HEADSET
-//	&topaz_h2w,
+	&htctopaz_h2w,
 #endif
 //	&topaz_bt_rfkill,
 	&msm_device_touchscreen,

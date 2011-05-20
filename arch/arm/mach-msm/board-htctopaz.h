@@ -19,11 +19,13 @@
 #define TOPA100_UART2DM_TX			108
 #define TOPA100_BT_RST				101
 
+/* H2W */
 #define TOPA100_CABLE_IN1			18
 #define TOPA100_CABLE_IN2			45
 #define TOPA100_H2W_DATA			31
 #define TOPA100_H2W_CLK				46
 #define TOPA100_AUD_HSMIC_DET_N		17
+
 #define TOPA100_USBPHY_RST			100
 
 #define TOPA100_LCD_P1				57
