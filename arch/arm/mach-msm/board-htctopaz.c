@@ -252,11 +252,6 @@ static struct msm_ts_platform_data htctopaz_ts_pdata = {
 	.vkeys_y	= &htctopaz_ts_virtual_keys_y,
 };
 
-struct platform_device msm_device_rtc = {
-	.name = "msm_rtc",
-	.id = -1,
-};
-
 static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_nand,

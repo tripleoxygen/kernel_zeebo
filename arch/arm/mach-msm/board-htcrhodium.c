@@ -298,7 +298,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_nand,
 	&msm_device_i2c,
-//	&msm_device_rtc,
+	&msm_device_rtc,
 //	&msm_device_htc_hw,
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	&msm_device_htc_battery_smem,
