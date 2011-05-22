@@ -652,6 +652,13 @@ struct platform_device msm_device_touchscreen = {
 	.resource = resources_tssc,
 };
 
+#if defined(CONFIG_RTC_DRV_MSM7X01A)
+struct platform_device msm_device_rtc = {
+	.name = "msm_rtc",
+	.id = -1,
+};
+#endif
+
 #if defined(CONFIG_MSM_SMEM_BATTCHG)
 struct platform_device msm_device_htc_battery_smem = {
 	.name = "htc_battery",

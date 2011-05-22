@@ -46,6 +46,11 @@ extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_touchscreen;
 extern struct platform_device msm_device_spi;
 extern struct platform_device msm_device_ssbi_pmic;
+
+#if defined(CONFIG_RTC_DRV_MSM7X01A)
+extern struct platform_device msm_device_rtc;
+#endif
+
 #if defined(CONFIG_MSM_SMEM_BATTCHG)
 extern struct platform_device msm_device_htc_battery_smem;
 #endif
