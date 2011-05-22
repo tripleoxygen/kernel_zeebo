@@ -189,23 +189,24 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(0, "HANDSET"),
 	SND(1, "SPEAKER"),
 	SND(2, "HEADSET"),
+	SND(2, "NO_MIC_HEADSET"),
 	SND(3, "BT"),
-	SND(44, "BT_EC_OFF"),
-	SND(10, "HEADSET_AND_SPEAKER"),
-	SND(256, "CURRENT"),
+	SND(3, "BT_EC_OFF"),
 
+	SND(0x11, "IDLE"),
+	SND(256, "CURRENT"),
 };
 #undef SND
 
 static struct msm_snd_endpoints htcrhodium_snd_endpoints = {
-        .endpoints = snd_endpoints_list,
-        .num = ARRAY_SIZE(snd_endpoints_list),
+	.endpoints = snd_endpoints_list,
+	.num = ARRAY_SIZE(snd_endpoints_list),
 };
 
 static struct platform_device htcrhodium_snd = {
 	.name = "msm_snd",
 	.id = -1,
-	.dev	= {
+	.dev = {
 		.platform_data = &htcrhodium_snd_endpoints,
 	},
 };
