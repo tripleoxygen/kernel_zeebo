@@ -433,4 +433,14 @@ config KEYBOARD_W90P910
 	  To compile this driver as a module, choose M here: the
 	  module will be called w90p910_keypad.
 
+config KEYBOARD_MICROP_KEYPAD
+        tristate "MicroP I2C Keypad"
+        depends on MFD_MICROP_NG
+        help
+          Say Y here if you have an MSM device with an I2C MicroP
+          keypad.
+
+          To compile this driver as a module, choose M here: the
+          module will be called microp-keypad
+
 endif
