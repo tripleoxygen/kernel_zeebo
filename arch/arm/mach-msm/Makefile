@@ -73,11 +73,12 @@ obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += devices_htc.o devices-msm7x00.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += htc_acoustic_wince.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += mmc.o msm_vibrator.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o pwrsink.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += smd_diag.o
 
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz.o board-htctopaz-panel.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz-keypad.o board-htctopaz-led.o
 
-obj-$(CONFIG_MACH_HTCRHODIUM) += board-htcrhodium.o board-htcrhodium-panel.o board-htcrhodium-keypad.o
+obj-$(CONFIG_MACH_HTCRHODIUM) += board-htcrhodium.o board-htcrhodium-panel.o
 
 obj-$(CONFIG_MSM_SMEM_BATTCHG) += htc_battery_smem.o
 

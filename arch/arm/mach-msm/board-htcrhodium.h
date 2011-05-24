@@ -23,14 +23,13 @@
 #define RHODIUM_KPD_IRQ			27  //Keyboard IRQ
 #define RHODIUM_KB_SLIDER_IRQ		37  //Keyboard Slider IRQ //Currently Unknown, using stylus detect GPIO right now (37).
 #define RHODIUM_BKL_PWR			86  //Keyboard blacklight  //Currently Unknown if this is right
-#define RHODIUM_POWER_KEY     		83  //Power key
 
-#define RHODIUM_KPD_ROW0 40
-#define RHODIUM_KPD_ROW1 39
-#define RHODIUM_KPD_ROW2 36
-#define RHODIUM_KPD_ROW3 18
-#define RHODIUM_KPD_COL0 102
-#define RHODIUM_KPD_COL1 101
+#define RHODIUM_END_KEY			18
+#define RHODIUM_VOLUMEUP_KEY		39
+#define RHODIUM_VOLUMEDOWN_KEY		40
+#define RHODIUM_POWER_KEY		83  //Power key
+#define RHODIUM_SPKR_PWR        84
+#define RHODIUM_HS_AMP_PWR      85
 
 #define RHOD_LCD_VSYNC			97
 #define RHOD_LCD_PWR1			99	//0x63

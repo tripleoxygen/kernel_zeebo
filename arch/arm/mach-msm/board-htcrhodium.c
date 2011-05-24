@@ -16,11 +16,12 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/android_pmem.h>
-#include <linux/mm.h>
+
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/i2c.h>
 #include <linux/gpio_keys.h>
+#include <linux/mm.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -37,10 +38,9 @@
 #include <mach/htc_battery.h>
 #endif
 #include <mach/msm_iomap.h>
-#include <mach/msm_hsusb.h>
-
 #include <mach/system.h>
 #include <mach/msm_fb.h>
+#include <mach/msm_hsusb.h>
 #include <mach/msm_ts.h>
 #include <mach/vreg.h>
 
@@ -126,21 +126,35 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 /******************************************************************************
  * USB
  ******************************************************************************/
-static void htcrhodium_usb_hw_reset(bool enable)
+static void htcrhodium_usb_disable(void)
 {
-	printk(KERN_WARNING "%s(%d): NOT IMPLEMENTED\n", __func__, enable ? 1 : 0);
+	gpio_set_value(RHODIUM_USBPHY_RST, 0); 
+	mdelay(3);
+}
+
+static void htcrhodium_usb_enable(void)
+{
+	gpio_set_value(RHODIUM_USBPHY_RST, 1);
+	mdelay(3);
+}
+
+static void htcrhodium_usb_hw_reset(bool off)
+{
+	printk(KERN_WARNING "%s(%d)\n", __func__, off ? 1 : 0);
+
+	if (off) {
+		htcrhodium_usb_disable();
+	} else {
+		htcrhodium_usb_enable();
+	}
 }
 
 static void htcrhodium_usb_phy_reset(void)
 {
 	printk(KERN_DEBUG "%s\n", __func__);
 
-	gpio_set_value(RHODIUM_USBPHY_RST, 1); 
-	gpio_set_value(RHODIUM_USBPHY_RST, 0);
-	gpio_set_value(RHODIUM_USBPHY_RST, 0); 
-	mdelay(3);
-	gpio_set_value(RHODIUM_USBPHY_RST, 1);
-	mdelay(3);
+	htcrhodium_usb_disable();
+	htcrhodium_usb_enable();
 }
 
 static struct msm_hsusb_platform_data htcrhodium_hsusb_board_pdata = {
@@ -156,6 +170,9 @@ static struct platform_device raphael_rfkill = {
 };
 #endif
 
+/******************************************************************************
+ * I2C
+ ******************************************************************************/
 static struct i2c_board_info i2c_devices[] = {
 	{
 		//gsensor 0x38
@@ -184,6 +201,9 @@ static struct i2c_board_info i2c_devices[] = {
 	},
 };
 
+/******************************************************************************
+ * Sound
+ ******************************************************************************/
 #define SND(num, desc) { .name = desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
 	SND(0, "HANDSET"),
@@ -215,15 +235,12 @@ static struct platform_device htcrhodium_snd = {
 static struct platform_device rhod_prox = {
     .name       = "rhodium_proximity",
 };
-
-static struct platform_device touchscreen = {
-	.name		= "tssc-manager",
-	.id		= -1,
-};
 #endif
 
+/******************************************************************************
+ * H2W
+ ******************************************************************************/
 #ifdef CONFIG_HTC_HEADSET
-
 static void h2w_config_cpld(int route);
 static void h2w_init_cpld(void);
 static struct h2w_platform_data rhodium_h2w_data = {
@@ -265,33 +282,58 @@ static struct platform_device rhodium_h2w = {
 };
 #endif
 
+/******************************************************************************
+ * Touchscreen
+ ******************************************************************************/
+static struct ts_virt_key htcrhodium_ts_keys_y[] = {
+	// key      min   max
+	{KEY_UP,    105, 267},
+	{KEY_DOWN,  268, 429},
+	{KEY_HOME,  430, 591},
+	{KEY_LEFT,  592, 753},
+	{KEY_RIGHT, 754, 915},
+};
+
+static struct msm_ts_virtual_keys htcrhodium_ts_virtual_keys_y = {
+	.keys = &htcrhodium_ts_keys_y[0],
+	.num_keys = 5,
+};
+
 static struct msm_ts_platform_data htcrhodium_ts_pdata = {
-	.min_x		= 296,
-	.max_x		= 3800,
-	.min_y		= 296,
-	.max_y		= 3600, // leave room for zoombar (was 3800)
+	.min_x		= 105,
+	.max_x		= 925,
+	.min_y		= 135,
+	.max_y		= 840,
 	.min_press	= 0,
 	.max_press	= 256,
-	.inv_x		= 0, //4096,
-	.inv_y		= 4096,
+	.inv_x		= 1030,//1000, //820,
+	.inv_y		= 975,
+	//~ .virt_y_start = 862, // 3450, // 3350 + space
+	//~ .vkeys_y	= &htcrhodium_ts_virtual_keys_y,
 };
 
-static struct gpio_keys_button rhodium_button_table[] = {
-	/*KEY                   GPIO    ACTIVE_LOW DESCRIPTION          type            wakeup  debounce*/
-	{KEY_POWER,                  RHODIUM_POWER_KEY,             1, "Power button",      EV_KEY,         1,      0},
+/******************************************************************************
+ * GPIO Keys
+ ******************************************************************************/
+static struct gpio_keys_button htcrhodium_button_table[] = {
+	/*KEY		GPIO			ACTIVE_LOW	DESCRIPTION		type	wakeup	debounce*/
+	{KEY_END,	RHODIUM_END_KEY,	1,		"End",			EV_KEY, 1,	0},
+	{KEY_VOLUMEUP,	RHODIUM_VOLUMEUP_KEY,	1,		"Volume Up",		EV_KEY,	0,	0},
+	{KEY_VOLUMEDOWN,RHODIUM_VOLUMEDOWN_KEY,	1,		"Volume Down",		EV_KEY,	0,	0},
+	{KEY_POWER,	RHODIUM_POWER_KEY,	1,		"Power button",		EV_KEY,	1,	0},
 };
 
-static struct gpio_keys_platform_data gpio_keys_data = {
-	.buttons = rhodium_button_table,
-	.nbuttons=1, 
+static struct gpio_keys_platform_data htcrhodium_gpio_keys_pdata = {
+	.buttons = htcrhodium_button_table,
+	.nbuttons = ARRAY_SIZE(htcrhodium_button_table), 
 };
 
-static struct platform_device gpio_keys = {
+static struct platform_device htcrhodium_gpio_keys = {
 	.name = "gpio-keys",
-	.dev  = {
-		.platform_data = &gpio_keys_data,
+	.dev = {
+		.platform_data = &htcrhodium_gpio_keys_pdata,
 	},
-	.id   = -1,
+	.id = -1,
 };
 
 static struct platform_device *devices[] __initdata = {
@@ -305,9 +347,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&htcrhodium_snd,
  	&rhodium_keypad_device,
-	&msm_device_touchscreen, //	&touchscreen,
-	&gpio_keys,
+	&htcrhodium_gpio_keys,
 //	&raphael_rfkill,
+	&msm_device_touchscreen,
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
@@ -329,7 +371,7 @@ static struct msm_acpu_clock_platform_data halibut_clock_data = {
 	.max_speed_delta_khz = 256000,
 	.vdd_switch_time_us = 62,
 	.power_collapse_khz = 19200,
-	.wait_for_irq_khz = 19200,
+	.wait_for_irq_khz = 122880,
 //	.max_axi_khz = 160000,
 };
 
@@ -372,8 +414,6 @@ static smem_batt_t htcrhodium_htc_battery_smem_pdata = {
 
 static void __init htcrhodium_init(void)
 {
-	int i;
-
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
@@ -396,13 +436,7 @@ static void __init htcrhodium_init(void)
 
 	msm_init_pmic_vibrator();
 
-	/* A little vibrating welcome */
-	for (i = 0; i < 2; i++) {
-		msm_proc_comm_wince_vibrate(1);
-		mdelay(150);
-		msm_proc_comm_wince_vibrate(0);
-		mdelay(75);
-	}
+	msm_proc_comm_wince_vibrate_welcome();
 }
 
 static void __init htcrhodium_map_io(void)
