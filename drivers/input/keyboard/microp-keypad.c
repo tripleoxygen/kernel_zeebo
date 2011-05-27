@@ -30,7 +30,7 @@
 
 #define MODULE_NAME "microp-keypad"
 
-#define MICROP_DEBUG 1
+#define MICROP_DEBUG 0
 
 #if defined(MICROP_DEBUG) && MICROP_DEBUG
 	#define DLOG(fmt, arg...) printk(fmt, ## arg);
@@ -68,7 +68,6 @@ static void microp_keypad_work(struct work_struct *work)
 	uint8_t key = 0;
 	bool slider_open = false;
 	bool isdown;
-	static uint8_t last_key = 0;
 	mutex_lock(&microp_keypad.lock);
 
 	do {
@@ -85,12 +84,19 @@ static void microp_keypad_work(struct work_struct *work)
 			input_report_switch(microp_keypad.input, SW_LID, !slider_open);
 		}
 
-		input_event(microp_keypad.input, EV_MSC, MSC_SCAN, key);
+		DLOG(KERN_DEBUG "%s: scancode=%u\n", __func__, key);
+
+		if (key != 0) {
+			input_event(microp_keypad.input, EV_MSC, MSC_SCAN, key);
 			if (key < microp_keypad.pdata->keypad_scancodes_size) {
 				input_report_key(microp_keypad.input,
-						last_key = microp_keypad.pdata->keypad_scancodes[key],
+						microp_keypad.pdata->keypad_scancodes[key],
 						isdown);
+
+				DLOG(KERN_DEBUG "%s: scancode=%u keycode=%d\n", __func__,
+						key, microp_keypad.pdata->keypad_scancodes[key]);
 			}
+		}
 	} while (key);
 	input_sync(microp_keypad.input);
 	if (microp_keypad.last_clamshell_state != slider_open) {
