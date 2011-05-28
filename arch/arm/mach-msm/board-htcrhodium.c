@@ -47,80 +47,196 @@
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
+#include <linux/microp-keypad.h>
 #include <linux/input/msm_ts.h>
+#include <linux/mfd/microp-ng.h>
 
 #ifdef CONFIG_HTC_HEADSET
 #include <mach/htc_headset.h>
 #endif
 
-//#include <linux/microp-keypad.h>
 #include <mach/board_htc.h>
 
 #include "proc_comm_wince.h"
 #include "devices.h"
-//#include "htc_hw.h"
 #include "gpio_chip.h"
 #include "board-htcrhodium.h"
 
 
 extern int init_mmc(void);
 
-#if 0
-static struct microp_keypad_platform_data rhodium_keypad_data = {
-	/*
-	.clamshell = {
-		.gpio = RHODIUM_KB_SLIDER_IRQ,
-		.irq = MSM_GPIO_TO_INT(RHODIUM_KB_SLIDER_IRQ),
-	},*/
-	//.backlight_gpio = RHODIUM_BKL_PWR,
-};
-#endif
-
-static struct resource rhodium_keypad_resources[] = {
-	{
-		.start = MSM_GPIO_TO_INT(RHODIUM_KPD_IRQ),
-		.end = MSM_GPIO_TO_INT(RHODIUM_KPD_IRQ),
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device rhodium_keypad_device = {
-	.name = "microp-keypad",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(rhodium_keypad_resources),
-	.resource = rhodium_keypad_resources,
-//	.dev = { .platform_data = &rhodium_keypad_data, },
-};
-
-#if 0
-static struct resource msm_serial0_resources[] = {
-	{
-		.start	= INT_UART1,
-		.end	= INT_UART1,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= MSM_UART1_PHYS,
-		.end	= MSM_UART1_PHYS + MSM_UART1_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-#endif
-
-#if 0
-static struct platform_device msm_serial0_device = {
-	.name	= "msm_serial",
-	.id	= 0,
-	.num_resources	= ARRAY_SIZE(msm_serial0_resources),
-	.resource	= msm_serial0_resources,
-};
-#endif
-
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 	//.wakeup_irq = MSM_GPIO_TO_INT(21),
 	.inject_rx_on_wakeup = 1,
 	.rx_to_inject = 0x32,
+};
+#endif
+
+/******************************************************************************
+ * MicroP Keypad
+ ******************************************************************************/
+static int htcrhodium_microp_keymap[] = {
+	KEY_B, //KEY_RESERVED, // invalid
+	KEY_BACK, //Back key
+	KEY_Q,
+	KEY_HOME, //Mute button on back of device
+	KEY_CAMERA,
+	KEY_A,
+	KEY_F,
+	KEY_S,
+	KEY_D,
+	KEY_SEND, //Send Key
+	// 10
+	KEY_MENU, //Windows Key
+	KEY_S, //KEY_RESERVED, // 0x0b   //Unknown
+	KEY_I,
+	KEY_K,
+	KEY_J,
+	KEY_H,
+	KEY_G,
+	KEY_A,
+	KEY_4,
+	KEY_1, //KEY_RESERVED, // 0x13  //Unknown
+	// 20
+	KEY_2, //KEY_RESERVED, // 0x14	//Unknown
+	KEY_L,
+	KEY_I,
+	KEY_P,
+	KEY_O,
+	KEY_B,
+	KEY_9,
+	KEY_8,
+	KEY_N,
+	KEY_ENTER,
+	// 30
+	KEY_M,
+	KEY_C,
+	KEY_V,
+	KEY_0,
+	KEY_U,
+	KEY_E,
+	KEY_R,
+	KEY_Q,
+	KEY_T,
+	KEY_Y,
+	// 40
+	KEY_W,
+	KEY_UP,  //ARROW KEY
+	KEY_1,
+	KEY_2,
+	KEY_DOWN, //KEY_LEFT,	//KEY_DOWN,   //ITS KEY DOWN FOR SURE!!!! STILL DOESN't GO DOWN 
+	KEY_3,
+	KEY_4,
+	KEY_5,
+	KEY_LEFT, 	//KEY_LEFT,	//ARROW KEY
+	KEY_6,
+	// 50
+	KEY_2,			//KEY_RESERVED, // 0x32 //Unknown
+	KEY_SPACE,
+	KEY_BACKSPACE,
+	KEY_7,
+	KEY_RIGHT,		//KEY_UNKNOWN,  // ARROW KEY
+	KEY_SPACE, //UNKNOWN
+	KEY_X,	//KEY_COMMA, //UNKNOWN
+	KEY_EMAIL,
+	KEY_DOT,
+	KEY_FN,  //Doesn't do anything?
+	// 60
+	KEY_LEFTSHIFT,
+	KEY_Z,
+	KEY_X,
+	KEY_COMMA,
+	KEY_COMPOSE, //Brings up search box?
+	KEY_C, //KEY_SLASH,  //Unknown
+	KEY_COMMA,
+	KEY_6, 			//Unknown
+	KEY_8,			//Unknown
+	KEY_1, //KEY_RESERVED, // 0x45	//Unknown
+	// 70
+	KEY_2, //KEY_RESERVED, // 0x46	//Unknown
+	KEY_P, //KEY_EMAIL,	//Unknown
+};
+
+static int htcrhodium_init_microp_keypad(struct device *dev)
+{
+	int ret;
+
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	ret = gpio_request(RHODIUM_KPD_IRQ, "Keyboard");
+	if (ret)
+		return ret;
+	ret = gpio_direction_input(RHODIUM_KPD_IRQ);
+	if (ret)
+		gpio_free(RHODIUM_KPD_IRQ);
+
+	return ret;
+}
+
+static void htcrhodium_exit_microp_keypad(struct device *dev) {
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	gpio_free(RHODIUM_KPD_IRQ);
+}
+
+static struct microp_keypad_platform_data htcrhodium_keypad_data = {
+	.read_modifiers = true,
+	.gpio_clamshell = -1,
+	.init = htcrhodium_init_microp_keypad,
+	.exit = htcrhodium_exit_microp_keypad,
+	.irq_keypress = MSM_GPIO_TO_INT(RHODIUM_KPD_IRQ),
+	.keypad_scancodes = htcrhodium_microp_keymap,
+	.keypad_scancodes_size = ARRAY_SIZE(htcrhodium_microp_keymap),
+};
+
+static struct platform_device htcrhodium_keypad = {
+	.name = "microp-keypad",
+	.id = -1,
+	.dev = {
+		.platform_data = &htcrhodium_keypad_data,
+	},
+};
+
+static struct platform_device* htcrhodium_microp_keypad_clients[] = {
+	&htcrhodium_keypad,
+};
+
+static uint16_t micropksc_compatible_versions[] = {
+	RHOD_MICROP_KSC_VERSION,
+};
+
+static struct microp_platform_data htcrhodium_microp_keypad_pdata = {
+	.version_reg = RHOD_MICROP_KSC_VERSION_REG,
+	.clients = htcrhodium_microp_keypad_clients,
+	.nclients = ARRAY_SIZE(htcrhodium_microp_keypad_clients),
+	.comp_versions = micropksc_compatible_versions,
+	.n_comp_versions = ARRAY_SIZE(micropksc_compatible_versions),
+};
+
+/******************************************************************************
+ * MicroP LED
+ ******************************************************************************/
+#if 0
+static struct platform_device htcrhodium_microp_leds = {
+	.id = -1,
+	.name = "htcrhodium-microp-leds",
+};
+
+static struct platform_device* htcrhodium_microp_clients[] = {
+	&htcrhodium_microp_leds,
+};
+
+static uint16_t micropklt_compatible_versions[] = {
+	RHOD_MICROP_KLT_VERSION
+};
+
+static struct microp_platform_data htcrhodium_microp_pdata = {
+	.version_reg = RHOD_MICROP_KLT_VERSION_REG,
+	.clients = htcrhodium_microp_clients,
+	.nclients = ARRAY_SIZE(htcrhodium_microp_clients),
+	.comp_versions = micropklt_compatible_versions,
+	.n_comp_versions = ARRAY_SIZE(micropklt_compatible_versions),
 };
 #endif
 
@@ -184,8 +300,10 @@ static struct i2c_board_info i2c_devices[] = {
 		I2C_BOARD_INFO("microp-klt", 0x66),
 	},
 	{
-		// Keyboard controller for RHOD
-		I2C_BOARD_INFO("microp-ksc", 0x67),
+		// Keyboard controller
+		.type = "microp-ng",
+		.addr = 0x67,
+		.platform_data = &htcrhodium_microp_keypad_pdata,
 	},
 	{		
 		I2C_BOARD_INFO("mt9t013", 0x6c>>1),
@@ -286,6 +404,7 @@ static struct platform_device rhodium_h2w = {
 /******************************************************************************
  * Touchscreen
  ******************************************************************************/
+#if 0
 static struct ts_virt_key htcrhodium_ts_keys_y[] = {
 	// key      min   max
 	{KEY_UP,    105, 267},
@@ -299,18 +418,21 @@ static struct msm_ts_virtual_keys htcrhodium_ts_virtual_keys_y = {
 	.keys = &htcrhodium_ts_keys_y[0],
 	.num_keys = 5,
 };
+#endif
 
 static struct msm_ts_platform_data htcrhodium_ts_pdata = {
-	.min_x		= 105,
-	.max_x		= 925,
-	.min_y		= 135,
-	.max_y		= 840,
+	.min_x		= 185,
+	.max_x		= 825,
+	.inv_x		= 1010,
+	.min_y		= 10,
+	.max_y		= 835,
+	.inv_y		= 950,
 	.min_press	= 0,
 	.max_press	= 256,
-	.inv_x		= 1030,//1000, //820,
-	.inv_y		= 975,
-	//~ .virt_y_start = 862, // 3450, // 3350 + space
-	//~ .vkeys_y	= &htcrhodium_ts_virtual_keys_y,
+#if 0
+	.virt_y_start = 862,
+	.vkeys_y	= &htcrhodium_ts_virtual_keys_y,
+#endif
 };
 
 /******************************************************************************
@@ -347,7 +469,6 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_htc_battery_smem,
 #endif
 	&htcrhodium_snd,
- 	&rhodium_keypad_device,
 	&htcrhodium_gpio_keys,
 //	&raphael_rfkill,
 	&msm_device_touchscreen,
