@@ -47,7 +47,7 @@ static int locked_enable_mdp_irq(struct mdp_info *mdp, uint32_t mask)
 	/* if the mask bits are already set return an error, this interrupt
 	 * is already enabled */
 	if (mdp_irq_mask & mask) {
-		pr_err("mdp irq already on %x %x\n", mdp_irq_mask, mask);
+//		pr_err("mdp irq already on %x %x\n", mdp_irq_mask, mask);
 		return -1;
 	}
 	/* if the mdp irq is not already enabled enable it */
@@ -252,7 +252,7 @@ static void mdp_dma(struct mdp_device *mdp_dev, uint32_t addr, uint32_t stride,
 
 	spin_lock_irqsave(&mdp->lock, flags);
 	if (locked_enable_mdp_irq(mdp, out_if->dma_mask)) {
-		pr_err("%s: busy\n", __func__);
+//		pr_err("%s: busy\n", __func__);
 		goto done;
 	}
 
