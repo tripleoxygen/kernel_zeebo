@@ -55,6 +55,9 @@ extern struct platform_device msm_device_rtc;
 extern struct platform_device msm_device_htc_battery_smem;
 #endif
 
+extern struct platform_device acoustic_device;
+extern struct htc_acoustic_wce_amss_data amss_6120_acoustic_data;
+
 extern struct clk msm_clocks_7x01a[];
 extern unsigned msm_num_clocks_7x01a;
 

@@ -2,7 +2,7 @@
  *
  * Author: Jbruneaux
  *
- * Description : provide interface between userland and kernel for the 
+ * Description : provide interface between userland and kernel for the
  * acoustic management
  *
  * This software is licensed under the terms of the GNU General Public
@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  */
@@ -28,270 +28,221 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
-
-#include <mach/msm_smd.h>
-#include <mach/msm_rpcrouter.h>
-#include <mach/msm_iomap.h>
 #include <asm/mach-types.h>
+#include <mach/msm_smd.h>
+
+#include <mach/htc_acoustic_wince.h>
+#include <mach/msm_iomap.h>
 #include "proc_comm_wince.h"
 
-#include "smd_private.h"
-
-/* Userspace interraction error printout */
-#define ERR_USER_COPY(to) pr_err("%s(%d): copy %s user\n", \
-				__func__, __LINE__, ((to) ? "to" : "from"))
-#define ERR_COPY_FROM_USER() ERR_USER_COPY(0)
-#define ERR_COPY_TO_USER() ERR_USER_COPY(1)
+#define ACOUSTIC_SHARED_MUTEX_ADDR      (MSM_SHARED_RAM_BASE + 0xfc280)
+#define ACOUSTIC_ARM11_MUTEX_ID         0x11
 
 /* structs */
 struct msm_acoustic_capabilities {
-    char htc_voc_cal_fields_per_param;    /* Specifies the number of fields per parameter */
-    bool bDualMicSupported;
-    bool bUseTPA2016;
-    /* TODO : add specific devices support like a1010, amplifiers, ... */
+    char voc_cal_field_size;    /* Specifies the number of fields per parameter */
+    bool dual_mic_supported;
 };
 
 struct msm_audio_path {
-    bool bEnableMic;
-    bool bEnableDualMic;
-    bool bEnableSpeaker;
-    bool bEnableHeadset;
+	bool enable_mic;
+	bool enable_dual_mic;
+	bool enable_speaker;
+	bool enable_headset;
 };
 
 struct adie_table {
-    int table_num;
-    char* pcArray;
+	int   table_num;
+	char *pcArray;
 };
 
 struct htc_voc_cal_table {
-    uint16_t* pArray;
-    int       size;
+	uint16_t *pArray;
+	int       size;
 };
 
-enum {
+enum audio_update_req_type {
     PCOM_UPDATE_REQ = 0,
     ADIE_FORCE8K_REQ,
     ADIE_FORCE_ADIE_AWAKE_REQ,
     ADIE_FORCE_ADIE_UPDATE_REQ,
     ADIE_UPDATE_AUDIO_METHOD,
-    
-} AUDIO_UPDATE_REQ_TYPE;
+
+};
 
 struct audio_update_req {
-    int type;       /* one of the AUDIO_UPDATE_REQ_TYPE */
-    int value;      /* For PCOM_UPDATE, dex data. For ADIE updates, value of the setting */
+    enum audio_update_req_type type;
+    int value;
 };
 
-/* IOCTLs */
-#define ACOUSTIC_IOCTL_MAGIC 'p'
-#define ACOUSTIC_ARM11_DONE	                    _IOW(ACOUSTIC_IOCTL_MAGIC, 22, unsigned int)
+enum dex_audio_cmd {
+	DEX_UPDATE_VOC = 0x2,
+	DEX_AUDIO_DONE = 0x10,
+};
 
-#define ACOUSTIC_UPDATE_ADIE_TABLE              _IOW(ACOUSTIC_IOCTL_MAGIC,  1, struct adie_table* )
-#define ACOUSTIC_UPDATE_VOLUME_TABLE            _IOW(ACOUSTIC_IOCTL_MAGIC,  2, uint16_t* )
-#define ACOUSTIC_UPDATE_CE_TABLE                _IOW(ACOUSTIC_IOCTL_MAGIC,  3, uint16_t* )
-#define ACOUSTIC_UPDATE_AUDIO_PATH_TABLE        _IOW(ACOUSTIC_IOCTL_MAGIC,  4, uint16_t* )
-#define ACOUSTIC_UPDATE_AUDIO_SETTINGS          _IOW(ACOUSTIC_IOCTL_MAGIC,  5, struct audio_update_req* )
-#define ACOUSTIC_UPDATE_HTC_VOC_CAL_CODEC_TABLE _IOW(ACOUSTIC_IOCTL_MAGIC,  6, struct htc_voc_cal_table* )
-#define ACOUSTIC_GET_CAPABILITIES               _IOW(ACOUSTIC_IOCTL_MAGIC,  8, struct msm_acoustic_capabilities* )
-#define ACOUSTIC_SET_HW_AUDIO_PATH              _IOW(ACOUSTIC_IOCTL_MAGIC,  10, struct msm_audio_path* )
-
-
-#define HTCRPOG 0x30100002
-#define HTCVERS 0
-#define ONCRPC_SET_MIC_BIAS_PROC       (1)
-#define ONCRPC_ACOUSTIC_INIT_PROC      (5)
-#define ONCRPC_ALLOC_ACOUSTIC_MEM_PROC (6)
-
-#define D(fmt, args...) printk(KERN_INFO "htc-acoustic_wince: "fmt, ##args)
 #define E(fmt, args...) printk(KERN_ERR "htc-acoustic_wince: "fmt, ##args)
 
-struct set_smem_req {
-	struct rpc_request_hdr hdr;
-	uint32_t size;
-};
+#if 1
+	#define D(fmt, args...) printk(KERN_INFO "htc-acoustic_wince: "fmt, ##args)
+#else
+	#define D(fmt, args...) do {} while (0)
+#endif
 
-struct set_smem_rep {
-	struct rpc_reply_hdr hdr;
-	int n;
-};
+#define ERR_USER_COPY(to) pr_err("%s(%d): copy %s user\n", \
+		__func__, __LINE__, ((to) ? "to" : "from"))
+#define ERR_COPY_FROM_USER() ERR_USER_COPY(0)
+#define ERR_COPY_TO_USER() ERR_USER_COPY(1)
 
-struct set_acoustic_req {
-	struct rpc_request_hdr hdr;
-};
-
-struct set_acoustic_rep {
-	struct rpc_reply_hdr hdr;
-	int n;
-};
-
-/* Acoustic smem addresses */
-static uint32_t htc_acoustic_volume_table;
-static uint32_t htc_acoustic_ce_table;
-static uint32_t htc_acoustic_adie_table;
-static uint32_t htc_voc_cal_codec_table;
-static uint32_t htc_acoustic_mic_offset;
-
-
-static struct msm_rpc_endpoint *endpoint = NULL;
 static struct mutex api_lock;
 static struct mutex rpc_connect_mutex;
 
-/* Imports from qdsp5/external.c */
-extern void headphone_amp_power(int status);
-extern void speaker_amp_power(int status);
+static struct htc_acoustic_wce_amss_data *amss_data = NULL;
+struct htc_acoustic_wce_board_data *htc_acoustic_wce_board_data = NULL;
 
+/* From board-htcrhodium-audio.c */
+extern void ADC3001_wakeup(void);
+extern void ADC3001_powerdown(void);
+
+static void headphone_amp_power(bool status)
+{
+	if ( (htc_acoustic_wce_board_data) && (htc_acoustic_wce_board_data->set_headset_amp) )
+		htc_acoustic_wce_board_data->set_headset_amp(status);
+}
+
+static void speaker_amp_power(bool status)
+{
+	if ( (htc_acoustic_wce_board_data) && (htc_acoustic_wce_board_data->set_speaker_amp) )
+		htc_acoustic_wce_board_data->set_speaker_amp(status);
+}
 
 /* Fill the capabilities of the device */
-// TODO : fill the capabilities more precisely
 static int acoustic_get_capabilities(void __user *arg)
 {
-    int rc;
-    struct msm_acoustic_capabilities capabilities;
-    
-    memset((void*)&capabilities, 0, sizeof(capabilities));
+	int rc = 0;
+	struct msm_acoustic_capabilities capabilities = {};
 
-    switch(__machine_arch_type) {
-        case MACH_TYPE_HTCTOPAZ:
-            capabilities.htc_voc_cal_fields_per_param = 0xB;
-            capabilities.bDualMicSupported = true;
-            rc = 0;
-        break;
-        case MACH_TYPE_HTCRHODIUM:
-            capabilities.htc_voc_cal_fields_per_param = 0xB;
-            capabilities.bDualMicSupported = true;
-            capabilities.bUseTPA2016 = true;
-            rc = 0;
-        break;
-        case MACH_TYPE_HTCRAPHAEL:
-        case MACH_TYPE_HTCDIAMOND_CDMA:
-        case MACH_TYPE_HTCDIAMOND:
-        case MACH_TYPE_HTCBLACKSTONE:
-        case MACH_TYPE_HTCRAPHAEL_CDMA:
-        case MACH_TYPE_HTCRAPHAEL_CDMA500:
-        case MACH_TYPE_HTCKOVSKY:
-            capabilities.htc_voc_cal_fields_per_param = 0xA;
-            capabilities.bDualMicSupported = true;
-            rc = 0;
-        break;
-        default:
-            rc = -1;
-        break;
-    }    
+	capabilities.voc_cal_field_size = amss_data->voc_cal_field_size;
 
-    if ( copy_to_user((void __user *)arg, &capabilities, sizeof(struct msm_acoustic_capabilities)) ) {
-        ERR_COPY_TO_USER();
-        rc = -EFAULT;
-    }
+	if (htc_acoustic_wce_board_data) {
+		capabilities.dual_mic_supported =
+			htc_acoustic_wce_board_data->dual_mic_supported;
+	}
 
-    return rc;
+
+	if (copy_to_user((void __user *)arg,
+					&capabilities,
+					sizeof(struct msm_acoustic_capabilities))
+	) {
+		ERR_COPY_TO_USER();
+		rc = -EFAULT;
+	}
+
+	return rc;
 }
 
 /* Table update routines */
 static int update_volume_table(void __user *arg)
 {
-    uint16_t table[0xA0];
+	uint16_t table[0xA0];
 
 	if (copy_from_user(&table, arg, sizeof(table))) {
 		ERR_COPY_FROM_USER();
 		return -EFAULT;
 	} else {
-        memcpy((void*) htc_acoustic_volume_table, table, sizeof(table));
-    }
-    
-    return 0;
+		memcpy(amss_data->volume_table, table, sizeof(table));
+	}
+
+	return 0;
 }
 
 static int update_ce_table(void __user *arg)
 {
-    uint16_t table[0x50];
+	uint16_t table[0x50];
 
 	if (copy_from_user(&table, arg, sizeof(table))) {
 		ERR_COPY_FROM_USER();
 		return -EFAULT;
 	} else {
-        memcpy((void *) htc_acoustic_ce_table, table, sizeof(table));
-    }
-    
-    return 0;
+		memcpy(amss_data->ce_table, table, sizeof(table));
+	}
+
+	return 0;
 }
 
 static int update_audio_adie_table(void __user *arg)
 {
-    struct adie_table table;
-    char* pcArray;
-    int rc = -EIO;  
-
-	if (copy_from_user(&table, arg, sizeof(table))) {
-		ERR_COPY_FROM_USER();
-		return -EFAULT;
-	} else {        
-        pcArray = kmalloc(0x80, GFP_ATOMIC);
-        if ( pcArray != NULL ) {
-            if (copy_from_user(pcArray, table.pcArray, 0x80)) {
-		        ERR_COPY_FROM_USER();
-                rc = -EFAULT;
-		        goto free_exit;
-	        }
-            memcpy((void *) (htc_acoustic_adie_table + (table.table_num * 0x80)), pcArray, 0x80);
-            rc = 0;
-        }
-    }
-
-free_exit:
-    if ( pcArray != NULL ) {
-        kfree ( pcArray );
-    }
-    return rc;
-}
-
-static int update_htc_voc_cal_codec_table(void __user *arg)
-{
-	struct msm_dex_command dex = {.cmd = PCOM_UPDATE_AUDIO, .has_data = 1 } ;
-    struct htc_voc_cal_table table;
-    uint16_t*   table_array;
-    int rc = -EIO;    
+	struct adie_table table;
+	char pcArray[0x80];
+	int rc = -EIO;
 
 	if (copy_from_user(&table, arg, sizeof(table))) {
 		ERR_COPY_FROM_USER();
 		return -EFAULT;
 	} else {
-        printk("%s : table size = %d\n", __func__, table.size);
-        table_array = kmalloc(table.size, GFP_ATOMIC);
-        if ( table_array != NULL ) {
-            if (copy_from_user(table_array, table.pArray, table.size)) {
-		        ERR_COPY_FROM_USER();
-                rc = -EFAULT;
-		        goto free_exit;
-	        }
-            memcpy((void *) htc_voc_cal_codec_table, table_array, table.size);
-	        dex.data=0x2;
-	        msm_proc_comm_wince(&dex,0); 
-            rc = 0;
-        }
-    } 
+		if (copy_from_user(pcArray, table.pcArray, 0x80)) {
+			ERR_COPY_FROM_USER();
+			return -EFAULT;
+		}
+		memcpy((amss_data->adie_table +
+				(table.table_num * 0x80)), pcArray, 0x80);
+		rc = 0;
+	}
 
-free_exit:
-    if ( table_array != NULL ) {
-        kfree ( table_array );
-    }
-    return rc;
+	return rc;
+}
+
+static int update_codec_table(void __user * arg)
+{
+	struct msm_dex_command dex = {
+		.cmd = PCOM_UPDATE_AUDIO,
+		.has_data = 1,
+		.data = DEX_UPDATE_VOC,
+	};
+	struct htc_voc_cal_table table;
+	uint16_t *table_array;
+	int rc = -EIO;
+
+	if (copy_from_user(&table, arg, sizeof(table))) {
+		ERR_COPY_FROM_USER();
+		return -EFAULT;
+	} else {
+		D("%s : table size = %d\n", __func__, table.size);
+		table_array = kmalloc(table.size, GFP_ATOMIC);
+		if (table_array != NULL) {
+			if (copy_from_user
+			    (table_array, table.pArray, table.size)) {
+				ERR_COPY_FROM_USER();
+				rc = -EFAULT;
+				goto free_exit;
+			}
+            memcpy(amss_data->codec_table, table_array, table.size);
+	        msm_proc_comm_wince(&dex,0);
+			rc = 0;
+		}
+	}
+
+ free_exit:
+	if (table_array != NULL) {
+		kfree(table_array);
+	}
+	return rc;
 }
 
 /* Adie updates */
 static void ADIE_Force8k(bool bOn) {
     int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
     if (bOn) {
-        adie |= 0x1;        
+        adie |= 0x1;
     } else {
         adie &= ~0x1;
     }
     writel(adie, MSM_SHARED_RAM_BASE + 0xfc0d0);
 }
 
-static void ADIE_ForceADIEAwake(bool bForce) {
+static void ADIE_ForceADIEAwake(bool bForce) {    
     int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
     if (bForce) {
-        adie |= 0x8;        
+        adie |= 0x8;
     } else {
         adie &= ~0x8;
     }
@@ -300,50 +251,52 @@ static void ADIE_ForceADIEAwake(bool bForce) {
 
 static void ADIE_ForceADIEUpdate(bool bForce) {
     int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
+
+    printk("%s %d\n", __func__, bForce);
+
+    smem_semaphore_down(ACOUSTIC_SHARED_MUTEX_ADDR, ACOUSTIC_ARM11_MUTEX_ID);
+
     if (bForce) {
-        adie |= 0x2;        
+        adie |= 0x2;
     } else {
         adie &= ~0x2;
     }
     writel(adie, MSM_SHARED_RAM_BASE + 0xfc0d0);
+
+    smem_semaphore_up(ACOUSTIC_SHARED_MUTEX_ADDR, ACOUSTIC_ARM11_MUTEX_ID);
 }
 
 static void ADIE_UpdateAudioMethod(bool bUpdate) {
     int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
     if (bUpdate) {
-        adie |= 0x4;        
+        adie |= 0x4;
     } else {
         adie &= ~0x4;
     }
     writel(adie, MSM_SHARED_RAM_BASE + 0xfc0d0);
 }
 
-static void ADIE_Dump(void) {
-    int i, j;
+static int dex_update_audio(int data)
+{
+	struct msm_dex_command dex = {
+		.cmd = PCOM_UPDATE_AUDIO,
+		.has_data = 1,
+		.data = data,
+	};
 
-    printk("Dump A Table:\n");
-    for (i=0; i<24; i++) {
-        printk("A[%2X]=%2X\n", readl(MSM_SHARED_RAM_BASE + 0xfde00 + (i*2)), 
-                               readl(MSM_SHARED_RAM_BASE + 0xfde00 + (i*2) + 1));
-    }    
-    for (i=0; i<10; i++) {
-        printk("Dump B Table %d: \n", i);
-        for (i=0; i<20; i++) {
-            printk("B[%2X]\n", readl(MSM_SHARED_RAM_BASE + 0xfe000 + i + (j*20)));
-        }        
-    }
+	msm_proc_comm_wince(&dex, 0);
+
+	return 0;
 }
 
-static int pcom_update_audio_req(int data)
-{
-	struct msm_dex_command dex = {.cmd = PCOM_UPDATE_AUDIO, .has_data = 1 } ;
-
-    printk("%s : req.value %d\n", __func__, data);
-
-    dex.data=data;
-    msm_proc_comm_wince(&dex,0);  
-
-    return 0;
+static int dex_update_audio_done(void) {
+	struct msm_dex_command dex = {
+		.cmd = PCOM_UPDATE_AUDIO,
+		.has_data = 1,
+		.data = DEX_AUDIO_DONE,
+	};
+	D("%s\n", __func__);
+	return msm_proc_comm_wince(&dex, 0);
 }
 
 static int update_audio_setting(void __user *arg)
@@ -357,7 +310,7 @@ static int update_audio_setting(void __user *arg)
 	} else {
         switch (req.type) {
             case PCOM_UPDATE_REQ:
-                ret = pcom_update_audio_req(req.value);
+                ret = dex_update_audio(req.value);
             break;
 
             case ADIE_FORCE8K_REQ:
@@ -387,97 +340,72 @@ static int update_audio_setting(void __user *arg)
     return ret;
 }
 
-int turn_mic_bias_on(int on)
+static int turn_mic_bias_on(bool on, bool bDualMicEn)
 {
-	struct msm_dex_command dex;
+	char pmSpeakerGain[2][10] = { {0x93, 0, 0x93, 7, 0x93, 1, 0x93, 7, 0xFF, 0xFF},
+					{0x93, 0, 0x93, 4, 0x93, 1, 0x93, 4, 0xFF, 0xFF}};
 
-	printk(KERN_DEBUG "%s(%d)\n", __func__, on);
 
-	dex.cmd=PCOM_UPDATE_AUDIO;
-	dex.has_data=1;
+	D("%s(%d)\n", __func__, on);
 
-	/*  enable handset mic */
-	//writel(0xffff0080|(on?0x100:0), MSM_SHARED_RAM_BASE+mic_offset);
-	*(unsigned *)htc_acoustic_mic_offset=0xffff0080 | (on?0x100:0);
-	dex.data=0x10;
-	msm_proc_comm_wince(&dex,0);
-
-	/* some devices needs pm_mic_en */
-	if (machine_is_htcdiamond_cdma() || machine_is_htcraphael_cdma()
-		|| machine_is_htcraphael_cdma500() || machine_is_htckovsky()
-		|| machine_is_htctopaz())
-	{
-		int ret;
-		struct {
-			struct rpc_request_hdr hdr;
-			uint32_t data;
-		} req;
-
-		if (!endpoint)
-			endpoint = msm_rpc_connect(0x30000061, 0x0, 0);
-		if (!endpoint) {
-			printk("Couldn't open rpc endpoint\n");
-			return -EIO;
-		}
-		req.data=cpu_to_be32(0x1);
-		ret = msm_rpc_call(endpoint, 0x1c, &req, sizeof(req), 5 * HZ);
+	/* enable handset mic */
+	if ( machine_is_htcrhodium() && bDualMicEn && on ) {
+		memcpy(amss_data->mic_offset, pmSpeakerGain[1], 10);
+	} else {
+		writel(0xffff0080 | (on ? 0x100 : 0), amss_data->mic_offset);   
 	}
+	dex_update_audio_done();
+
+	if ( machine_is_htcrhodium() ) {
+		if ( bDualMicEn && on ) {
+			//~ ADC3001_wakeup();
+		} else {
+			//~ ADC3001_powerdown();
+		}
+	}
+
+	if (amss_data->mic_bias_callback)
+		amss_data->mic_bias_callback(on);
 
 	return 0;
 }
 
-EXPORT_SYMBOL(turn_mic_bias_on);
-
-
 static int update_hw_audio_path(void __user *arg)
 {
-    struct msm_audio_path audio_path;
+	struct msm_audio_path audio_path;
 
 	if (copy_from_user(&audio_path, arg, sizeof(audio_path))) {
 		ERR_COPY_FROM_USER();
 		return -EFAULT;
 	}
 
-    printk("%s : bEnableMic = %d, bEnableDualMic = %d,"
-           " bEnableSpeaker = %d, bEnableHeadset = %d\n", __func__,
-             audio_path.bEnableMic, audio_path.bEnableDualMic,
-             audio_path.bEnableSpeaker, audio_path.bEnableHeadset);
+	D("%s: mic=%d, dual_mic=%d, speaker=%d, headset = %d\n",
+			__func__,
+	       audio_path.enable_mic, audio_path.enable_dual_mic,
+	       audio_path.enable_speaker, audio_path.enable_headset);
 
-    /* Switch microphone on/off */
-    turn_mic_bias_on( audio_path.bEnableMic );
+	/* Switch microphone on/off */
+	turn_mic_bias_on(audio_path.enable_mic,
+                     audio_path.enable_dual_mic);
 
-    /* Switch headset HW on/off */
-    headphone_amp_power( audio_path.bEnableHeadset );
-    
-    /* Switch Speaker HW on/off */
-    speaker_amp_power( audio_path.bEnableSpeaker );
+	/* Switch headset HW on/off */
+	headphone_amp_power(audio_path.enable_headset);
 
-    return 0;
+	/* Switch Speaker HW on/off */
+	speaker_amp_power(audio_path.enable_speaker);
+
+	return 0;
 }
 
 static int acoustic_open(struct inode *inode, struct file *file)
 {
-	int rc = -EIO;
-
-	D("open\n");
-
-	mutex_lock(&api_lock);
-
-    BUG_ON(!htc_acoustic_volume_table);
-    BUG_ON(!htc_acoustic_ce_table);
-    BUG_ON(!htc_acoustic_adie_table);
-    BUG_ON(!htc_voc_cal_codec_table);
-    BUG_ON(!htc_acoustic_mic_offset);
-
-	rc = 0;
-
-	mutex_unlock(&api_lock);
-	return rc;
+	D("%s\n", __func__);
+	return 0;
 }
 
 static int acoustic_release(struct inode *inode, struct file *file)
 {
-	D("release\n");
+	D("%s\n", __func__);
 	return 0;
 }
 
@@ -486,63 +414,65 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 {
 	int rc;
 
-    struct msm_dex_command dex;
-
 	mutex_lock(&api_lock);
 
 	switch (cmd) {
-        case ACOUSTIC_GET_CAPABILITIES:
-            D("ioctl: ACOUSTIC_GET_CAPABILITIES called %d.\n", current->pid);
-            rc = acoustic_get_capabilities((void __user *)arg);
-        break;
+		case ACOUSTIC_GET_CAPABILITIES:
+			D("ioctl: ACOUSTIC_GET_CAPABILITIES called %d.\n",
+				task_pid_nr(current));
+			rc = acoustic_get_capabilities((void __user *)arg);
+		break;
 
-        case ACOUSTIC_ARM11_DONE:
-            D("ioctl: ACOUSTIC_ARM11_DONE called %d.\n", current->pid);
-            dex.cmd=PCOM_UPDATE_AUDIO;
-            dex.has_data=1;
-            dex.data=0x10;
-            rc = msm_proc_comm_wince(&dex,0);
-        break;
+		case ACOUSTIC_ARM11_DONE:
+			rc = dex_update_audio_done();
+			D("ioctl: ACOUSTIC_ARM11_DONE pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_UPDATE_ADIE_TABLE:            
-            rc = update_audio_adie_table((void __user *)arg);
-            D("ioctl: ACOUSTIC_UPDATE_ADIE_TABLE called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_UPDATE_ADIE_TABLE:
+			rc = update_audio_adie_table((void __user *)arg);
+			D("ioctl: ACOUSTIC_UPDATE_ADIE_TABLE pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_UPDATE_VOLUME_TABLE:
-            rc = update_volume_table((void __user *)arg);
-            D("ioctl: ACOUSTIC_UPDATE_VOLUME_TABLE called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_UPDATE_VOLUME_TABLE:
+			rc = update_volume_table((void __user *)arg);
+			D("ioctl: ACOUSTIC_UPDATE_VOLUME_TABLE pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_UPDATE_CE_TABLE:
-            rc = update_ce_table((void __user *)arg);
-            D("ioctl: ACOUSTIC_UPDATE_CE_TABLE called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_UPDATE_CE_TABLE:
+			rc = update_ce_table((void __user *)arg);
+			D("ioctl: ACOUSTIC_UPDATE_CE_TABLE pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_UPDATE_HTC_VOC_CAL_CODEC_TABLE:
-            rc = update_htc_voc_cal_codec_table((void __user *)arg);
-            D("ioctl: ACOUSTIC_UPDATE_HTC_VOC_CAL_CODEC_TABLE called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_UPDATE_HTC_VOC_CAL_CODEC_TABLE:
+			rc = update_codec_table((void __user *)arg);
+			D("ioctl: ACOUSTIC_UPDATE_HTC_VOC_CAL_CODEC_TABLE pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_UPDATE_AUDIO_SETTINGS:
-            rc = update_audio_setting((void __user *)arg);
-            D("ioctl: ACOUSTIC_UPDATE_AUDIO_SETTINGS called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_UPDATE_AUDIO_SETTINGS:
+			rc = update_audio_setting((void __user *)arg);
+			D("ioctl: ACOUSTIC_UPDATE_AUDIO_SETTINGS called pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-        case ACOUSTIC_SET_HW_AUDIO_PATH:
-            rc = update_hw_audio_path((void __user *)arg);
-            D("ioctl: ACOUSTIC_SET_HW_AUDIO_PATH called %d rc %d.\n", current->pid, rc);
-        break;
+		case ACOUSTIC_SET_HW_AUDIO_PATH:
+			rc = update_hw_audio_path((void __user *)arg);
+			D("ioctl: ACOUSTIC_SET_HW_AUDIO_PATH pid=%d result=%d\n",
+				task_pid_nr(current), rc);
+			break;
 
-	    default:
-		    E("ioctl: invalid command\n");
-		    rc = -EINVAL;
+		default:
+			E("ioctl: invalid command %d pid=%d\n", cmd, task_pid_nr(current));
+			rc = -EINVAL;
 	}
 
 	mutex_unlock(&api_lock);
 	return rc;
 }
-
 
 static struct file_operations acoustic_fops = {
 	.owner = THIS_MODULE,
@@ -557,56 +487,82 @@ static struct miscdevice acoustic_wince_misc = {
 	.fops = &acoustic_fops,
 };
 
-static int __init acoustic_init(void)
+static int htc_acoustic_wince_probe(struct platform_device *pdev)
 {
-    printk("Initialize HTC acoustic driver for wince based devices\n");
+	void *ret;
+	struct htc_acoustic_wce_amss_data *pdata = pdev->dev.platform_data;
 
-	switch(__machine_arch_type) {
-		case MACH_TYPE_HTCTOPAZ:
-		case MACH_TYPE_HTCRHODIUM:
-            htc_acoustic_volume_table = (uint32_t)(MSM_SHARED_RAM_BASE+0xfc300);
-            htc_acoustic_ce_table     = (uint32_t)(MSM_SHARED_RAM_BASE+0xfc600);
-            htc_acoustic_adie_table   = (uint32_t)(MSM_SHARED_RAM_BASE+0xf8000);
-            htc_voc_cal_codec_table   = (uint32_t)(MSM_SHARED_RAM_BASE+0xf9000);
-			htc_acoustic_mic_offset   = (uint32_t)(MSM_SHARED_RAM_BASE+0xfb9c0);
-			break;
-		case MACH_TYPE_HTCRAPHAEL:
-		case MACH_TYPE_HTCDIAMOND_CDMA:
-		case MACH_TYPE_HTCDIAMOND:
-		case MACH_TYPE_HTCBLACKSTONE:
-		case MACH_TYPE_HTCRAPHAEL_CDMA:
-		case MACH_TYPE_HTCRAPHAEL_CDMA500:
-		case MACH_TYPE_HTCKOVSKY:
-            htc_acoustic_volume_table = (uint32_t)(MSM_SHARED_RAM_BASE+0xfc300);
-            htc_acoustic_ce_table     = (uint32_t)(MSM_SHARED_RAM_BASE+0xfc600);
-            htc_acoustic_adie_table   = (uint32_t)(MSM_SHARED_RAM_BASE+0xfd000);
-            htc_voc_cal_codec_table   = (uint32_t)(MSM_SHARED_RAM_BASE+0xfdc00);
-			htc_acoustic_mic_offset   = (uint32_t)(MSM_SHARED_RAM_BASE+0xfed00);
-			break;
-		default:
-			printk(KERN_ERR "Unsupported device for htc_acoustic driver\n");
-			return -1;
-			break;
+	printk("Initialize HTC acoustic driver for wince based devices\n");
+
+	if (!pdata) {
+		E("%s: no platform data\n", __func__);
+		goto err_no_pdata;
 	}
+	ret = pdata->volume_table;
+	if (!ret)
+		goto err_pdata_incomplete;
+	ret = pdata->ce_table;
+	if (!ret)
+		goto err_pdata_incomplete;
+
+	ret = pdata->adie_table;
+	if (!ret)
+		goto err_pdata_incomplete;
+
+	ret = pdata->codec_table;
+	if (!ret)
+		goto err_pdata_incomplete;
+
+	ret = pdata->mic_offset;
+	if (!ret)
+		goto err_pdata_incomplete;
+
+	amss_data = pdata;
 	mutex_init(&api_lock);
 	mutex_init(&rpc_connect_mutex);
 
 	return misc_register(&acoustic_wince_misc);
+
+err_pdata_incomplete:
+	E("%s: offsets for some tables undefined in platform data\n", __func__);
+err_no_pdata:
+	return -EINVAL;
 }
 
-static void __exit acoustic_exit(void)
+static int htc_acoustic_wince_remove(struct platform_device *pdev)
 {
 	misc_deregister(&acoustic_wince_misc);
+	amss_data = NULL;
+	return 0;
 }
 
-module_init(acoustic_init);
-module_exit(acoustic_exit);
+static struct platform_driver htc_acoustic_wince_driver = {
+	.probe		= htc_acoustic_wince_probe,
+	.remove		= htc_acoustic_wince_remove,
+	.driver		= {
+		.name		= "htc_acoustic",
+		.owner		= THIS_MODULE,
+	},
+};
+
+static int __init htc_acoustic_wince_init(void)
+{
+	return platform_driver_register(&htc_acoustic_wince_driver);
+}
+
+static void __exit htc_acoustic_wince_exit(void)
+{
+	platform_driver_unregister(&htc_acoustic_wince_driver);
+}
+
+module_init(htc_acoustic_wince_init);
+module_exit(htc_acoustic_wince_exit);
 
 MODULE_AUTHOR("Jerome Bruneaux <jbruneaux@laposte.net>");
 MODULE_DESCRIPTION("HTC acoustic driver for wince based devices");
 MODULE_LICENSE("GPL");
 
-
+#ifdef CONFIG_DEBUG_FS
 /*******************************************************************************************************************
  * DEBUGFS
  *******************************************************************************************************************/
@@ -627,16 +583,24 @@ static int dump_memory(char *buf, int max, int offset, int size) {
 }
 
 static int dump_adie_memory(char *buf, int max) {
-    return dump_memory(buf, max, htc_acoustic_adie_table, 0x1000);
+    return dump_memory(buf, max, (int)amss_data->adie_table, 0x1000);
+}
+
+static int dump_vol_memory(char *buf, int max) {
+    return dump_memory(buf, max, (int)amss_data->volume_table, 0x300);
+}
+
+static int dump_ce_memory(char *buf, int max) {
+    return dump_memory(buf, max, (int)amss_data->ce_table, 0x300);
 }
 
 static int dump_voc_cal_memory(char *buf, int max) {
     int i = 0, n, j;
 
     for(j=0; j<0x2C0; j+=0x16) {
-        i += scnprintf(buf + i, max - i, "%x | ", htc_voc_cal_codec_table + j);
+        i += scnprintf(buf + i, max - i, "%x | ", (int)amss_data->codec_table + j);
         for(n=0; n<0x16; n+=4) {
-            i += scnprintf(buf + i, max - i, "%08x ", readl(htc_voc_cal_codec_table + j + n) );
+            i += scnprintf(buf + i, max - i, "%08x ", readl(amss_data->codec_table + j + n) );
         }
         i += scnprintf(buf + i, max - i, "\n");
     }
@@ -644,10 +608,15 @@ static int dump_voc_cal_memory(char *buf, int max) {
     return i;
 }
 
+static int dump_mic_memory(char *buf, int max) {
+    return dump_memory(buf, max, (int)amss_data->mic_offset, 0x10);
+}
+
+#if 0
 static int dbg_reset(char *buf, int max) {
     return readl(MSM_AD5_BASE + 0x00400030);
 }
-
+#endif
 
 #define DEBUG_BUFMAX 8192
 static char debug_buffer[DEBUG_BUFMAX];
@@ -681,8 +650,13 @@ static int __init acoustic_dbg_init(void)
 
     debugfs_create_file("dump_adie", S_IRUSR, dent, &dump_adie_memory, &debug_ops_readonly);
     debugfs_create_file("dump_voc", S_IRUSR, dent, &dump_voc_cal_memory, &debug_ops_readonly);
-    debugfs_create_file("reset", S_IRUSR, dent, &dbg_reset, &debug_ops_readonly);
+    debugfs_create_file("dump_vol", S_IRUSR, dent, &dump_vol_memory, &debug_ops_readonly);
+    debugfs_create_file("dump_ce", S_IRUSR, dent, &dump_ce_memory, &debug_ops_readonly);
+    debugfs_create_file("dump_mic", S_IRUSR, dent, &dump_mic_memory, &debug_ops_readonly);
+
+//    debugfs_create_file("reset", S_IRUSR, dent, &dbg_reset, &debug_ops_readonly);
 
 	return 0;
 }
 device_initcall(acoustic_dbg_init);
+#endif
