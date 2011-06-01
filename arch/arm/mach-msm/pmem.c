@@ -41,89 +41,134 @@ struct resource resources_msm_fb[] = {
 		pmem_setting.prev## _size;\
 	pmem_setting.name## _size = size;
 
+#define CALC_PMEM_BEFORE(name, prev, size) \
+	pmem_setting.name## _start = pmem_setting.prev## _start-\
+		size;\
+	pmem_setting.name## _size = size;
+
+//#define RHODIUM_USE_SMI2  /* CAUTION : if enabled here, must also be enabled in board-htcrhodium.c */
 
 static int __init msm_pmem_init(void) {
-	long pmem_shift = 0;
-	switch(__machine_arch_type) {
-		case MACH_TYPE_HTCDIAMOND:
-		case MACH_TYPE_HTCRAPHAEL_CDMA500:
-			//SMI 64 + EBI 128
-			pmem_setting.pmem_start=MSM_SMI2_BASE;
-			pmem_setting.pmem_size=12*1024*1024;
-			CALC_PMEM(pmem_adsp, pmem, 0);//adsp is useless currently.
-			CALC_PMEM(fb, pmem_adsp, 2*1025*1023);//640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
-			CALC_PMEM(pmem_camera, fb, 0);//To be calculated more precisely
+    long pmem_shift = 0;
+    switch(__machine_arch_type) {
+        case MACH_TYPE_HTCDIAMOND:
+        case MACH_TYPE_HTCRAPHAEL_CDMA500:
+            //SMI 64 + EBI 128
+            pmem_setting.pmem_start=MSM_SMI2_BASE;
+            pmem_setting.pmem_size=14*1024*1024;            // Use 14Mb. Might be reduced down to 12Mb if required.
+            CALC_PMEM(pmem_adsp, pmem, 8*1024*1024);        // 8Mb for ADSP Jpeg + Video  processing
+            CALC_PMEM(pmem_camera, pmem_adsp, 8*1024*1024); // 8Mb for Camera preview buffers + snap ( 3MP sensor : 2064 * 1544 * (3 / 2) = 4780224 bytes = 4.56Mb)
+            CALC_PMEM(fb, pmem_camera, 2*1024*1024);        // 640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
+            //Total 32MB
 
-			//GPU1 must be in EBI bank 1
-			pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+107*1024*1024;
-			pmem_setting.pmem_gpu1_size=0x800000;
+            //GPU1 must be in EBI bank 1
+            pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+107*1024*1024;
+            pmem_setting.pmem_gpu1_size=0x800000;
 
-			//Put ramconsole somewhere ...
-			//End of SMI2
-			pmem_setting.ram_console_start=MSM_SMI2_BASE+31*1024*1024;
-			pmem_setting.ram_console_size=0x00100000;
-			break;
-		case MACH_TYPE_HTCRAPHAEL:
-		case MACH_TYPE_HTCRAPHAEL_CDMA:
-		case MACH_TYPE_HTCDIAMOND_CDMA:
-		case MACH_TYPE_HTCBLACKSTONE:
-		case MACH_TYPE_HTCTOPAZ:
-		case MACH_TYPE_HTCRHODIUM:
-		case MACH_TYPE_HTCKOVSKY:
-			//SMI 32 + EBI 2*128 or 1*256 (newer htctopaz)
+            // Ram console not working when placed at the end of SMI2
+            // Put it at the end of EBI1 before the GPU1
+            CALC_PMEM_BEFORE(ram_console, pmem_gpu1, 1*1024*1024);
+            break;
+        case MACH_TYPE_HTCRAPHAEL:
+        case MACH_TYPE_HTCRAPHAEL_CDMA:
+        case MACH_TYPE_HTCDIAMOND_CDMA:
+            //SMI 32 + EBI 2*128 or 1*256 (newer htctopaz)
+            pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-50*1024*1024;
+            pmem_setting.pmem_size=32*1024*1024;            // 32MB
+            CALC_PMEM(pmem_adsp, pmem, 8*1024*1024);        // 8Mb for ADSP Jpeg + Video  processing
+            CALC_PMEM(pmem_camera, pmem_adsp, 8*1024*1024); // 8Mb for Camera preview buffers ( 3MP sensor : 2064 * 1544 * (3 / 2) = 4780224 bytes = 4.56Mb)
+            CALC_PMEM(fb, pmem_camera, 2*1024*1024);        // 640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
+            //Total 50MB
 
-#if 0
-			// only htctopaz for now
-			if (board_mcp_monodie()) {
-				// we can start right after the first 128MB
-				pmem_shift = 0x8000000;
-			}
+            pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+107*1024*1024;
+            pmem_setting.pmem_gpu1_size=8*1024*1024;
+
+            pmem_setting.ram_console_start=0x8e0000;
+            pmem_setting.ram_console_size=0x20000;
+            break;
+        case MACH_TYPE_HTCBLACKSTONE:
+        case MACH_TYPE_HTCTOPAZ:
+        case MACH_TYPE_HTCKOVSKY:
+            //SMI 32 + EBI 2*128 or 1*256 (newer htctopaz)
+
+            // only htctopaz for now
+            //~ if (board_mcp_monodie()) {
+                //~ // we can start right after the first 128MB
+                //~ pmem_shift = 0x8000000;
+            //~ }
+
+            pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-50*1024*1024-pmem_shift;
+            pmem_setting.pmem_size=32*1024*1024;            // 32MB
+            CALC_PMEM(pmem_adsp, pmem, 8*1024*1024);        // 8Mb for ADSP Jpeg + Video processing
+            CALC_PMEM(pmem_camera, pmem_adsp, 8*1024*1024); // 8Mb for Camera preview buffers + snap ( 5MP sensor : 2608 * 1960 * (3 / 2) = 7667520 bytes = 7.31Mb)
+            CALC_PMEM(fb, pmem_camera, 2*1024*1024);        // 640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
+            //Total 50MB
+
+            if (machine_is_htctopaz()) {
+                // wince oemaddresstable gives us 0-112mb usable range,
+                // so set up 104mb for bank0 and 8mb for gpu1 (=112mb)
+                // (confirmed to not work on topa when gpu1 mem exceeds
+                // 112mb) <- cause : part of amss is loaded @0x17000000
+                pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+104*1024*1024;
+            } else {
+                pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+107*1024*1024;
+            }
+            pmem_setting.pmem_gpu1_size=8*1024*1024;
+
+            pmem_setting.ram_console_start=0x8e0000;
+            pmem_setting.ram_console_size=0x20000;
+            break;
+        case MACH_TYPE_HTCRHODIUM:
+            //SMI 64 + EBI 2*128
+
+#ifdef RHODIUM_USE_SMI2
+            /* SMI2 might also be used for some others memory regions
+            * but ADSP does not seems to be able to work with it
+            * so leave the adsp pmem in the EBI
+            */
+            pmem_setting.pmem_camera_start=MSM_SMI2_BASE;
+            pmem_setting.pmem_camera_size=8*1024*1024;  // 8Mb for Camera preview buffers + snap ( 3MP sensor : 2064 * 1544 * (3 / 2) = 4780224 bytes = 4.56Mb)
 #endif
 
-			pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-34*1024*1024-pmem_shift;
-			pmem_setting.pmem_size=32*1024*1024;//32MB
-			CALC_PMEM(pmem_adsp, pmem, 0);//16MB
-			CALC_PMEM(fb, pmem_adsp, 2*1024*1024);//2MB
-			CALC_PMEM(pmem_camera, fb, 0);//1MB
-			//Total 34MB
+            pmem_setting.pmem_size=32*1024*1024;        // 32MB
+#ifdef RHODIUM_USE_SMI2
+            pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-42*1024*1024;
+            CALC_PMEM(pmem_adsp, pmem, 8*1024*1024);    // 8Mb for ADSP Jpeg + Video  processing
+            CALC_PMEM(fb, pmem_adsp, 2*1024*1024);      // 640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
+#else
+            pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-50*1024*1024;
+            CALC_PMEM(pmem_adsp, pmem, 8*1024*1024);        // 8Mb for ADSP Jpeg + Video processing
+            CALC_PMEM(pmem_camera, pmem_adsp, 8*1024*1024); // 8Mb for Camera preview buffers + snap ( 3MP sensor : 2064 * 1544 * (3 / 2) = 4780224 bytes = 4.56Mb)
+            CALC_PMEM(fb, pmem_camera, 2*1024*1024);        // 640*480*2 (2byte/pixel)(Or 3?) *2 (front+back buffer)=1.2MiB
+#endif
+            //Total 42/50MB
 
-			if (machine_is_htcrhodium()) {
-				// wince oemaddresstable gives us 0-107mb usable range,
-				// so set up 99mb for bank0 and 8mb for gpu1 (=107mb)
-				pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+99*1024*1024;
-			} else if (machine_is_htctopaz()) {
-				// wince oemaddresstable gives us 0-112mb usable range,
-				// so set up 104mb for bank0 and 8mb for gpu1 (=112mb)
-				// (confirmed to not work on topa when gpu1 mem exceeds
-				// 112mb)
-				pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+104*1024*1024;
-			} else {
-				pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+107*1024*1024;
-			}
-			pmem_setting.pmem_gpu1_size=8*1024*1024;
+            // wince oemaddresstable gives us 0-107mb usable range,
+            // so set up 99mb for bank0 and 8mb for gpu1 (=107mb)
+            pmem_setting.pmem_gpu1_start=MSM_EBI_BASE+99*1024*1024;
+            pmem_setting.pmem_gpu1_size=8*1024*1024;
+            pmem_setting.ram_console_start=0x8e0000;
+            pmem_setting.ram_console_size=0x20000;
+            break;
+        default:
+            //SMI 32 + EBI 128
+            //So much things for so few memory
 
-			pmem_setting.ram_console_start=0x8e0000;
-			pmem_setting.ram_console_size=0x20000;
-			break;
-		default:
-			//SMI 32 + EBI 128
-			//So much things for so few memory
+            pmem_setting.pmem_start=MSM_EBI_BASE+89*1024*1024;
+            pmem_setting.pmem_size=0x800000;//8MB
+            CALC_PMEM(pmem_adsp, pmem, 0x800000);//8MB
+            CALC_PMEM(fb, pmem_adsp, 0x200000);//2MB
+            CALC_PMEM(pmem_camera, fb, 0x100000);//1MB
+    }
+    //GPU0 must be in SMI1
+    pmem_setting.pmem_gpu0_start=MSM_SMI_BASE+1024*1024;
+    pmem_setting.pmem_gpu0_size=0x700000;
+    resources_msm_fb[0].start=pmem_setting.fb_start;
+    resources_msm_fb[0].end=pmem_setting.fb_start+pmem_setting.fb_size;
+    resources_msm_fb[0].flags=IORESOURCE_MEM;
+    msm_add_mem_devices(&pmem_setting);
 
-			pmem_setting.pmem_start=MSM_EBI_BASE+89*1024*1024;
-			pmem_setting.pmem_size=0x800000;//8MB
-			CALC_PMEM(pmem_adsp, pmem, 0x800000);//8MB
-			CALC_PMEM(fb, pmem_adsp, 0x200000);//2MB
-			CALC_PMEM(pmem_camera, fb, 0x100000);//1MB
-	}
-	//GPU0 must be in SMI1
-	pmem_setting.pmem_gpu0_start=MSM_SMI_BASE+1024*1024;
-	pmem_setting.pmem_gpu0_size=0x700000;
-	resources_msm_fb[0].start=pmem_setting.fb_start;
-	resources_msm_fb[0].end=pmem_setting.fb_start+pmem_setting.fb_size;
-	resources_msm_fb[0].flags=IORESOURCE_MEM;
-	msm_add_mem_devices(&pmem_setting);
-
-	return 0;
+    return 0;
 }
 module_init(msm_pmem_init);
 
