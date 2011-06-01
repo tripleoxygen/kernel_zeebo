@@ -48,17 +48,14 @@
 #include <linux/input/msm_ts.h>
 #include <linux/mfd/microp-ng.h>
 
-//#include <linux/microp-keypad.h>
 #include <mach/board_htc.h>
+#include <mach/htc_acoustic_wince.h>
 #include <mach/htc_headset.h>
 
 #include "proc_comm_wince.h"
 #include "devices.h"
-//#include "htc_hw.h"
 #include "board-htctopaz.h"
-//#include "htc-usb.h"
 #include "gpio_chip.h"
-
 
 extern int init_mmc(void);
 
@@ -158,7 +155,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(3, "BT_EC_OFF"),
 
 	SND(0x11, "IDLE"),
-	SND(256, "CURRENT"),
+	SND(0x11, "CURRENT"),
 };
 #undef SND
 
@@ -270,6 +267,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
+	&acoustic_device,
 };
 
 extern struct sys_timer msm_timer;
@@ -321,6 +319,9 @@ static void __init htctopaz_init(void)
 #endif
 	msm_device_touchscreen.dev.platform_data = &htctopaz_ts_pdata;
 
+	// Set acoustic device specific parameters
+	acoustic_device.dev.platform_data = &amss_6120_acoustic_data;
+
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
@@ -361,9 +362,9 @@ static void __init htctopaz_fixup(struct machine_desc *desc,
 //	}
 	mi->bank[1].node = PHYS_TO_NID(mi->bank[1].start);
 #ifdef CONFIG_HOLES_IN_ZONE
-	mi->bank[1].size = (128 - 34) * 1024 * 1024; // see pmem.c for the value
+	mi->bank[1].size = (128 - 50) * 1024 * 1024; // see pmem.c for the value
 #else
-	mi->bank[1].size = (128 - 36) * 1024 * 1024; // see pmem.c for the value
+	mi->bank[1].size = (128 - 52) * 1024 * 1024; // see pmem.c for the value
 #endif
 
 	printk(KERN_INFO "%s: nr_banks = %d\n", __func__, mi->nr_banks);

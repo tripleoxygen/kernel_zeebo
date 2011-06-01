@@ -332,8 +332,10 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(3, "BT"),
 	SND(3, "BT_EC_OFF"),
 
+	SND(13, "SPEAKER_MIC"),
+
 	SND(0x11, "IDLE"),
-	SND(256, "CURRENT"),
+	SND(0x11, "CURRENT"),
 };
 #undef SND
 
@@ -427,7 +429,7 @@ static struct msm_ts_platform_data htcrhodium_ts_pdata = {
 	.min_y		= 10,
 	.max_y		= 835,
 	.inv_y		= 950,
-	.min_press	= 0,
+	.min_press	= 100,
 	.max_press	= 256,
 #if 0
 	.virt_y_start = 862,
@@ -582,10 +584,19 @@ static void __init htcrhodium_fixup(struct machine_desc *desc,
 
 	mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x10000000);
 	mi->bank[1].node = PHYS_TO_NID(mi->bank[1].start);
+#ifndef RHODIUM_USE_SMI2
 #ifdef CONFIG_HOLES_IN_ZONE
-	mi->bank[1].size = (128 - 34) * 1024 * 1024; // see pmem.c for the value
+	mi->bank[1].size = (128 - 50) * 1024 * 1024; // see pmem.c for the value
 #else
-	mi->bank[1].size = (128 - 36) * 1024 * 1024; // see pmem.c for the value
+	mi->bank[1].size = (128 - 52) * 1024 * 1024; // see pmem.c for the value
+#endif
+#else
+	mi->bank[1].size = (128 * 1024 * 1024)-42*1024*1024; // See pmem.c
+
+	//mi->nr_banks++;   // Don't make it available for allocation
+	mi->bank[2].start = PAGE_ALIGN(0x02000000+(8)*1024*1024);
+	mi->bank[2].node = PHYS_TO_NID(mi->bank[2].start);
+	mi->bank[2].size = (32-8/*camera*/)*1024*1024;
 #endif
 
 	printk(KERN_INFO "%s: nr_banks = %d\n", __func__, mi->nr_banks);
@@ -593,6 +604,10 @@ static void __init htcrhodium_fixup(struct machine_desc *desc,
 		mi->bank[0].start, mi->bank[0].node, mi->bank[0].size);
 	printk(KERN_INFO "%s: bank1 start=%08lx, node=%08x, size=%08lx\n", __func__,
 		mi->bank[1].start, mi->bank[1].node, mi->bank[1].size);
+#ifdef RHODIUM_USE_SMI2
+	printk(KERN_INFO "%s: bank2 start=%08lx, node=%08x, size=%08lx\n",__func__,
+		mi->bank[2].start, mi->bank[2].node, mi->bank[2].size);
+#endif
 }
 
 MACHINE_START(HTCRHODIUM, "HTC Rhodium cellphone")
