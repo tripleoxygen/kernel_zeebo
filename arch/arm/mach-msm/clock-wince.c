@@ -142,6 +142,7 @@ unsigned int pll_get_rate(enum pll pll, bool dump)
  * like, we use MicroP instead of GP CLK
  */
 static struct msm_clock_params msm_clock_parameters[NR_CLKS] = {
+	[ADM_CLK] = {.idx =  5, .name="ADM_CLK",},
 //	[ADSP_CLK] = {.offset = 0x34,.name = "ADSP_CLK",},
 	[EMDH_CLK] = {.offset = 0x50,.name = "EMDH_CLK",},
 	[GP_CLK] = {.offset = 0x5c,.name = "GP_CLK",},
@@ -752,6 +753,10 @@ static int a11_clk_enable(unsigned id)
 		done = 1;
 		break;
 
+	case ADM_CLK:
+		// skip
+		return 0;
+
 	default:
 		break;
 	}
@@ -779,8 +784,9 @@ static void a11_clk_disable(unsigned id)
 	struct msm_clock_params params;
 	params = msm_clk_get_params(id);
 
-	//GRP and IMEM use special order.But do they really need it?
-	if (params.idx && (id != GRP_3D_CLK && id != IMEM_CLK)) {
+	// GRP and IMEM use special order.But do they really need it?
+	// disabling ADM crashes ARM9
+	if (params.idx && (id != GRP_3D_CLK && id != IMEM_CLK && id != ADM_CLK)) {
 		writel(readl(MSM_CLK_CTL_BASE) & ~(1U << params.idx),
 				MSM_CLK_CTL_BASE);
 		done = 1;
@@ -892,6 +898,10 @@ static void a11_clk_disable(unsigned id)
 		done = 1;
 		break;
 
+	case ADM_CLK:
+		// skip; crashes ARM9
+		done = 1;
+		break;
 
 	default:
 		break;
