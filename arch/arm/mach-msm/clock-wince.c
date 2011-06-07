@@ -921,7 +921,7 @@ static int a11_clk_set_rate(unsigned id, unsigned rate)
 	int retval;
 	retval = 0;
 
-	if (DEBUG_MDNS)
+	if (debug_mask & DEBUG_MDNS)
 		D("%s: id=%u rate=%u\n", __func__, id, rate);
 
 	retval = set_mdns_host_clock(id, rate);
