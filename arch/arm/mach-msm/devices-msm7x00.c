@@ -557,6 +557,14 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat,
 	return platform_device_register(pdev);
 }
 
+void msm_delete_sdcc(unsigned int controller) {
+	struct platform_device	*pdev;
+	if (controller < 1 || controller > 4)
+		return;
+	pdev = msm_sdcc_devices[controller-1];
+	platform_device_unregister(pdev);
+}
+
 static struct resource resources_mddi0[] = {
 	{
 		.start	= MSM_PMDH_PHYS,
