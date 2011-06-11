@@ -397,7 +397,7 @@ static struct platform_driver msm7200a_mmc_driver = {
  * WiFi SDIO
  ******************************************************************************/
 // use a platform device to pass irq etc until we upgrade to the latest driver
-#define MSM7200A_WL1251_HACK 1
+#define MSM7200A_WL1251_HACK 0
 
 static struct msm7200a_wl1251_priv {
 	struct vreg *vreg;	
@@ -531,8 +531,10 @@ static int msm7200a_wl1251_probe(struct platform_device *pdev)
 		if (rc) {
 			goto err_gpio_irq;
 		}
+#if MSM7200A_WL1251_HACK
 		wl1251_pdata.irq = gpio_to_irq(pdata->gpio_irq);
 		set_irq_flags(wl1251_pdata.irq, IRQF_VALID | IRQF_NOAUTOEN);
+#endif
 	}
 	
 	if (pdata->gpio_32k_osc >= 0) {
@@ -612,7 +614,6 @@ err_gpio_32k_osc:
 		gpio_free(pdata->gpio_irq);
 	}
 err_gpio_irq:
-	wl1251_pdata.irq = 0;
 	return rc;
 }
 
@@ -639,7 +640,9 @@ static int msm7200a_wl1251_remove(struct platform_device *pdev) {
 		gpio_free(wl1251_priv.pdata->gpio_32k_osc);
 	}
 	wl1251_priv.pdata = NULL;
+#if MSM7200A_WL1251_HACK
 	wl1251_pdata.irq = 0;
+#endif
 	return 0;	
 }
 
