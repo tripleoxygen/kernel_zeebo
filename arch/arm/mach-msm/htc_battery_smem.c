@@ -264,16 +264,15 @@ static int init_battery_settings( struct battery_info_reply *buffer ) {
 
 	if ( get_battery_id_detection( buffer ) < 0 ) {
 		mutex_unlock(&htc_batt_info.lock);
-		if(debug_mask&DEBUG_LOG)
-			BATT_ERR("Critical Error on: get_battery_id_detection: VREF=%d; 0.5-VREF=%d; PCB_ID=0x%02x; HWBOARD_ID=0x%08x; ADC_A=%d; ADC_B=%d; htc_adc_range=%d; batt_id=%d; batt_vendor=%d; full_bat=%d\n", \
+		BATT_ERR("Critical Error on: get_battery_id_detection: VREF=%d; 0.5-VREF=%d; PCB_ID=0x%02x; HWBOARD_ID=0x%08x; ADC_A=%d; ADC_B=%d; htc_adc_range=%d; batt_id=%d; batt_vendor=%d; full_bat=%d\n", \
 			batt_vref, batt_vref_half, htc_pcb_id, htc_hwboard_id, htc_adc_a, htc_adc_b, htc_adc_range, buffer->batt_id, batt_vendor, buffer->full_bat);
 		return -EINVAL;
 	}
 
 	mutex_unlock(&htc_batt_info.lock);
-	if(debug_mask&DEBUG_LOG)
+	if (debug_mask & DEBUG_BATT)
 		BATT("init_battery_settings: VREF=%d; 0.5-VREF=%d; PCB_ID=0x%02x; HWBOARD_ID=0x%08x; ADC_A=%d; ADC_B=%d; htc_adc_range=%d; batt_id=%d; batt_vendor=%d; full_bat=%d\n", \
-		batt_vref, batt_vref_half, htc_pcb_id, htc_hwboard_id, htc_adc_a, htc_adc_b, htc_adc_range, buffer->batt_id, batt_vendor, buffer->full_bat);
+			batt_vref, batt_vref_half, htc_pcb_id, htc_hwboard_id, htc_adc_a, htc_adc_b, htc_adc_range, buffer->batt_id, batt_vendor, buffer->full_bat);
 
 	return 0;
 }
@@ -393,7 +392,7 @@ static int htctopaz_battery_id_detection( struct battery_info_reply *buffer )
 	} else if (buffer->batt_id >= 240 ) {
 		batt_vendor = 3;
 		buffer->full_bat = 1350000;
-	} else if (buffer->batt_id >= 100 ) {
+	} else if (buffer->batt_id >= 100 && buffer->batt_id != 170) {
 		batt_vendor = 2;
 		buffer->full_bat = 1110000;
 	} else {
