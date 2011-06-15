@@ -60,7 +60,7 @@ static inline void notify_other_proc_comm(void)
 
 #define DEX_A9_M2A_6_SHARED_MUTEX_ADDR   (MSM_SHARED_RAM_BASE + 0xfc138)
 #define DEX_A9_M2A_6_PENDING_INT_ADDR   (MSM_SHARED_RAM_BASE + 0xfc128)
-#define DEX_ARM11_MUTEX_ID          0x11
+#define DEX_ARM11_MUTEX_ID          0x91
 #define VIC_REG(off)                (MSM_VIC_BASE + (off))
 #define VIC_INT_ENCLEAR0            VIC_REG(0x0020)
 #define VIC_INT_ENSET0              VIC_REG(0x0030)
@@ -386,13 +386,6 @@ void msm_proc_comm_wince_enter_sleep(void)
 void msm_proc_comm_wince_exit_sleep(void)
 {
     msm_proc_comm_wince_device_sleeping = false;
-    /* If the VBUS interrupt was triggered while device was exiting sleep
-     * state, then process it now that the device is fully woken.
-     */
-    if ( msm_proc_comm_wince_pending_ints & DEX_INT_VBUS ) {
-        htc_cable_status_update(0);
-        msm_proc_comm_wince_pending_ints &= DEX_INT_VBUS;
-    }
 }
 
 static void msm_proc_comm_wince_early_suspend(struct early_suspend *h) {
