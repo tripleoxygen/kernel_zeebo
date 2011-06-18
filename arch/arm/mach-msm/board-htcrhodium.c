@@ -266,17 +266,8 @@ static void htcrhodium_usb_hw_reset(bool off)
 	}
 }
 
-static void htcrhodium_usb_phy_reset(void)
-{
-	printk(KERN_DEBUG "%s\n", __func__);
-
-	htcrhodium_usb_disable();
-	htcrhodium_usb_enable();
-}
-
 static struct msm_hsusb_platform_data htcrhodium_hsusb_board_pdata = {
 	.hw_reset = htcrhodium_usb_hw_reset,
-	.phy_reset = htcrhodium_usb_phy_reset,
 	.usb_connected = notify_usb_connected,
 };
 
