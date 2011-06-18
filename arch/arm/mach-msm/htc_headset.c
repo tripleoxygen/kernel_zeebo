@@ -627,7 +627,7 @@ static void remove_headset(void)
 	case NORMAL_HEARPHONE:
 		if (hi->btn_11pin_35mm_flag) {
 			disable_irq(hi->irq_btn_35mm);
-			//~ turn_mic_bias_on(0);
+			turn_mic_bias_on(0);
 			hi->btn_11pin_35mm_flag = 0;
 			if (atomic_read(&hi->btn_state))
 				button_released();
@@ -683,13 +683,13 @@ static void insert_headset(int type)
 			/* support 3.5mm earphone with mic */
 			printk(KERN_INFO "11pin_3.5mm_headset plug in\n");
 			/* Turn On Mic Bias */
-			//~ turn_mic_bias_on(1);
+			turn_mic_bias_on(1);
 			/* Wait pin be stable */
 			msleep(200);
 			/* Detect headset with or without microphone */
 			if (gpio_get_value(hi->headset_mic_35mm)) {
 				/* without microphone */
-				//~ turn_mic_bias_on(0);
+				turn_mic_bias_on(0);
 				state |= BIT_HEADSET_NO_MIC;
 				printk(KERN_INFO
 				       "11pin_3.5mm without microphone\n");

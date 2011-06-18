@@ -239,7 +239,7 @@ static void ADIE_Force8k(bool bOn) {
     writel(adie, MSM_SHARED_RAM_BASE + 0xfc0d0);
 }
 
-static void ADIE_ForceADIEAwake(bool bForce) {    
+static void ADIE_ForceADIEAwake(bool bForce) {
     int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
     if (bForce) {
         adie |= 0x8;
@@ -340,10 +340,11 @@ static int update_audio_setting(void __user *arg)
     return ret;
 }
 
-static int turn_mic_bias_on(bool on, bool bDualMicEn)
+static int turn_mic_bias_on_internal(bool on, bool bDualMicEn)
 {
-	char pmSpeakerGain[2][10] = { {0x93, 0, 0x93, 7, 0x93, 1, 0x93, 7, 0xFF, 0xFF},
-					{0x93, 0, 0x93, 4, 0x93, 1, 0x93, 4, 0xFF, 0xFF}};
+	char pmSpeakerGain[2][10] = { 
+			{0x93, 0, 0x93, 7, 0x93, 1, 0x93, 7, 0xFF, 0xFF},
+			{0x93, 0, 0x93, 4, 0x93, 1, 0x93, 4, 0xFF, 0xFF} };
 
 
 	D("%s(%d)\n", __func__, on);
@@ -370,6 +371,12 @@ static int turn_mic_bias_on(bool on, bool bDualMicEn)
 	return 0;
 }
 
+int turn_mic_bias_on(bool on)
+{
+	return turn_mic_bias_on_internal(on, false);
+}
+EXPORT_SYMBOL(turn_mic_bias_on);
+
 static int update_hw_audio_path(void __user *arg)
 {
 	struct msm_audio_path audio_path;
@@ -385,7 +392,7 @@ static int update_hw_audio_path(void __user *arg)
 	       audio_path.enable_speaker, audio_path.enable_headset);
 
 	/* Switch microphone on/off */
-	turn_mic_bias_on(audio_path.enable_mic,
+	turn_mic_bias_on_internal(audio_path.enable_mic,
                      audio_path.enable_dual_mic);
 
 	/* Switch headset HW on/off */
@@ -586,14 +593,6 @@ static int dump_adie_memory(char *buf, int max) {
     return dump_memory(buf, max, (int)amss_data->adie_table, 0x1000);
 }
 
-static int dump_vol_memory(char *buf, int max) {
-    return dump_memory(buf, max, (int)amss_data->volume_table, 0x300);
-}
-
-static int dump_ce_memory(char *buf, int max) {
-    return dump_memory(buf, max, (int)amss_data->ce_table, 0x300);
-}
-
 static int dump_voc_cal_memory(char *buf, int max) {
     int i = 0, n, j;
 
@@ -608,15 +607,12 @@ static int dump_voc_cal_memory(char *buf, int max) {
     return i;
 }
 
-static int dump_mic_memory(char *buf, int max) {
-    return dump_memory(buf, max, (int)amss_data->mic_offset, 0x10);
-}
-
 #if 0
 static int dbg_reset(char *buf, int max) {
     return readl(MSM_AD5_BASE + 0x00400030);
 }
 #endif
+
 
 #define DEBUG_BUFMAX 8192
 static char debug_buffer[DEBUG_BUFMAX];
@@ -650,10 +646,6 @@ static int __init acoustic_dbg_init(void)
 
     debugfs_create_file("dump_adie", S_IRUSR, dent, &dump_adie_memory, &debug_ops_readonly);
     debugfs_create_file("dump_voc", S_IRUSR, dent, &dump_voc_cal_memory, &debug_ops_readonly);
-    debugfs_create_file("dump_vol", S_IRUSR, dent, &dump_vol_memory, &debug_ops_readonly);
-    debugfs_create_file("dump_ce", S_IRUSR, dent, &dump_ce_memory, &debug_ops_readonly);
-    debugfs_create_file("dump_mic", S_IRUSR, dent, &dump_mic_memory, &debug_ops_readonly);
-
 //    debugfs_create_file("reset", S_IRUSR, dent, &dbg_reset, &debug_ops_readonly);
 
 	return 0;
