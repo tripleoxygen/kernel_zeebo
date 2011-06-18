@@ -86,6 +86,39 @@ struct snd_set_volume_msg {
 
 struct snd_endpoint *get_snd_endpoints(int *size);
 
+static int current_snd_device_id = 0;
+static int idle_snd_device_id = 0;
+
+static inline int get_idle_device_id(void)
+{
+	int i;
+	struct snd_ctxt *snd = &the_snd;
+
+	for (i = 0; i < snd->snd_epts->num; i++) {
+		if (!strcmp("IDLE", snd->snd_epts->endpoints[i].name)) {
+			printk(KERN_DEBUG "%s: Found SND_DEVICE_IDLE id %d\n", __func__,
+				snd->snd_epts->endpoints[i].id);
+			return snd->snd_epts->endpoints[i].id;
+		}
+	}
+
+	printk(KERN_DEBUG "%s: SND_DEVICE_IDLE not found\n", __func__);
+	/* default to earcuple */
+	return 0;
+}
+
+static inline void check_device(int *device)
+{
+	/* Is device ID out of range ? */
+	if (*device > idle_snd_device_id) {
+		pr_err("%s: snd device %d out of range, using last device id %d.\n",
+			__func__, *device, current_snd_device_id);
+		*device = current_snd_device_id;
+	} else {
+		current_snd_device_id = *device;
+	}
+}
+
 static inline int check_mute(int mute)
 {
 	return (mute == SND_MUTE_MUTED ||
@@ -139,20 +172,29 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
-		dmsg.args.device = cpu_to_be32(dev.device);
-		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
-		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		if (check_mute(dev.ear_mute) < 0 ||
 				check_mute(dev.mic_mute) < 0) {
 			pr_err("snd_ioctl set device: invalid mute status.\n");
 			rc = -EINVAL;
 			break;
 		}
+
+		/* Prevent wrong device to make the snd processor crashing */
+		check_device(&dev.device);
+
+		dmsg.args.device = cpu_to_be32(dev.device);
+		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
+		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		dmsg.args.cb_func = -1;
 		dmsg.args.client_data = 0;
 
-		pr_info("snd_set_device %d %d %d\n", dev.device,
+		pr_info("snd_set_device device=%d ear_mute=%d mic_mute=%d\n", dev.device,
 						 dev.ear_mute, dev.mic_mute);
+
+		if(!snd->ept) {
+			pr_err("No sound endpoint found, can't set snd_device");
+			return -EIO;
+		}
 
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_DEVICE_PROC,
@@ -168,7 +210,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		vmsg.args.device = cpu_to_be32(vol.device);
 		vmsg.args.method = cpu_to_be32(vol.method);
-		if (vol.method != SND_METHOD_VOICE) {
+		if (vol.method != SND_METHOD_VOICE && vol.method != SND_METHOD_AUDIO) {
 			pr_err("snd_ioctl set volume: invalid method.\n");
 			rc = -EINVAL;
 			break;
@@ -178,7 +220,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		vmsg.args.cb_func = -1;
 		vmsg.args.client_data = 0;
 
-		pr_info("snd_set_volume %d %d %d\n", vol.device,
+		pr_info("snd_set_volume device=%d method=%d volume=%d\n", vol.device,
 						vol.method, vol.volume);
 
 		rc = msm_rpc_call(snd->ept,
@@ -265,6 +307,10 @@ static int snd_probe(struct platform_device *pdev)
 	struct snd_ctxt *snd = &the_snd;
 	mutex_init(&snd->lock);
 	snd->snd_epts = (struct msm_snd_endpoints *)pdev->dev.platform_data;
+
+	/* Find the idle sound device */
+	idle_snd_device_id = get_idle_device_id();
+
 	return misc_register(&snd_misc);
 }
 
