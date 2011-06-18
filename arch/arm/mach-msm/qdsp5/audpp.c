@@ -192,6 +192,9 @@ static void audpp_dsp_event(void *data, unsigned id, size_t len,
 	case AUDPP_MSG_FLUSH_ACK:
 		audpp_notify_clnt(audpp, msg[0], id, msg);
 		break;
+	case ADSP_MESSAGE_ID:
+		pr_info("audpp: Received ADSP event: module enable/disable(audpptask)\n");
+		break;
 	default:
 	  pr_info("audpp: unhandled msg id %x\n", id);
 	}
