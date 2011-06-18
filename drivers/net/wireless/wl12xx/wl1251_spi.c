@@ -3,8 +3,6 @@
  *
  * Copyright (C) 2008 Nokia Corporation
  *
- * Contact: Kalle Valo <kalle.valo@nokia.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -217,12 +215,21 @@ static void wl1251_spi_disable_irq(struct wl1251 *wl)
 	return disable_irq(wl->irq);
 }
 
+static int wl1251_spi_set_power(struct wl1251 *wl, bool enable)
+{
+	if (wl->set_power)
+		wl->set_power(enable);
+
+	return 0;
+}
+
 static const struct wl1251_if_operations wl1251_spi_ops = {
 	.read = wl1251_spi_read,
 	.write = wl1251_spi_write,
 	.reset = wl1251_spi_reset_wake,
 	.enable_irq = wl1251_spi_enable_irq,
 	.disable_irq = wl1251_spi_disable_irq,
+	.power = wl1251_spi_set_power,
 };
 
 static int __devinit wl1251_spi_probe(struct spi_device *spi)
@@ -344,4 +351,5 @@ module_init(wl1251_spi_init);
 module_exit(wl1251_spi_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Kalle Valo <kalle.valo@nokia.com>");
+MODULE_AUTHOR("Kalle Valo <kvalo@adurom.com>");
+MODULE_ALIAS("spi:wl1251");
