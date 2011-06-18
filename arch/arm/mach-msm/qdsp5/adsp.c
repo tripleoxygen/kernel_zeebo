@@ -1183,7 +1183,7 @@ fail_rpc_register:
 	msm_rpc_close(rpc_cb_server_client);
 	rpc_cb_server_client = NULL;
 fail_rpc_open:
-	enable_irq(INT_ADSP);
+	disable_irq(INT_ADSP);
 	free_irq(INT_ADSP, 0);
 fail_request_irq:
 	kfree(adsp_modules);
