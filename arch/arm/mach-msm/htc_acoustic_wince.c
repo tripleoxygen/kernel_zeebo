@@ -250,11 +250,13 @@ static void ADIE_ForceADIEAwake(bool bForce) {
 }
 
 static void ADIE_ForceADIEUpdate(bool bForce) {
-    int adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
+    int adie;
 
     printk("%s %d\n", __func__, bForce);
 
     smem_semaphore_down(ACOUSTIC_SHARED_MUTEX_ADDR, ACOUSTIC_ARM11_MUTEX_ID);
+
+    adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
 
     if (bForce) {
         adie |= 0x2;
