@@ -237,6 +237,7 @@ static struct msm7200a_sdslot_priv {
 	struct vreg *vreg;	
 	struct msm7200a_mmc_pdata* pdata;
 	struct msm7200a_sdcc_gpios gpios;
+	bool state;
 } sdslot_priv;
 
 static uint32_t sdslot_switchvdd(struct device *dev, unsigned int vdd)
@@ -247,11 +248,16 @@ static uint32_t sdslot_switchvdd(struct device *dev, unsigned int vdd)
 		if (!sdslot_priv.vreg)
 			return 0;
 		
-		rc = vreg_enable(sdslot_priv.vreg);
-		if (rc)
-			printk(KERN_ERR
-			       "%s: Error enabling sd slot error code %d\n",
-			       __func__, rc);
+		if (!sdslot_priv.state) {
+			rc = vreg_enable(sdslot_priv.vreg);
+			if (rc) {
+					printk(KERN_ERR
+						"%s: Error enabling sd slot error code %d\n",
+						__func__, rc);
+					return rc;
+				}
+			sdslot_priv.state = true;
+		}
 
 		for (i = 0; i < ARRAY_SIZE(mmc_vdd_table); i++) {
 			if (mmc_vdd_table[i].mask == (1 << vdd)) {
@@ -266,7 +272,7 @@ static uint32_t sdslot_switchvdd(struct device *dev, unsigned int vdd)
 		}
 		printk(KERN_ERR "%s: Invalid VDD %d specified\n", __func__, vdd);
 	} else {
-		if (sdslot_priv.vreg) {
+		if (sdslot_priv.vreg && sdslot_priv.state) {
 			rc = vreg_disable(sdslot_priv.vreg);
 			if (rc) {
 				printk(KERN_ERR
@@ -274,6 +280,7 @@ static uint32_t sdslot_switchvdd(struct device *dev, unsigned int vdd)
 				       __func__, rc);
 				return rc;
 			}
+			sdslot_priv.state = false;
 		}
 		msm_gpios_disable(sdslot_priv.gpios.off, sdslot_priv.gpios.off_length);
 	}
@@ -335,6 +342,7 @@ static int msm7200a_mmc_probe(struct platform_device *pdev)
 	}
 	
 	sdslot_priv.pdata = pdata;
+	sdslot_priv.state = false;
 
 	if (pdata->gpio_detection >= 0) {
 		set_irq_wake(gpio_to_irq(pdata->gpio_detection), 1);
