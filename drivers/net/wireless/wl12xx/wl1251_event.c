@@ -4,8 +4,6 @@
  * Copyright (c) 1998-2007 Texas Instruments Incorporated
  * Copyright (C) 2008 Nokia Corporation
  *
- * Contact: Kalle Valo <kalle.valo@nokia.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -95,6 +93,53 @@ static int wl1251_event_process(struct wl1251 *wl, struct event_mailbox *mbox)
 				return ret;
 		}
 	}
+
+	if (wl->vif && wl->rssi_thold) {
+		if (vector & ROAMING_TRIGGER_LOW_RSSI_EVENT_ID) {
+			wl1251_debug(DEBUG_EVENT,
+				     "ROAMING_TRIGGER_LOW_RSSI_EVENT");
+			ieee80211_cqm_rssi_notify(wl->vif,
+				NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
+				GFP_KERNEL);
+		}
+
+		if (vector & ROAMING_TRIGGER_REGAINED_RSSI_EVENT_ID) {
+			wl1251_debug(DEBUG_EVENT,
+				     "ROAMING_TRIGGER_REGAINED_RSSI_EVENT");
+			ieee80211_cqm_rssi_notify(wl->vif,
+				NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
+				GFP_KERNEL);
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Poll the mailbox event field until any of the bits in the mask is set or a
+ * timeout occurs (WL1251_EVENT_TIMEOUT in msecs)
+ */
+int wl1251_event_wait(struct wl1251 *wl, u32 mask, int timeout_ms)
+{
+	u32 events_vector, event;
+	unsigned long timeout;
+
+	timeout = jiffies + msecs_to_jiffies(timeout_ms);
+
+	do {
+		if (time_after(jiffies, timeout))
+			return -ETIMEDOUT;
+
+		msleep(1);
+
+		/* read from both event fields */
+		wl1251_mem_read(wl, wl->mbox_ptr[0], &events_vector,
+				sizeof(events_vector));
+		event = events_vector & mask;
+		wl1251_mem_read(wl, wl->mbox_ptr[1], &events_vector,
+				sizeof(events_vector));
+		event |= events_vector & mask;
+	} while (!event);
 
 	return 0;
 }
