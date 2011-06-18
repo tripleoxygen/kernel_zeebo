@@ -48,7 +48,7 @@
 #define TRACE_R2R_MSG 1
 #define TRACE_R2R_RAW 1
 #define TRACE_RPC_MSG 1
-#define TRACE_NOTIFY_MSG 0
+#define TRACE_NOTIFY_MSG 1
 
 #define MSM_RPCROUTER_DEBUG 1
 #define MSM_RPCROUTER_DEBUG_PKT 1
@@ -139,7 +139,15 @@ static int rpcrouter_send_control_msg(union rr_control_msg *msg)
 	unsigned long flags;
 	int need;
 
-	if (!(msg->cmd == RPCROUTER_CTRL_CMD_HELLO) && !initialized) {
+	RR("send control message cmd=%d srv.cmd=%d prog=%08x:%08x id=%d:%08x\n",
+	   msg->cmd, msg->srv.cmd, msg->srv.prog, msg->srv.vers, msg->srv.pid,
+	   msg->srv.cid);
+
+	if (!(msg->cmd == RPCROUTER_CTRL_CMD_HELLO
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+		|| msg->cmd == RPCROUTER_CTRL_CMD_BYE
+#endif
+		) && !initialized) {
 		printk(KERN_ERR "rpcrouter_send_control_msg(): Warning, "
 		       "router not initialized\n");
 		return -EINVAL;
@@ -399,6 +407,13 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 
 		RR("x HELLO\n");
 		memset(&ctl, 0, sizeof(ctl));
+
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+		ctl.cmd = RPCROUTER_CTRL_CMD_BYE;
+		rpcrouter_send_control_msg(&ctl);
+		msleep(50);
+#endif
+
 		ctl.cmd = RPCROUTER_CTRL_CMD_HELLO;
 		rpcrouter_send_control_msg(&ctl);
 
@@ -1315,7 +1330,7 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 	printk(KERN_DEBUG "%s: sending CMD_HELLO\n", __func__);
 	msg.cmd = RPCROUTER_CTRL_CMD_HELLO;
 	process_control_msg(&msg, sizeof(msg));
-	msleep(50);
+	msleep(100);
 #endif
 
 	return 0;
