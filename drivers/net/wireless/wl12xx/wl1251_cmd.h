@@ -4,8 +4,6 @@
  * Copyright (c) 1998-2007 Texas Instruments Incorporated
  * Copyright (C) 2008 Nokia Corporation
  *
- * Contact: Kalle Valo <kalle.valo@nokia.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -106,12 +104,12 @@ struct wl1251_cmd_header {
 	u16 status;
 	/* payload */
 	u8 data[0];
-} __attribute__ ((packed));
+} __packed;
 
 struct  wl1251_command {
 	struct wl1251_cmd_header header;
 	u8  parameters[MAX_CMD_PARAMS];
-};
+} __packed;
 
 enum {
 	CMD_MAILBOX_IDLE              		=  0,
@@ -164,7 +162,7 @@ struct cmd_read_write_memory {
 	   of this field is the Host in WRITE command or the Wilink in READ
 	   command. */
 	u8 value[MAX_READ_SIZE];
-};
+} __packed;
 
 #define CMDMBOX_HEADER_LEN 4
 #define CMDMBOX_INFO_ELEM_HEADER_LEN 4
@@ -175,8 +173,8 @@ struct cmd_read_write_memory {
 #define WL1251_SCAN_NUM_PROBES 3
 
 struct wl1251_scan_parameters {
-	u32 rx_config_options;
-	u32 rx_filter_options;
+	__le32 rx_config_options;
+	__le32 rx_filter_options;
 
 	/*
 	 * Scan options:
@@ -186,7 +184,7 @@ struct wl1251_scan_parameters {
 	 * bit 2: voice mode, 0 for normal scan.
 	 * bit 3: scan priority, 1 for high priority.
 	 */
-	u16 scan_options;
+	__le16 scan_options;
 
 	/* Number of channels to scan */
 	u8 num_channels;
@@ -195,17 +193,17 @@ struct wl1251_scan_parameters {
 	u8 num_probe_requests;
 
 	/* Rate and modulation for probe requests */
-	u16 tx_rate;
+	__le16 tx_rate;
 
 	u8 tid_trigger;
 	u8 ssid_len;
 	u8 ssid[32];
 
-} __attribute__ ((packed));
+} __packed;
 
 struct wl1251_scan_ch_parameters {
-	u32 min_duration; /* in TU */
-	u32 max_duration; /* in TU */
+	__le32 min_duration; /* in TU */
+	__le32 max_duration; /* in TU */
 	u32 bssid_lsb;
 	u16 bssid_msb;
 
@@ -218,7 +216,7 @@ struct wl1251_scan_ch_parameters {
 	u8 tx_power_att;
 	u8 channel;
 	u8 pad[3];
-} __attribute__ ((packed));
+} __packed;
 
 /* SCAN parameters */
 #define SCAN_MAX_NUM_OF_CHANNELS 16
@@ -228,7 +226,7 @@ struct wl1251_cmd_scan {
 
 	struct wl1251_scan_parameters params;
 	struct wl1251_scan_ch_parameters channels[SCAN_MAX_NUM_OF_CHANNELS];
-} __attribute__ ((packed));
+} __packed;
 
 enum {
 	BSS_TYPE_IBSS = 0,
@@ -276,14 +274,14 @@ struct cmd_join {
 	u8 tx_mgt_frame_rate; /* OBSOLETE */
 	u8 tx_mgt_frame_mod;  /* OBSOLETE */
 	u8 reserved;
-} __attribute__ ((packed));
+} __packed;
 
 struct cmd_enabledisable_path {
 	struct wl1251_cmd_header header;
 
 	u8 channel;
 	u8 padding[3];
-} __attribute__ ((packed));
+} __packed;
 
 #define WL1251_MAX_TEMPLATE_SIZE 300
 
@@ -292,7 +290,7 @@ struct wl1251_cmd_packet_template {
 
 	__le16 size;
 	u8 data[0];
-} __attribute__ ((packed));
+} __packed;
 
 #define TIM_ELE_ID    5
 #define PARTIAL_VBM_MAX    251
@@ -304,7 +302,7 @@ struct wl1251_tim {
 	u8 dtim_period;
 	u8 bitmap_ctrl;
 	u8 pvb_field[PARTIAL_VBM_MAX]; /* Partial Virtual Bitmap */
-} __attribute__ ((packed));
+} __packed;
 
 /* Virtual Bit Map update */
 struct wl1251_cmd_vbm_update {
@@ -312,11 +310,11 @@ struct wl1251_cmd_vbm_update {
 	__le16 len;
 	u8  padding[2];
 	struct wl1251_tim tim;
-} __attribute__ ((packed));
+} __packed;
 
 enum wl1251_cmd_ps_mode {
-	STATION_ACTIVE_MODE,
-	STATION_POWER_SAVE_MODE
+	CHIP_ACTIVE_MODE,
+	CHIP_POWER_SAVE_MODE
 };
 
 struct wl1251_cmd_ps_params {
@@ -333,13 +331,13 @@ struct wl1251_cmd_ps_params {
 	u8 hang_over_period;
 	u16 null_data_rate;
 	u8 pad[2];
-} __attribute__ ((packed));
+} __packed;
 
 struct wl1251_cmd_trigger_scan_to {
 	struct wl1251_cmd_header header;
 
 	u32 timeout;
-};
+} __packed;
 
 /* HW encryption keys */
 #define NUM_ACCESS_CATEGORIES_COPY 4
@@ -411,7 +409,7 @@ struct wl1251_cmd_set_keys {
 	u8 key[MAX_KEY_SIZE];
 	u16 ac_seq_num16[NUM_ACCESS_CATEGORIES_COPY];
 	u32 ac_seq_num32[NUM_ACCESS_CATEGORIES_COPY];
-} __attribute__ ((packed));
+} __packed;
 
 
 #endif /* __WL1251_CMD_H__ */

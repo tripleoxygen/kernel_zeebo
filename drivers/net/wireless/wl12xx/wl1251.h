@@ -4,8 +4,6 @@
  * Copyright (c) 1998-2007 Texas Instruments Incorporated
  * Copyright (C) 2008-2009 Nokia Corporation
  *
- * Contact: Kalle Valo <kalle.valo@nokia.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -132,6 +130,12 @@ enum wl1251_partition_type {
 	PART_DRPW,
 
 	PART_TABLE_LEN
+};
+
+enum wl1251_station_mode {
+	STATION_ACTIVE_MODE,
+	STATION_POWER_SAVE_MODE,
+	STATION_IDLE,
 };
 
 struct wl1251_partition {
@@ -363,8 +367,7 @@ struct wl1251 {
 
 	struct delayed_work elp_work;
 
-	/* we can be in psm, but not in elp, we have to differentiate */
-	bool psm;
+	enum wl1251_station_mode station_mode;
 
 	/* PSM mode requested */
 	bool psm_requested;
@@ -444,4 +447,3 @@ void wl1251_disable_interrupts(struct wl1251 *wl);
 #define WL1251_DEFAULT_LOW_RSSI_DEPTH           10
 
 #endif
-
