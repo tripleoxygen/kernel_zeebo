@@ -62,9 +62,31 @@ int smd_set_channel_list(const struct smd_tty_channel_desc *channels, int len)
 	return 0;
 }
 
+/**
+ * line discipline callback wrappers
+ *
+ * The wrappers maintain line discipline references
+ * while calling into the line discipline.
+ *
+ * ldisc_receive_buf  - pass receive data to line discipline
+ */
+
+static void smd_readx_cb(void *data, int count, void *ctxt)
+{
+	struct tty_struct *tty = ctxt;
+	struct tty_ldisc *ld;
+	if (!tty)
+		return;
+	ld = tty_ldisc_ref(tty);
+	if (ld) {
+		if (ld->ops->receive_buf)
+			ld->ops->receive_buf(tty, data, 0, count);
+		tty_ldisc_deref(ld);
+	}
+}
+
 static void smd_tty_work_func(struct work_struct *work)
 {
-	unsigned char *ptr;
 	int avail;
 
 	struct smd_tty_info *info = container_of(work,
@@ -91,22 +113,14 @@ static void smd_tty_work_func(struct work_struct *work)
 		if (avail == 0)
 			break;
 
-		ptr = NULL;
-		avail = tty_prepare_flip_string(tty, &ptr, avail);
-
-		if (avail && ptr) {
-			if (smd_read(info->ch, ptr, avail) != avail) {
-				/* shouldn't be possible since we're in interrupt
-				 * context here and nobody else could 'steal' our
-				 * characters.
-				 */
-				printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!");
-			}
-			wake_lock_timeout(&info->wake_lock, HZ / 2);
-			tty->low_latency = 1;
-			tty_flip_buffer_push(tty);
-		} else
-			printk(KERN_ERR "smd_tty_work_func: tty_prepare_flip_string fail\n");
+		if (smd_readx(info->ch, avail, smd_readx_cb, (void *)tty) != avail) {
+			/* shouldn't be possible since we're in interrupt
+			** context here and nobody else could 'steal' our
+			** characters.
+			*/
+			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!\n");
+		}
+		wake_lock_timeout(&info->wake_lock, HZ / 2);
 	}
 
 	mutex_unlock(&smd_tty_lock);
@@ -119,6 +133,8 @@ static void smd_tty_notify(void *priv, unsigned event)
 {
 	struct smd_tty_info *info = priv;
 
+	if (event == SMD_EVENT_CLOSE)
+		tty_hangup(info->tty);
 	if (event != SMD_EVENT_DATA)
 		return;
 
