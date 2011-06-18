@@ -54,14 +54,14 @@ void wl1251_disable_interrupts(struct wl1251 *wl)
 	wl->if_ops->disable_irq(wl);
 }
 
-static void wl1251_power_off(struct wl1251 *wl)
+static int wl1251_power_off(struct wl1251 *wl)
 {
-	wl->set_power(false);
+	return wl->if_ops->power(wl, false);
 }
 
-static void wl1251_power_on(struct wl1251 *wl)
+static int wl1251_power_on(struct wl1251 *wl)
 {
-	wl->set_power(true);
+	return wl->if_ops->power(wl, true);
 }
 
 static int wl1251_fetch_firmware(struct wl1251 *wl)
@@ -171,7 +171,8 @@ static int wl1251_chip_wakeup(struct wl1251 *wl)
 			     REGISTERS_DOWN_SIZE);
 
 	/* ELP module wake up */
-	wl1251_fw_wakeup(wl);
+	//wl1251_fw_wakeup(wl);
+	wl1251_ps_elp_wakeup(wl);
 
 	/* whal_FwCtrl_BootSm() */
 
