@@ -3,8 +3,6 @@
  *
  * Copyright (C) 2008-2009 Nokia Corporation
  *
- * Contact: Kalle Valo <kalle.valo@nokia.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -124,15 +122,13 @@ static int wl1251_fetch_nvs(struct wl1251 *wl)
 	}
 
 	wl->nvs_len = fw->size;
-	wl->nvs = kmalloc(wl->nvs_len, GFP_KERNEL);
+	wl->nvs = kmemdup(fw->data, wl->nvs_len, GFP_KERNEL);
 
 	if (!wl->nvs) {
 		wl1251_error("could not allocate memory for the nvs file");
 		ret = -ENOMEM;
 		goto out;
 	}
-
-	memcpy(wl->nvs, fw->data, wl->nvs_len);
 
 	ret = 0;
 
@@ -156,9 +152,11 @@ static void wl1251_fw_wakeup(struct wl1251 *wl)
 
 static int wl1251_chip_wakeup(struct wl1251 *wl)
 {
-	int ret = 0;
+	int ret;
 
-	wl1251_power_on(wl);
+	ret = wl1251_power_on(wl);
+	if (ret < 0)
+		return ret;
 	msleep(WL1251_POWER_ON_SLEEP);
 	wl->if_ops->reset(wl);
 
@@ -171,8 +169,7 @@ static int wl1251_chip_wakeup(struct wl1251 *wl)
 			     REGISTERS_DOWN_SIZE);
 
 	/* ELP module wake up */
-	//wl1251_fw_wakeup(wl);
-	wl1251_ps_elp_wakeup(wl);
+	wl1251_fw_wakeup(wl);
 
 	/* whal_FwCtrl_BootSm() */
 
@@ -296,14 +293,14 @@ static void wl1251_irq_work(struct work_struct *work)
 			wl1251_tx_complete(wl);
 		}
 
-		if (intr & (WL1251_ACX_INTR_EVENT_A |
-			    WL1251_ACX_INTR_EVENT_B)) {
-			wl1251_debug(DEBUG_IRQ, "WL1251_ACX_INTR_EVENT (0x%x)",
-				     intr);
-			if (intr & WL1251_ACX_INTR_EVENT_A)
-				wl1251_event_handle(wl, 0);
-			else
-				wl1251_event_handle(wl, 1);
+		if (intr & WL1251_ACX_INTR_EVENT_A) {
+			wl1251_debug(DEBUG_IRQ, "WL1251_ACX_INTR_EVENT_A");
+			wl1251_event_handle(wl, 0);
+		}
+
+		if (intr & WL1251_ACX_INTR_EVENT_B) {
+			wl1251_debug(DEBUG_IRQ, "WL1251_ACX_INTR_EVENT_B");
+			wl1251_event_handle(wl, 1);
 		}
 
 		if (intr & WL1251_ACX_INTR_INIT_COMPLETE)
@@ -342,11 +339,9 @@ static int wl1251_join(struct wl1251 *wl, u8 bss_type, u8 channel,
 	if (ret < 0)
 		goto out;
 
-	/*
-	 * FIXME: we should wait for JOIN_EVENT_COMPLETE_ID but to simplify
-	 * locking we just sleep instead, for now
-	 */
-	msleep(10);
+	ret = wl1251_event_wait(wl, JOIN_EVENT_COMPLETE_ID, 100);
+	if (ret < 0)
+		wl1251_warning("join timeout");
 
 out:
 	return ret;
@@ -411,6 +406,7 @@ static int wl1251_op_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 static int wl1251_op_start(struct ieee80211_hw *hw)
 {
 	struct wl1251 *wl = hw->priv;
+	struct wiphy *wiphy = hw->wiphy;
 	int ret = 0;
 
 	wl1251_debug(DEBUG_MAC80211, "mac80211 start");
@@ -444,6 +440,10 @@ static int wl1251_op_start(struct ieee80211_hw *hw)
 
 	wl1251_info("firmware booted (%s)", wl->fw_ver);
 
+	/* update hw/fw version info in wiphy struct */
+	wiphy->hw_version = wl->chip_id;
+	strncpy(wiphy->fw_version, wl->fw_ver, sizeof(wiphy->fw_version));
+
 out:
 	if (ret < 0)
 		wl1251_power_off(wl);
@@ -466,9 +466,7 @@ static void wl1251_op_stop(struct ieee80211_hw *hw)
 	WARN_ON(wl->state != WL1251_STATE_ON);
 
 	if (wl->scanning) {
-		mutex_unlock(&wl->mutex);
 		ieee80211_scan_completed(wl->hw, true);
-		mutex_lock(&wl->mutex);
 		wl->scanning = false;
 	}
 
@@ -502,6 +500,7 @@ static void wl1251_op_stop(struct ieee80211_hw *hw)
 	wl->station_mode = STATION_ACTIVE_MODE;
 	wl->tx_queue_stopped = false;
 	wl->power_level = WL1251_DEFAULT_POWER_LEVEL;
+	wl->rssi_thold = 0;
 	wl->channel = WL1251_DEFAULT_CHANNEL;
 
 	wl1251_debugfs_reset(wl);
@@ -627,7 +626,7 @@ static int wl1251_op_config(struct ieee80211_hw *hw, u32 changed)
 		ret = wl1251_ps_set_mode(wl, STATION_POWER_SAVE_MODE);
 		if (ret < 0)
 			goto out_sleep;
-	} else if (!(conf->flags & IEEE80211_CONF_PS) &&
+		} else if (!(conf->flags & IEEE80211_CONF_PS) &&
 		   wl->psm_requested) {
 		wl1251_debug(DEBUG_PSM, "psm disabled");
 
@@ -640,6 +639,22 @@ static int wl1251_op_config(struct ieee80211_hw *hw, u32 changed)
 		}
 	}
 
+	if (changed & IEEE80211_CONF_CHANGE_IDLE) {
+		if (conf->flags & IEEE80211_CONF_IDLE) {
+			ret = wl1251_ps_set_mode(wl, STATION_IDLE);
+			if (ret < 0)
+				goto out_sleep;
+		} else {
+			ret = wl1251_ps_set_mode(wl, STATION_ACTIVE_MODE);
+			if (ret < 0)
+				goto out_sleep;
+			ret = wl1251_join(wl, wl->bss_type, wl->channel,
+					  wl->beacon_int, wl->dtim_period);
+			if (ret < 0)
+				goto out_sleep;
+		}
+	}
+	
 	if (conf->power_level != wl->power_level) {
 		ret = wl1251_acx_tx_power(wl, conf->power_level);
 		if (ret < 0)
@@ -958,6 +973,16 @@ static void wl1251_op_bss_info_changed(struct ieee80211_hw *hw,
 	if (ret < 0)
 		goto out;
 
+	if (changed & BSS_CHANGED_CQM) {
+		ret = wl1251_acx_low_rssi(wl, bss_conf->cqm_rssi_thold,
+					  WL1251_DEFAULT_LOW_RSSI_WEIGHT,
+					  WL1251_DEFAULT_LOW_RSSI_DEPTH,
+					  WL1251_ACX_LOW_RSSI_TYPE_EDGE);
+		if (ret < 0)
+			goto out;
+		wl->rssi_thold = bss_conf->cqm_rssi_thold;
+	}
+
 	if (changed & BSS_CHANGED_BSSID) {
 		memcpy(wl->bssid, bss_conf->bssid, ETH_ALEN);
 
@@ -1038,6 +1063,9 @@ static void wl1251_op_bss_info_changed(struct ieee80211_hw *hw,
 
 	if (changed & BSS_CHANGED_BEACON) {
 		beacon = ieee80211_beacon_get(hw, vif);
+		if (!beacon)
+			goto out_sleep;
+
 		ret = wl1251_cmd_template_set(wl, CMD_BEACON, beacon->data,
 					      beacon->len);
 
@@ -1067,7 +1095,6 @@ out_sleep:
 out:
 	mutex_unlock(&wl->mutex);
 }
-
 
 /* can't be const, mac80211 writes to this */
 static struct ieee80211_rate wl1251_rates[] = {
@@ -1172,6 +1199,22 @@ out:
 	return ret;
 }
 
+static int wl1251_op_get_survey(struct ieee80211_hw *hw, int idx,
+				struct survey_info *survey)
+{
+	struct wl1251 *wl = hw->priv;
+	struct ieee80211_conf *conf = &hw->conf;
+
+	if (idx != 0)
+		return -ENOENT;
+
+	survey->channel = conf->channel;
+	survey->filled = SURVEY_INFO_NOISE_DBM;
+	survey->noise = wl->noise;
+
+	return 0;
+}
+
 /* can't be const, mac80211 writes to this */
 static struct ieee80211_supported_band wl1251_band_2ghz = {
 	.channels = wl1251_channels,
@@ -1193,7 +1236,9 @@ static const struct ieee80211_ops wl1251_ops = {
 	.bss_info_changed = wl1251_op_bss_info_changed,
 	.set_rts_threshold = wl1251_op_set_rts_threshold,
 	.conf_tx = wl1251_op_conf_tx,
+	.get_survey = wl1251_op_get_survey,
 };
+
 
 static int wl1251_read_eeprom_byte(struct wl1251 *wl, off_t offset, u8 *data)
 {
@@ -1292,9 +1337,11 @@ int wl1251_init_ieee80211(struct wl1251 *wl)
 	wl->hw->flags = IEEE80211_HW_SIGNAL_DBM |
 		IEEE80211_HW_SUPPORTS_PS |
 		IEEE80211_HW_BEACON_FILTER |
-		IEEE80211_HW_SUPPORTS_UAPSD;
+		IEEE80211_HW_SUPPORTS_UAPSD |
+		IEEE80211_HW_SUPPORTS_CQM_RSSI;
 
-	wl->hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION);
+	wl->hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION) |
+					 BIT(NL80211_IFTYPE_ADHOC);
 	wl->hw->wiphy->max_scan_ssids = 1;
 	wl->hw->wiphy->bands[IEEE80211_BAND_2GHZ] = &wl1251_band_2ghz;
 
@@ -1356,6 +1403,7 @@ struct ieee80211_hw *wl1251_alloc_hw(void)
 	wl->psm_requested = false;
 	wl->tx_queue_stopped = false;
 	wl->power_level = WL1251_DEFAULT_POWER_LEVEL;
+	wl->rssi_thold = 0;
 	wl->beacon_int = WL1251_DEFAULT_BEACON_INT;
 	wl->dtim_period = WL1251_DEFAULT_DTIM_PERIOD;
 	wl->vif = NULL;
@@ -1416,6 +1464,5 @@ EXPORT_SYMBOL_GPL(wl1251_free_hw);
 
 MODULE_DESCRIPTION("TI wl1251 Wireles LAN Driver Core");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Kalle Valo <kalle.valo@nokia.com>");
-MODULE_ALIAS("spi:wl1251");
+MODULE_AUTHOR("Kalle Valo <kvalo@adurom.com>");
 MODULE_FIRMWARE(WL1251_FW_NAME);
