@@ -30,6 +30,15 @@
 #include "proc_comm.h"
 #endif
 
+enum {
+	VREG_DEBUG_GETPUT = 1U << 0,
+	VREG_DEBUG_SWITCH = 1U << 1,
+	VREG_DEBUG_LEVEL = 1U << 2
+};
+
+static int debug_mask = 0;
+module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
 struct vreg {
 	const char *name;
 	unsigned id;
@@ -95,21 +104,36 @@ struct vreg *vreg_get(struct device *dev, const char *id)
 {
 	int n;
 	for (n = 0; n < ARRAY_SIZE(vregs); n++) {
-		if (!strcmp(vregs[n].name, id))
-			return vregs + n;
+		if (!strcmp(vregs[n].name, id)) {
+			struct vreg *vreg = vregs + n;
+			if (debug_mask & VREG_DEBUG_GETPUT)
+				printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u\n", __func__,
+					vreg->name, vreg->id, vreg->status, vreg->refcnt);
+			return vreg;
+		}
 	}
+	printk(KERN_ERR "%s:  n=%s failed!\n", __func__, id);
 	return ERR_PTR(-ENOENT);
 }
 
 struct vreg *vreg_get_by_id(struct device *dev, int id)
 {
-	if (id < ARRAY_SIZE(vregs))
-		return vregs + id;
+	if (id < ARRAY_SIZE(vregs)) {
+		struct vreg *vreg = vregs + id;
+		if (debug_mask & VREG_DEBUG_GETPUT)
+			printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u\n", __func__,
+				vreg->name, vreg->id, vreg->status, vreg->refcnt);
+		return vreg;
+	}
+	printk(KERN_ERR "%s:  id=%d failed!\n", __func__, id);
 	return ERR_PTR(-ENOENT);
 }
 
 void vreg_put(struct vreg *vreg)
 {
+	if (debug_mask & VREG_DEBUG_GETPUT)
+		printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u\n", __func__,
+			vreg->name, vreg->id, vreg->status, vreg->refcnt);
 }
 
 int vreg_enable(struct vreg *vreg)
@@ -123,15 +147,19 @@ int vreg_enable(struct vreg *vreg)
 	dex.has_data = 1;
 	dex.data = id;
 	if (vreg->refcnt == 0)
-	vreg->status = msm_proc_comm_wince(&dex, 0);
+		vreg->status = msm_proc_comm_wince(&dex, 0);
 #else
 	unsigned enable = 1;
 	if (vreg->refcnt == 0)
-	vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
 #endif
 
 	if ((vreg->refcnt < UINT_MAX) && (!vreg->status))
 		vreg->refcnt++;
+
+	if (debug_mask & VREG_DEBUG_SWITCH)
+		printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u\n", __func__,
+			vreg->name, vreg->id, vreg->status, vreg->refcnt);
 
 	return vreg->status;
 }
@@ -143,8 +171,12 @@ int vreg_disable(struct vreg *vreg)
 	struct msm_dex_command dex;
 #endif
 
-	if (!vreg->refcnt)
+	if (!vreg->refcnt) {
+		if (debug_mask & VREG_DEBUG_SWITCH)
+			printk(KERN_DEBUG "%s: SKIP n=%s id=%u s=%d ref=%u\n", __func__,
+				vreg->name, vreg->id, vreg->status, vreg->refcnt);
 		return 0;
+	}
 
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	id = 1U << id;
@@ -152,15 +184,19 @@ int vreg_disable(struct vreg *vreg)
 	dex.has_data = 1;
 	dex.data = id;
 	if (vreg->refcnt == 1)
-	vreg->status = msm_proc_comm_wince(&dex, 0);
+		vreg->status = msm_proc_comm_wince(&dex, 0);
 #else
 	unsigned enable = 0;
 	if (vreg->refcnt == 1)
-	vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
 #endif
 
 	if (!vreg->status)
 		vreg->refcnt--;
+
+	if (debug_mask & VREG_DEBUG_SWITCH)
+		printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u\n", __func__,
+			vreg->name, vreg->id, vreg->status, vreg->refcnt);
 
 	return vreg->status;
 }
@@ -169,7 +205,6 @@ int vreg_set_level(struct vreg *vreg, unsigned mv)
 {
 	unsigned id = vreg->id;
 
-
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	struct msm_dex_command dex = { 
 		.cmd = PCOM_PMIC_REG_VOLTAGE,
@@ -177,11 +212,15 @@ int vreg_set_level(struct vreg *vreg, unsigned mv)
 		.data = (1U << id) };
 	// This reg appears to only be used by vreg_set_level()
 	writel(mv, MSM_SHARED_RAM_BASE + 0xfc130);
-	printk(KERN_DEBUG "vreg_set_level %d -> %u\n", id, mv);
 	vreg->status = msm_proc_comm_wince(&dex, 0);
 #else
 	vreg->status = msm_proc_comm(PCOM_VREG_SET_LEVEL, &id, &mv);
 #endif
+
+	if (debug_mask & VREG_DEBUG_LEVEL)
+		printk(KERN_DEBUG "%s: n=%s id=%u s=%d ref=%u -> %umv\n", __func__,
+			vreg->name, vreg->id, vreg->status, vreg->refcnt, mv);
+
 	return vreg->status;
 }
 
