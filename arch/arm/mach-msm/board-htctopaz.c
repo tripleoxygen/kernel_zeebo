@@ -93,17 +93,8 @@ static void htctopaz_usb_hw_reset(bool off)
 	}
 }
 
-static void htctopaz_usb_phy_reset(void)
-{
-	printk(KERN_DEBUG "%s\n", __func__);
-
-	htctopaz_usb_disable();
-	htctopaz_usb_enable();
-}
-
 static struct msm_hsusb_platform_data htctopaz_hsusb_board_pdata = {
 	.hw_reset = htctopaz_usb_hw_reset,
-	.phy_reset = htctopaz_usb_phy_reset,
 	.usb_connected = notify_usb_connected,
 };
 
