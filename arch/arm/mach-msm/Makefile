@@ -79,6 +79,7 @@ obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz.o board-htctopaz-panel.o
 obj-$(CONFIG_MACH_HTCTOPAZ) += board-htctopaz-keypad.o board-htctopaz-led.o
 
 obj-$(CONFIG_MACH_HTCRHODIUM) += board-htcrhodium.o board-htcrhodium-panel.o
+obj-$(CONFIG_MACH_HTCRHODIUM) += board-htcrhodium-audio.o
 
 obj-$(CONFIG_MSM_SMEM_BATTCHG) += htc_battery_smem.o
 

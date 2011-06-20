@@ -361,9 +361,9 @@ static int turn_mic_bias_on_internal(bool on, bool bDualMicEn)
 
 	if ( machine_is_htcrhodium() ) {
 		if ( bDualMicEn && on ) {
-			//~ ADC3001_wakeup();
+			ADC3001_wakeup();
 		} else {
-			//~ ADC3001_powerdown();
+			ADC3001_powerdown();
 		}
 	}
 

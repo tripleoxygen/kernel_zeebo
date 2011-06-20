@@ -56,6 +56,8 @@
 #endif
 
 #include <mach/board_htc.h>
+#include <mach/htc_acoustic_wince.h>
+#include <mach/tpa2016d2.h>
 
 #include "proc_comm_wince.h"
 #include "devices.h"
@@ -278,6 +280,10 @@ static struct platform_device raphael_rfkill = {
 };
 #endif
 
+static struct tpa2016d2_platform_data tpa2016d2_data = {
+	.gpio_tpa2016_spk_en = RHODIUM_SPKR_PWR,
+};
+
 /******************************************************************************
  * I2C
  ******************************************************************************/
@@ -301,10 +307,11 @@ static struct i2c_board_info i2c_devices[] = {
 		/* .irq = TROUT_GPIO_TO_INT(TROUT_GPIO_CAM_BTN_STEP1_N), */
 	},
 	{		
-		I2C_BOARD_INFO("tpa2016", 0xb0>>1),
+		I2C_BOARD_INFO("tpa2016d2", 0xb0>>1),
+		.platform_data = &tpa2016d2_data,
 	},
 	{		
-		I2C_BOARD_INFO("a1010", 0xf4>>1),
+//		I2C_BOARD_INFO("audience_A1010", 0xf4>>1),
 	},
 	{		
 		I2C_BOARD_INFO("adc3001", 0x30>>1),
@@ -326,7 +333,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(13, "SPEAKER_MIC"),
 
 	SND(0x11, "IDLE"),
-	SND(0x11, "CURRENT"),
+	SND(256, "CURRENT"),
 };
 #undef SND
 
@@ -341,6 +348,13 @@ static struct platform_device htcrhodium_snd = {
 	.dev = {
 		.platform_data = &htcrhodium_snd_endpoints,
 	},
+};
+
+extern void htcrhodium_set_headset_amp(bool enable);
+
+static struct htc_acoustic_wce_board_data htcrhodium_acoustic_data = {
+	.set_headset_amp = htcrhodium_set_headset_amp,
+    .set_speaker_amp = tpa2016d2_set_power,
 };
 
 #if 0
@@ -472,6 +486,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_HTC_HEADSET
 	&rhodium_h2w,
 #endif
+	&acoustic_device,
 };
 
 extern struct sys_timer msm_timer;
@@ -529,6 +544,8 @@ static smem_batt_t htcrhodium_htc_battery_smem_pdata = {
 
 static void __init htcrhodium_init(void)
 {
+	struct htc_acoustic_wce_amss_data *acoustic_pdata;
+
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
@@ -537,6 +554,12 @@ static void __init htcrhodium_init(void)
 	msm_device_htc_battery_smem.dev.platform_data = &htcrhodium_htc_battery_smem_pdata;
 #endif
 	msm_device_touchscreen.dev.platform_data = &htcrhodium_ts_pdata;
+
+	// Set acoustic device specific parameters
+	acoustic_device.dev.platform_data = &amss_6120_acoustic_data;
+	acoustic_pdata = acoustic_device.dev.platform_data;
+	acoustic_pdata->mic_bias_callback = NULL;
+	htc_acoustic_wce_board_data = &htcrhodium_acoustic_data;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
