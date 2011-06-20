@@ -64,6 +64,9 @@ void __init msm_init_pmic_vibrator(void);
 
 struct mmc_platform_data;
 int __init msm_add_sdcc_devices(unsigned int controller, struct mmc_platform_data *plat);
+int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat,
+			unsigned int stat_irq, unsigned long stat_irq_flags);
+void msm_delete_sdcc(unsigned int controller);
 int __init msm_add_serial_devices(unsigned uart);
 
 int __init board_mfg_mode(void);
