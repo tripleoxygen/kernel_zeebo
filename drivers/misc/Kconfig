@@ -421,6 +421,18 @@ config APANIC_PLABEL
 	 If your platform uses a different flash partition label for storing
  	 crashdumps, enter it here.
 
+config AMP_TPA2016D2
+        tristate "TI TPA2016D2 Speaker AMP Driver"
+        depends on I2C
+        help
+         TI TPA2016D2 Speaker AMP Driver implemented by Xdandroid.
+
+config VP_A1010
+        tristate "A1010 Voice Processor Driver"
+        depends on I2C
+        help
+          A1010 Voice Processor Driver implemented for HTC.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
