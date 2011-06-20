@@ -27,6 +27,9 @@
 #include <linux/pm.h>
 #include <linux/slab.h>
 
+#undef CONFIG_PM
+#undef CONFIG_HAS_EARLYSUSPEND
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
 #endif
