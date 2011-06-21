@@ -12,6 +12,8 @@
 #ifdef CONFIG_ANDROID_POWER
 #include <linux/android_power.h>
 #endif
+#include <linux/platform_device.h>
+#include <linux/mfd/microp-ng.h>
 
 #include <mach/tpa2016d2.h>
 #include "proc_comm_wince.h"
@@ -159,6 +161,8 @@ static int __init rhod_audio_init(void) {
 
 	printk(KERN_INFO "Rhodium audio registering drivers\n");
 
+	gpio_request(RHODIUM_HS_AMP_PWR, "HTC Rhodium HS Amp Power");
+
 	rc=i2c_add_driver(&adc_driver);
 	return rc;
 }
@@ -166,85 +170,153 @@ static int __init rhod_audio_init(void) {
 module_init(rhod_audio_init);
 
 void htcrhodium_set_headset_amp(bool enable) {
-    if (enable)
-    {
-        /* Power up headphone amp */
-        //~ gpio_configure(RHODIUM_HS_AMP_PWR, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-        
-        gpio_tlmm_config(
+	if (enable) {
+		/* Power up headphone amp */
+		gpio_tlmm_config(
 			GPIO_CFG(RHODIUM_HS_AMP_PWR, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_ENABLE);
-    }
-    else
-    {
-        /* Power down headphone amp */
-        //~ gpio_configure(RHODIUM_HS_AMP_PWR, GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-        
-        gpio_tlmm_config(
+	} else {
+		/* Power down headphone amp */
+		gpio_tlmm_config(
 			GPIO_CFG(RHODIUM_HS_AMP_PWR, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_DISABLE);
-    }
-    //~ gpio_set_value(RHODIUM_HS_AMP_PWR, enable);
+	}
 }
 EXPORT_SYMBOL(htcrhodium_set_headset_amp);
 
 /******************************************************************************
- * MicroP TEMPORARY
+ * MicroP Audio
  ******************************************************************************/
-static int rhod_states = 0;
+static struct htcrhodium_microp_audio_data {
+	int states;
+	struct i2c_client* client;
+	struct mutex lock;
+} audio_data;
 
-static int micropklt_rhod_leds_set(uint8_t val)
+static int htcrhodium_microp_audio_leds_set(uint8_t val)
 {
-	//~ int r;
-	//~ struct microp_klt *data;
-	//~ struct i2c_client *client;
-	//~ uint8_t buffer[4] = { 0, 0, 0, 0 };
+	int ret;
+	uint8_t buffer[4] = { 0, 0, 0, 0 };
 
-	printk(KERN_DEBUG "%s: val=%u\n", __func__, val);
+	if (!audio_data.client) {
+		printk(KERN_ERR "%s: i2c_client not initialized!\n", __func__);
+		return -EAGAIN;
+	}
 
-	//~ data = micropklt_t;
-	//~ if (!data) return -EAGAIN;
-	//~ client = data->client;
-//~ 
-	//~ mutex_lock(&data->lock);
-		//~ buffer[0] = MICROP_KLT_RHOD_LED_STATE;
-		//~ buffer[1] = val;
-//~ 
-	//~ r = micropklt_write(client, buffer, 2);
-//~ 
-	//~ micropklt_t->rhod_states = val;
-	//~ 
-	//~ mutex_unlock(&data->lock);
-	return 0;
+	mutex_lock(&audio_data.lock);
+	buffer[0] = RHOD_MICROP_KLT_LED_STATE;
+	buffer[1] = val;
+	ret = microp_ng_write(audio_data.client, buffer, 2);
+	if (ret) {
+		mutex_unlock(&audio_data.lock);
+		printk(KERN_ERR "%s: i2c write failed with %d!\n", __func__, ret);
+		return ret;
+	}
+	audio_data.states = val;
+	mutex_unlock(&audio_data.lock);
+
+	return ret;
 }
 
-int micropklt_dualmic_set(char on)
+int htcrhodium_microp_audio_dualmic_set(char on)
 {
-	//~ if(on)
-		//~ return micropklt_rhod_leds_set(micropklt_t->rhod_states | RHOD_DUALMIC_EN);
-	//~ return micropklt_rhod_leds_set(micropklt_t->rhod_states & (~RHOD_DUALMIC_EN));
-
 	printk(KERN_DEBUG "%s(%d)\n", __func__, on);
 
-	return 0;
+	if(on)
+		return htcrhodium_microp_audio_leds_set(audio_data.states | RHOD_MICROP_KLT_DUALMIC_EN_BIT);
+	return htcrhodium_microp_audio_leds_set(audio_data.states & (~RHOD_MICROP_KLT_DUALMIC_EN_BIT));
 }
 
-int micropklt_codec_set(char on)
+int htcrhodium_microp_audio_codec_set(char on)
 {
-	//~ if(on)
-		//~ return micropklt_rhod_leds_set(micropklt_t->rhod_states | RHOD_CODEC_EN);
-	//~ return micropklt_rhod_leds_set(micropklt_t->rhod_states & (~RHOD_CODEC_EN));
-
 	printk(KERN_DEBUG "%s(%d)\n", __func__, on);
-	rhod_states = 1;
+
+	if(on)
+		return htcrhodium_microp_audio_leds_set(audio_data.states | RHOD_MICROP_KLT_CODEC_EN_BIT);
+	return htcrhodium_microp_audio_leds_set(audio_data.states & (~RHOD_MICROP_KLT_CODEC_EN_BIT));
+}
+
+int htcrhodium_microp_audio_get_codec_state(void)
+{
+	int state = (audio_data.states & RHOD_MICROP_KLT_CODEC_EN_BIT) ? 1 : 0;
+	printk(KERN_DEBUG "%s: state=%d\n", __func__, state);
+	return state;
+}
+
+static int htcrhodium_microp_audio_probe(struct platform_device *pdev)
+{
+	printk(KERN_INFO "%s\n", __func__);
+
+	mutex_init(&audio_data.lock);
+	mutex_lock(&audio_data.lock);
+	audio_data.states = 0;
+	audio_data.client = dev_get_drvdata(&pdev->dev);
+	mutex_unlock(&audio_data.lock);
+
 	return 0;
 }
 
-int micropklt_get_codec_state(void)
+static int htcrhodium_microp_audio_remove(struct platform_device *pdev)
 {
-	//~ return ((micropklt_t->rhod_states & RHOD_CODEC_EN)?1:0);
-	printk(KERN_DEBUG "%s: state=%d\n", __func__, rhod_states);
-	return rhod_states;
+	printk(KERN_INFO "%s\n", __func__);
+
+	audio_data.states = 0;
+	audio_data.client = NULL;
+	mutex_destroy(&audio_data.lock);
+
+	return 0;
+}
+
+#if CONFIG_PM
+static int htcrhodium_microp_audio_suspend(struct platform_device *pdev, pm_message_t mesg)
+{
+	return 0;
+}
+
+static int htcrhodium_microp_audio_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+#else
+#define htcrhodium_microp_audio_suspend NULL
+#define htcrhodium_microp_audio_resume NULL
+#endif
+
+static struct platform_driver htcrhodium_microp_audio_driver = {
+	.probe		= htcrhodium_microp_audio_probe,
+	.remove		= htcrhodium_microp_audio_remove,
+	.suspend	= htcrhodium_microp_audio_suspend,
+	.resume		= htcrhodium_microp_audio_resume,
+	.driver		= {
+		.name	= "htcrhodium-microp-audio",
+		.owner	= THIS_MODULE,
+	},
+};
+
+static int __init htcrhodium_microp_audio_init(void)
+{
+	return platform_driver_register(&htcrhodium_microp_audio_driver);
+}
+
+static void __exit htcrhodium_microp_audio_exit(void)
+{
+	platform_driver_unregister(&htcrhodium_microp_audio_driver);
+}
+
+module_init(htcrhodium_microp_audio_init);
+module_exit(htcrhodium_microp_audio_exit)
+
+/* Compat for a1010.c */
+int micropklt_dualmic_set(char on) {
+	return htcrhodium_microp_audio_dualmic_set(on);
+}
+
+int micropklt_codec_set(char on) {
+	return htcrhodium_microp_audio_codec_set(on);
+}
+
+int micropklt_get_codec_state(void) {
+	return htcrhodium_microp_audio_get_codec_state();
 }

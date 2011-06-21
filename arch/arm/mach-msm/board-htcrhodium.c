@@ -217,30 +217,36 @@ static struct microp_platform_data htcrhodium_microp_keypad_pdata = {
 };
 
 /******************************************************************************
- * MicroP LED
+ * MicroP LED & Audio
  ******************************************************************************/
 #if 0
 static struct platform_device htcrhodium_microp_leds = {
 	.id = -1,
 	.name = "htcrhodium-microp-leds",
 };
+#endif
+
+static struct platform_device htcrhodium_microp_audio = {
+	.id = -1,
+	.name = "htcrhodium-microp-audio",
+};
 
 static struct platform_device* htcrhodium_microp_clients[] = {
-	&htcrhodium_microp_leds,
+	//~ &htcrhodium_microp_leds,
+	&htcrhodium_microp_audio,
 };
 
 static uint16_t micropklt_compatible_versions[] = {
 	RHOD_MICROP_KLT_VERSION
 };
 
-static struct microp_platform_data htcrhodium_microp_pdata = {
+static struct microp_platform_data htcrhodium_microp_led_audio_pdata = {
 	.version_reg = RHOD_MICROP_KLT_VERSION_REG,
 	.clients = htcrhodium_microp_clients,
 	.nclients = ARRAY_SIZE(htcrhodium_microp_clients),
 	.comp_versions = micropklt_compatible_versions,
 	.n_comp_versions = ARRAY_SIZE(micropklt_compatible_versions),
 };
-#endif
 
 /******************************************************************************
  * USB
@@ -293,13 +299,13 @@ static struct i2c_board_info i2c_devices[] = {
 		I2C_BOARD_INFO("bma150", 0x70>>1),
 	},
 	{
-		// LED & Backlight controller
-		I2C_BOARD_INFO("microp-klt", 0x66),
+		// LED & Audio controller
+		I2C_BOARD_INFO("microp-ng", 0x66),
+		.platform_data = &htcrhodium_microp_led_audio_pdata,
 	},
 	{
 		// Keyboard controller
-		.type = "microp-ng",
-		.addr = 0x67,
+		I2C_BOARD_INFO("microp-ng", 0x67),
 		.platform_data = &htcrhodium_microp_keypad_pdata,
 	},
 	{		
