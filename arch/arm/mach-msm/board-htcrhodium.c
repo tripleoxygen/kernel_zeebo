@@ -21,6 +21,7 @@
 #include <linux/mtd/partitions.h>
 #include <linux/i2c.h>
 #include <linux/gpio_keys.h>
+#include <linux/leds.h>
 #include <linux/mm.h>
 
 #include <mach/hardware.h>
@@ -74,6 +75,84 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 	.rx_to_inject = 0x32,
 };
 #endif
+
+/******************************************************************************
+ * MicroP Keypad LEDs
+ ******************************************************************************/
+static struct i2c_client *kp_client = NULL;
+
+static void htcrhodium_set_keypad_led(struct led_classdev *, enum led_brightness);
+static void htcrhodium_update_keypad_led(struct work_struct* work);
+static DECLARE_WORK(htcrhodium_keypad_led_wq, htcrhodium_update_keypad_led);
+
+static struct led_classdev htcrhodium_qwerty_led = {
+	 .name = "keyboard-backlight",
+	 .brightness_set = htcrhodium_set_keypad_led,
+	 .default_trigger = "microp-keypad",
+};
+
+static void htcrhodium_update_keypad_led(struct work_struct* work) {
+	uint8_t buffer[4] = {};
+	uint8_t brightness = htcrhodium_qwerty_led.brightness;
+	static uint8_t last_brightness = 0;
+
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+
+	buffer[0] = RHOD_MICROP_KSC_LED_BRIGHTNESS;
+	buffer[1] = last_brightness;    /* initial brightness */
+	buffer[2] = 255;                /* transition duration */
+	buffer[3] = brightness;         /* target brightness */
+	microp_ng_write(kp_client, buffer, 4);
+
+	buffer[0] = RHOD_MICROP_KSC_LED_STATE;
+	buffer[1] = 0;
+	buffer[2] = !!brightness;
+	microp_ng_write(kp_client, buffer, 3);
+
+	last_brightness = brightness;
+}
+
+static void htcrhodium_set_keypad_led(struct led_classdev *led_cdev,
+	enum led_brightness brightness) {
+	schedule_work(&htcrhodium_keypad_led_wq);
+}
+
+static int htcrhodium_keypad_led_probe(struct platform_device *pdev)
+{
+	printk(KERN_INFO "%s\n", __func__);
+	kp_client = dev_get_drvdata(&pdev->dev);
+	led_classdev_register(&pdev->dev, &htcrhodium_qwerty_led);
+	return 0;
+}
+
+static int htcrhodium_keypad_led_remove(struct platform_device *pdev)
+{
+	printk(KERN_INFO "%s\n", __func__);
+	cancel_work_sync(&htcrhodium_keypad_led_wq);
+	led_classdev_unregister(&htcrhodium_qwerty_led);
+	kp_client = NULL;
+	return 0;
+}
+
+#if CONFIG_PM
+static int htcrhodium_keypad_led_suspend(struct platform_device *pdev, pm_message_t mesg)
+{
+	cancel_work_sync(&htcrhodium_keypad_led_wq);
+	return 0;
+}
+#else
+#define htcrhodium_keypad_led_suspend NULL
+#endif
+
+static struct platform_driver htcrhodium_keypad_led_driver = {
+	.probe		= htcrhodium_keypad_led_probe,
+	.remove		= htcrhodium_keypad_led_remove,
+	.suspend	= htcrhodium_keypad_led_suspend,
+	.driver		= {
+		.name		= "htcrhodium-microp-keypad-led",
+		.owner		= THIS_MODULE,
+	},
+};
 
 /******************************************************************************
  * MicroP Keypad
@@ -200,8 +279,14 @@ static struct platform_device htcrhodium_keypad = {
 	},
 };
 
+static struct platform_device htcrhodium_keypad_led = {
+	.name = "htcrhodium-microp-keypad-led",
+	.id = -1,
+};
+
 static struct platform_device* htcrhodium_microp_keypad_clients[] = {
 	&htcrhodium_keypad,
+	&htcrhodium_keypad_led,
 };
 
 static uint16_t micropksc_compatible_versions[] = {
@@ -568,6 +653,8 @@ static void __init htcrhodium_init(void)
 	htc_acoustic_wce_board_data = &htcrhodium_acoustic_data;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
+	platform_driver_register(&htcrhodium_keypad_led_driver);
+
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
 #ifdef CONFIG_SERIAL_MSM_HS
