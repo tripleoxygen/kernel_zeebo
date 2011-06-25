@@ -304,12 +304,11 @@ static struct microp_platform_data htcrhodium_microp_keypad_pdata = {
 /******************************************************************************
  * MicroP LED & Audio
  ******************************************************************************/
-#if 0
 static struct platform_device htcrhodium_microp_leds = {
 	.id = -1,
-	.name = "htcrhodium-microp-leds",
+	// use the topaz led setup until an LED framework is invented
+	.name = "htctopaz-microp-leds",
 };
-#endif
 
 static struct platform_device htcrhodium_microp_audio = {
 	.id = -1,
@@ -317,7 +316,7 @@ static struct platform_device htcrhodium_microp_audio = {
 };
 
 static struct platform_device* htcrhodium_microp_clients[] = {
-	//~ &htcrhodium_microp_leds,
+	&htcrhodium_microp_leds,
 	&htcrhodium_microp_audio,
 };
 

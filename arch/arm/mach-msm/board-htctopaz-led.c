@@ -29,6 +29,8 @@
 #include <linux/microp.h>
 #include <linux/mfd/microp-ng.h>
 
+#include <asm/mach-types.h>
+
 #include "board-htctopaz.h"
 
 static void htctopaz_update_color_leds(struct work_struct* work);
@@ -85,7 +87,11 @@ static int htctopaz_microp_set_color_led(enum led_color led_color_value)
 		return -EAGAIN;
 	}
 
-	buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS;
+	if (machine_is_htctopaz()) {
+		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS;
+	} else {
+		buf[0] = 0x50; // RHOD
+	}
 	buf[1] = 0;
 	buf[2] = led_color_value;
 	buf[3] = 0xff;
