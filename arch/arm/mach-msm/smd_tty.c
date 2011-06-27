@@ -36,9 +36,11 @@ struct smd_tty_info {
 	struct tty_struct *tty;
 	struct wake_lock wake_lock;
 	int open_count;
+	struct work_struct tty_work;
 };
 
 static struct smd_tty_info smd_tty[MAX_SMD_TTYS];
+static struct workqueue_struct *smd_tty_wq;
 
 static const struct smd_tty_channel_desc smd_default_tty_channels[] = {
 	{ .id = 0, .name = "SMD_DS" },
@@ -60,40 +62,67 @@ int smd_set_channel_list(const struct smd_tty_channel_desc *channels, int len)
 	return 0;
 }
 
-static void smd_tty_notify(void *priv, unsigned event)
+static void smd_tty_work_func(struct work_struct *work)
 {
 	unsigned char *ptr;
 	int avail;
-	struct smd_tty_info *info = priv;
+
+	struct smd_tty_info *info = container_of(work,
+						struct smd_tty_info,
+						tty_work);
 	struct tty_struct *tty = info->tty;
 
 	if (!tty)
 		return;
 
-	if (event != SMD_EVENT_DATA)
-		return;
+
+	mutex_lock(&smd_tty_lock);
 
 	for (;;) {
-		if (test_bit(TTY_THROTTLED, &tty->flags)) break;
-		avail = smd_read_avail(info->ch);
-		if (avail == 0) break;
+		if (test_bit(TTY_THROTTLED, &tty->flags))
+			break;
 
-		avail = tty_prepare_flip_string(tty, &ptr, avail);
-
-		if (smd_read(info->ch, ptr, avail) != avail) {
-			/* shouldn't be possible since we're in interrupt
-			** context here and nobody else could 'steal' our
-			** characters.
-			*/
-			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!");
+		if (info->ch == 0) {
+			printk(KERN_ERR "smd_tty_work_func: info->ch null\n");
+			break;
 		}
 
-		wake_lock_timeout(&info->wake_lock, HZ / 2);
-		tty_flip_buffer_push(tty);
+		avail = smd_read_avail(info->ch);
+		if (avail == 0)
+			break;
+
+		ptr = NULL;
+		avail = tty_prepare_flip_string(tty, &ptr, avail);
+
+		if (avail && ptr) {
+			if (smd_read(info->ch, ptr, avail) != avail) {
+				/* shouldn't be possible since we're in interrupt
+				 * context here and nobody else could 'steal' our
+				 * characters.
+				 */
+				printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!");
+			}
+			wake_lock_timeout(&info->wake_lock, HZ / 2);
+			tty->low_latency = 1;
+			tty_flip_buffer_push(tty);
+		} else
+			printk(KERN_ERR "smd_tty_work_func: tty_prepare_flip_string fail\n");
 	}
+
+	mutex_unlock(&smd_tty_lock);
 
 	/* XXX only when writable and necessary */
 	tty_wakeup(tty);
+}
+
+static void smd_tty_notify(void *priv, unsigned event)
+{
+	struct smd_tty_info *info = priv;
+
+	if (event != SMD_EVENT_DATA)
+		return;
+
+	queue_work(smd_tty_wq, &info->tty_work);
 }
 
 static int smd_tty_open(struct tty_struct *tty, struct file *f)
@@ -116,10 +145,9 @@ static int smd_tty_open(struct tty_struct *tty, struct file *f)
 	info = smd_tty + n;
 
 	mutex_lock(&smd_tty_lock);
-	wake_lock_init(&info->wake_lock, WAKE_LOCK_SUSPEND, name);
 	tty->driver_data = info;
-
 	if (info->open_count++ == 0) {
+		wake_lock_init(&info->wake_lock, WAKE_LOCK_SUSPEND, name);
 		info->tty = tty;
 		if (info->ch) {
 			smd_kick(info->ch);
@@ -138,6 +166,8 @@ static void smd_tty_close(struct tty_struct *tty, struct file *f)
 
 	if (info == 0)
 		return;
+	/* wait for the work in workqueue to complete */
+	flush_work(&info->tty_work);
 
 	mutex_lock(&smd_tty_lock);
 	if (--info->open_count == 0) {
@@ -152,7 +182,8 @@ static void smd_tty_close(struct tty_struct *tty, struct file *f)
 	mutex_unlock(&smd_tty_lock);
 }
 
-static int smd_tty_write(struct tty_struct *tty, const unsigned char *buf, int len)
+static int smd_tty_write(struct tty_struct *tty,
+					const unsigned char *buf, int len)
 {
 	struct smd_tty_info *info = tty->driver_data;
 	int avail;
@@ -183,7 +214,8 @@ static int smd_tty_chars_in_buffer(struct tty_struct *tty)
 static void smd_tty_unthrottle(struct tty_struct *tty)
 {
 	struct smd_tty_info *info = tty->driver_data;
-	smd_kick(info->ch);
+	queue_work(smd_tty_wq, &info->tty_work);
+	return;
 }
 
 static struct tty_operations smd_tty_ops = {
@@ -201,9 +233,15 @@ static int __init smd_tty_init(void)
 {
 	int ret, i;
 
-	smd_tty_driver = alloc_tty_driver(MAX_SMD_TTYS);
-	if (smd_tty_driver == 0)
+	smd_tty_wq = create_singlethread_workqueue("smd_tty");
+	if (smd_tty_wq == 0)
 		return -ENOMEM;
+
+	smd_tty_driver = alloc_tty_driver(MAX_SMD_TTYS);
+	if (smd_tty_driver == 0) {
+		destroy_workqueue(smd_tty_wq);
+		return -ENOMEM;
+	}
 
 	smd_tty_driver->owner = THIS_MODULE;
 	smd_tty_driver->driver_name = "smd_tty_driver";
@@ -215,18 +253,20 @@ static int __init smd_tty_init(void)
 	smd_tty_driver->init_termios = tty_std_termios;
 	smd_tty_driver->init_termios.c_iflag = 0;
 	smd_tty_driver->init_termios.c_oflag = 0;
-	smd_tty_driver->init_termios.c_cflag = B38400 | CS8 | CREAD;
+	smd_tty_driver->init_termios.c_cflag = B115200 | CS8 | CREAD;
 	smd_tty_driver->init_termios.c_lflag = 0;
 	smd_tty_driver->flags = TTY_DRIVER_RESET_TERMIOS |
 		TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
 	tty_set_operations(smd_tty_driver, &smd_tty_ops);
 
 	ret = tty_register_driver(smd_tty_driver);
-	if (ret) return ret;
+	if (ret)
+		return ret;
 
-	for (i = 0; i < smd_tty_channels_len; i++)
+	for (i = 0; i < smd_tty_channels_len; i++) {
 		tty_register_device(smd_tty_driver, smd_tty_channels[i].id, 0);
-
+		INIT_WORK(&smd_tty[smd_tty_channels[i].id].tty_work, smd_tty_work_func);
+	}
 	return 0;
 }
 
