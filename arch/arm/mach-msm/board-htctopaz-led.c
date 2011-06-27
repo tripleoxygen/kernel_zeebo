@@ -88,7 +88,7 @@ static int htctopaz_microp_set_color_led(enum led_color led_color_value)
 	}
 
 	if (machine_is_htctopaz()) {
-		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS;
+		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS; // 0x51
 	} else {
 		buf[0] = 0x50; // RHOD
 	}
@@ -114,9 +114,15 @@ static int htctopaz_microp_set_auto_backlight(int on)
 		return -EAGAIN;
 	}
 
-	buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL;
-	buf[1] = on ? 0x01 : 0x00;
-	buf[2] = on ? 0x01 : 0x00;
+	if (machine_is_htctopaz()) {
+		buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL; // 0x23
+		buf[1] = on ? 0x01 : 0x00;
+		buf[2] = on ? 0x01 : 0x00;
+	} else {
+		buf[0] = 0x22; // RHOD
+		buf[1] = on ? 0xf3 : 0xf8;
+		buf[2] = on ? 0xf3 : 0xf8;
+	}
 
 	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
 	if (ret) {
@@ -130,13 +136,16 @@ static int htctopaz_microp_get_spi_auto_backlight_status(
 	uint8_t* auto_backlight_status, uint8_t* spi_status)
 {
 	int ret;
+	uint8_t cmd;
 	uint8_t buf[2] = { 0, 0 };
 
 	if (!client) {
 		return -EAGAIN;
 	}
 
-	ret = microp_ng_read(client, MICROP_I2C_RCMD_SPI_BL_STATUS, buf, 2);
+	cmd = machine_is_htctopaz() ? MICROP_I2C_RCMD_SPI_BL_STATUS /*0x24*/ : 0x21; // RHOD testing
+
+	ret = microp_ng_read(client, cmd, buf, 2);
 	if (ret) {
 		printk(KERN_ERR "%s: Failed reading SPI backlight status with ret=%d.\n",
 			__func__, ret);
@@ -196,9 +205,13 @@ static void htctopaz_microp_update_backlight(struct work_struct* work)
 		return;
 	}
 
-	//printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
 
-	buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS;
+	if (machine_is_htctopaz()) {
+		buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS; // 0x22
+	} else {
+		buf[0] = 0x24; // RHOD
+	}
 	buf[1] = brightness/2 & 0xf0;
 
 	microp_ng_write(client, buf, ARRAY_SIZE(buf));
