@@ -472,13 +472,16 @@ static struct h2w_platform_data rhodium_h2w_data = {
 
 static void h2w_config_cpld(int route)
 {
+	printk(KERN_DEBUG "%s: route=%d\n", __func__, route);
 	switch (route) {
-	case H2W_UART3:
-		gpio_set_value(RHODIUM_H2W_UART_MUX, 1);
-		break;
-	case H2W_GPIO:
-		gpio_set_value(RHODIUM_H2W_UART_MUX, 0);
-		break;
+		case H2W_UART3:
+			gpio_set_value(RHODIUM_H2W_UART_MUX, 1);
+			break;
+		case H2W_GPIO:
+			gpio_set_value(RHODIUM_H2W_UART_MUX, 0);
+			break;
+		default:
+			printk(KERN_ERR "%s: unknown route=%d\n", __func__, route);
 	}
 }
 
