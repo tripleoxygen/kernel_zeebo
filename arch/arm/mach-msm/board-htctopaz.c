@@ -68,6 +68,30 @@ static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
 #endif
 
 /******************************************************************************
+ * MicroP
+ ******************************************************************************/
+static struct platform_device htctopaz_microp_leds = {
+	.id = -1,
+	.name = "htctopaz-microp-leds",
+};
+
+static struct platform_device* htctopaz_microp_clients[] = {
+	&htctopaz_microp_leds,
+};
+
+static uint16_t micropklt_compatible_versions[] = {
+	TOPA_MICROP_VERSION
+};
+
+static struct microp_platform_data htctopaz_microp_pdata = {
+	.version_reg = TOPA_MICROP_VERSION_REG,
+	.clients = htctopaz_microp_clients,
+	.nclients = ARRAY_SIZE(htctopaz_microp_clients),
+	.comp_versions = micropklt_compatible_versions,
+	.n_comp_versions = ARRAY_SIZE(micropklt_compatible_versions),
+};
+
+/******************************************************************************
  * USB
  ******************************************************************************/
 static void htctopaz_usb_disable(void)
@@ -98,30 +122,6 @@ static struct msm_hsusb_platform_data htctopaz_hsusb_board_pdata = {
 	.usb_connected = notify_usb_connected,
 };
 
-/******************************************************************************
- * MicroP
- ******************************************************************************/
-static struct platform_device htctopaz_microp_leds = {
-	.id = -1,
-	.name = "htctopaz-microp-leds",
-};
-
-static struct platform_device* htctopaz_microp_clients[] = {
-	&htctopaz_microp_leds,
-};
-
-static uint16_t micropklt_compatible_versions[] = {
-	TOPA_MICROP_VERSION
-};
-
-static struct microp_platform_data htctopaz_microp_pdata = {
-	.version_reg = TOPA_MICROP_VERSION_REG,
-	.clients = htctopaz_microp_clients,
-	.nclients = ARRAY_SIZE(htctopaz_microp_clients),
-	.comp_versions = micropklt_compatible_versions,
-	.n_comp_versions = ARRAY_SIZE(micropklt_compatible_versions),
-};
-
 static struct i2c_board_info i2c_devices[] = {
 	{
 		// LED & Backlight controller
@@ -136,6 +136,9 @@ static struct i2c_board_info i2c_devices[] = {
 #endif
 };
 
+/******************************************************************************
+ * Sound
+ ******************************************************************************/
 #define SND(num, desc) { .name = desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
 	SND(0, "HANDSET"),
@@ -146,7 +149,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(3, "BT_EC_OFF"),
 
 	SND(0x11, "IDLE"),
-	SND(0x11, "CURRENT"),
+	SND(256, "CURRENT"),
 };
 #undef SND
 
@@ -163,6 +166,9 @@ static struct platform_device htctopaz_snd = {
 	},
 };
 
+/******************************************************************************
+ * H2W
+ ******************************************************************************/
 #ifdef CONFIG_HTC_HEADSET
 static void htctopaz_h2w_config_cpld(int route)
 {
