@@ -88,7 +88,6 @@ static void smd_readx_cb(void *data, int count, void *ctxt)
 static void smd_tty_work_func(struct work_struct *work)
 {
 	int avail;
-
 	struct smd_tty_info *info = container_of(work,
 						struct smd_tty_info,
 						tty_work);
@@ -97,21 +96,21 @@ static void smd_tty_work_func(struct work_struct *work)
 	if (!tty)
 		return;
 
-
-	mutex_lock(&smd_tty_lock);
-
 	for (;;) {
 		if (test_bit(TTY_THROTTLED, &tty->flags))
 			break;
 
+		mutex_lock(&smd_tty_lock);
 		if (info->ch == 0) {
-			printk(KERN_ERR "smd_tty_work_func: info->ch null\n");
+			mutex_unlock(&smd_tty_lock);
 			break;
 		}
 
 		avail = smd_read_avail(info->ch);
-		if (avail == 0)
+		if (avail == 0) {
+			mutex_unlock(&smd_tty_lock);
 			break;
+		}
 
 		if (smd_readx(info->ch, avail, smd_readx_cb, (void *)tty) != avail) {
 			/* shouldn't be possible since we're in interrupt
@@ -121,9 +120,8 @@ static void smd_tty_work_func(struct work_struct *work)
 			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!\n");
 		}
 		wake_lock_timeout(&info->wake_lock, HZ / 2);
+		mutex_unlock(&smd_tty_lock);
 	}
-
-	mutex_unlock(&smd_tty_lock);
 
 	/* XXX only when writable and necessary */
 	tty_wakeup(tty);
