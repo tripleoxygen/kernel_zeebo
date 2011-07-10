@@ -14,11 +14,12 @@
 #define RHODIUM_CABLE_IN2		45
 #define RHODIUM_H2W_CLK			46
 #define RHODIUM_H2W_DATA		92
-#define RHODIUM_H2W_UART_MUX		103	/* pretty sure this is right */
+#define RHODIUM_H2W_UART_MUX	103
+#define RHODIUM_GSENROR_MOT		49	/* microp interrupt for 3.5mm detect */
+#define RHODIUM_GPIO_UP_RESET_N	43
 
 #define RHODIUM_BAT_IRQ			28  // GPIO IRQ
 #define RHODIUM_USB_AC_PWR		32
-#define RHODIUM_AC_DETECT		82  // ????
 #define RHODIUM_CHARGE_EN_N		44
 #define RHODIUM_KPD_IRQ			27  //Keyboard IRQ
 #define RHODIUM_KB_SLIDER_IRQ		37  //Keyboard Slider IRQ //Currently Unknown, using stylus detect GPIO right now (37).

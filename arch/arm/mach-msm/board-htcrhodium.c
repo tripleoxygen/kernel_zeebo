@@ -54,6 +54,7 @@
 
 #ifdef CONFIG_HTC_HEADSET
 #include <mach/htc_headset.h>
+#include <mach/htc_headset_microp.h>
 #endif
 
 #include <mach/board_htc.h>
@@ -315,9 +316,24 @@ static struct platform_device htcrhodium_microp_audio = {
 	.name = "htcrhodium-microp-audio",
 };
 
+static struct htc_headset_microp_platform_data htc_headset_microp_data = {
+	.hpin_mask		= {0x00, 0x01, 0x00},	/* READ_GPI_STATE_HPIN */
+	.hpin_int		= BIT_35MM_HEADSET,		/* IRQ_HEADSETIN */
+	.hpin_irq		= MSM_GPIO_TO_INT(RHODIUM_GSENROR_MOT),
+};
+
+static struct platform_device htcrhodium_microp_35mm = {
+	.id = -1,
+	.name = "HTC_HEADSET_MICROP",
+	.dev = {
+		.platform_data = &htc_headset_microp_data,
+	},
+};
+
 static struct platform_device* htcrhodium_microp_clients[] = {
 	&htcrhodium_microp_leds,
 	&htcrhodium_microp_audio,
+	&htcrhodium_microp_35mm,
 };
 
 static uint16_t micropklt_compatible_versions[] = {
