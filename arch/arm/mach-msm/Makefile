@@ -85,7 +85,7 @@ obj-$(CONFIG_MSM_SMEM_BATTCHG) += htc_battery_smem.o
 
 obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
 obj-$(CONFIG_HTC_PWRSPLY) += htc_power_supply.o
-obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
+obj-$(CONFIG_HTC_HEADSET) += htc_headset.o htc_headset_microp.o
 obj-$(CONFIG_HTC_35MM_JACK) += htc_35mm_jack.o
 
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi-tpa2018d1.o

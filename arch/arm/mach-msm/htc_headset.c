@@ -82,6 +82,8 @@
 #define H2WE(fmt, arg...) \
 	printk(KERN_ERR "[H2W] %s " fmt "\r\n", __func__, ## arg)
 
+//~ #define CONFIG_DEBUG_H2W
+
 #ifdef CONFIG_DEBUG_H2W
 #define H2W_DBG(fmt, arg...) printk(KERN_INFO "[H2W] %s " fmt "\r\n", __func__, ## arg)
 #else
@@ -601,7 +603,7 @@ static int h2w_dev_detect(void)
 	return ret;
 }
 
-static void remove_headset(void)
+void remove_headset(void)
 {
 	unsigned long irq_flags;
 
@@ -650,12 +652,13 @@ static void remove_headset(void)
 	hi->debounce_time = ktime_set(0, 100000000);  /* 100 ms */
 
 }
+EXPORT_SYMBOL(remove_headset);
 
 #ifdef CONFIG_MSM_SERIAL_DEBUGGER
 extern void msm_serial_debug_enable(int);
 #endif
 
-static void insert_headset(int type)
+void insert_headset(int type)
 {
 	unsigned long irq_flags;
 	int state;
@@ -748,6 +751,8 @@ static void insert_headset(int type)
 #endif
 
 }
+EXPORT_SYMBOL(insert_headset);
+
 #if 0
 static void remove_headset(void)
 {
