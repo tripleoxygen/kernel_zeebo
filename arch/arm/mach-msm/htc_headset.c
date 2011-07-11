@@ -603,7 +603,7 @@ static int h2w_dev_detect(void)
 	return ret;
 }
 
-void remove_headset(void)
+static void remove_headset(void)
 {
 	unsigned long irq_flags;
 
@@ -652,13 +652,12 @@ void remove_headset(void)
 	hi->debounce_time = ktime_set(0, 100000000);  /* 100 ms */
 
 }
-EXPORT_SYMBOL(remove_headset);
 
 #ifdef CONFIG_MSM_SERIAL_DEBUGGER
 extern void msm_serial_debug_enable(int);
 #endif
 
-void insert_headset(int type)
+static void insert_headset(int type)
 {
 	unsigned long irq_flags;
 	int state;
@@ -751,7 +750,6 @@ void insert_headset(int type)
 #endif
 
 }
-EXPORT_SYMBOL(insert_headset);
 
 #if 0
 static void remove_headset(void)
@@ -1065,6 +1063,18 @@ static irqreturn_t button_35mm_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 
 }
+
+void htc_35mm_jack_plug_event(int insert)
+{
+	if (insert) {
+		insert_headset(NORMAL_HEARPHONE);
+	} else {
+		/* small hax to make sure sound gets routed back to speaker */
+		msleep(800);
+		remove_headset();
+	}
+}
+EXPORT_SYMBOL(htc_35mm_jack_plug_event);
 
 #if defined(CONFIG_DEBUG_FS)
 static int h2w_debug_set(void *data, u64 val)

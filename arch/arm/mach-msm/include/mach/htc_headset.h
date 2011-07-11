@@ -175,5 +175,6 @@ typedef enum {
 } KEYFUNC;
 
 extern int turn_mic_bias_on(int on);
+extern void htc_35mm_jack_plug_event(int insert);
 
 #endif

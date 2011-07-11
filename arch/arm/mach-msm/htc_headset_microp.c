@@ -2,6 +2,7 @@
  * Copyright (C) 2009 Google.
  * Copyright (C) 2009 HTC Corporation.
  *
+ * Based on board-mahimahi-microp.c
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -64,18 +65,6 @@ static struct wake_lock microp_i2c_wakelock;
 #define MICROP_I2C_WCMD_GPI_INT_STATUS_CLR	0x84
 #define MICROP_I2C_RCMD_GPI_INT_SETTING		0x85
 
-// htc_headset.c
-extern void insert_headset(int type);
-extern void remove_headset(void);
-
-void htc_35mm_jack_plug_event(int insert)
-{
-	if (insert) {
-		insert_headset(NORMAL_HEARPHONE);
-	} else {
-		remove_headset();
-	}
-}
 
 struct htc_headset_microp_platform_data {
 	/* Headset detection */
@@ -98,8 +87,6 @@ struct htc_headset_microp_platform_data {
 struct microp_i2c_work {
 	struct work_struct work;
 	struct i2c_client *client;
-//	int (*intr_debounce)(uint8_t *pin_status);
-//	void (*intr_function)(uint8_t *pin_status);
 };
 
 struct htc_headset_microp_info {
