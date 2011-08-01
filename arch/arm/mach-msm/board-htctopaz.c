@@ -345,18 +345,18 @@ static void __init htctopaz_map_io(void)
 static void __init htctopaz_fixup(struct machine_desc *desc,
 		struct tag *tags, char **cmdline, struct meminfo *mi)
 {
-//	parse_tag_monodie((const struct tag *)tags);
+	parse_tag_monodie((const struct tag *)tags);
 
 	mi->nr_banks = 2;
 	mi->bank[0].start = PAGE_ALIGN(PHYS_OFFSET);
 	mi->bank[0].node = PHYS_TO_NID(mi->bank[0].start);
 	mi->bank[0].size = (104 * 1024 * 1024);
 
-//	if (board_mcp_monodie()) {
-//		mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x08000000);
-//	} else {
+	if (board_mcp_monodie()) {
+		mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x08000000);
+	} else {
 		mi->bank[1].start = PAGE_ALIGN(PHYS_OFFSET + 0x10000000);
-//	}
+	}
 	mi->bank[1].node = PHYS_TO_NID(mi->bank[1].start);
 #ifdef CONFIG_HOLES_IN_ZONE
 	mi->bank[1].size = (128 - 50) * 1024 * 1024; // see pmem.c for the value
