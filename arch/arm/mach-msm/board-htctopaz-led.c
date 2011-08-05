@@ -33,17 +33,17 @@
 
 #include "board-htctopaz.h"
 
-static void htctopaz_update_color_leds(struct work_struct* work);
-static void htctopaz_microp_update_backlight(struct work_struct* work);
-static void htctopaz_update_button_light(struct work_struct* work);
+static void htctopaz_update_color_led(struct work_struct* work);
+static void htctopaz_update_lcd_backlight(struct work_struct* work);
+static void htctopaz_update_button_backlight(struct work_struct* work);
 
-static void htctopaz_set_backlight(struct led_classdev*, enum led_brightness);
-static void htctopaz_set_button_light(struct led_classdev*, enum led_brightness);
-static void htctopaz_set_brightness_color(struct led_classdev*, enum led_brightness);
+static void htctopaz_set_color_led(struct led_classdev*, enum led_brightness);
+static void htctopaz_set_lcd_backlight(struct led_classdev*, enum led_brightness);
+static void htctopaz_set_button_backlight(struct led_classdev*, enum led_brightness);
 
-static DECLARE_WORK(colorled_wq, htctopaz_update_color_leds);
-static DECLARE_WORK(backlight_wq, htctopaz_microp_update_backlight);
-static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_light);
+static DECLARE_WORK(colorled_wq, htctopaz_update_color_led);
+static DECLARE_WORK(backlight_wq, htctopaz_update_lcd_backlight);
+static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_backlight);
 static struct i2c_client *client = NULL;
 static uint8_t g_auto_backlight = 0;
 
@@ -53,32 +53,45 @@ enum led_color {
 	COLOR_AMBER = 2,
 };
 
+static char* led_color_name(enum led_color color) {
+	switch(color) {
+		case COLOR_OFF:
+			return "OFF";
+		case COLOR_GREEN:
+			return "GREEN";
+		case COLOR_AMBER:
+			return "AMBER";
+		default:
+			return "UNKNOWN";
+	}
+}
+
 enum supported_led {AMBER, GREEN, LCD, BUTTONS};
 
 static struct led_classdev htctopaz_leds[] = {
 	[AMBER] = {
 		.name = "amber",
-		.brightness_set = htctopaz_set_brightness_color,
+		.brightness_set = htctopaz_set_color_led,
 	},
 	[GREEN] = {
 		.name = "green",
-		.brightness_set = htctopaz_set_brightness_color,
+		.brightness_set = htctopaz_set_color_led,
 	},
 	[LCD] = {
 		.name = "lcd-backlight",
-		.brightness_set = htctopaz_set_backlight,
+		.brightness_set = htctopaz_set_lcd_backlight,
 	},
 	[BUTTONS] = {
 		.name = "button-backlight",
-		.brightness_set = htctopaz_set_button_light,
+		.brightness_set = htctopaz_set_button_backlight,
 	}
 };
 
 /*
- * Helper functions
+ * MicropP functions
  */
 
-static int htctopaz_microp_set_color_led(enum led_color led_color_value)
+static int microp_led_set_color_led(enum led_color led_color_value)
 {
 	int ret;
 	uint8_t buf[5] = { 0, 0, 0, 0, 0 };
@@ -86,6 +99,8 @@ static int htctopaz_microp_set_color_led(enum led_color led_color_value)
 	if (!client) {
 		return -EAGAIN;
 	}
+
+	printk(KERN_DEBUG "%s: %s\n", __func__, led_color_name(led_color_value));
 
 	if (machine_is_htctopaz()) {
 		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS; // 0x51
@@ -105,7 +120,67 @@ static int htctopaz_microp_set_color_led(enum led_color led_color_value)
 	return ret;
 }
 
-static int htctopaz_microp_set_auto_backlight(int on)
+static int microp_led_set_lcd_backlight(enum led_brightness brightness)
+{
+	int ret;
+	uint8_t buf[2] = { 0, 0 };
+
+	if (!client) {
+		return -EAGAIN;
+	}
+
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+
+	if (machine_is_htctopaz()) {
+		buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS; // 0x22
+	} else {
+		buf[0] = 0x24; // RHOD
+	}
+	buf[1] = brightness / 2 & 0xf0; // should be revised
+
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting lcd backlight value (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+
+static int microp_led_set_button_backlight(enum led_brightness brightness)
+{
+	int ret;
+	unsigned state;
+	uint8_t buf[3] = { 0, 0, 0 };
+
+	if (!client) {
+		return -EAGAIN;
+	}
+
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+
+	// TODO this needs to be tracked
+	state = brightness ? 0x01 : 0x00;
+
+	if (machine_is_htctopaz()) {
+		buf[0] = 0x40; // MICROP_KLT_ID_LED_STATE;
+		buf[1] = 0xff & state;
+		buf[2] = 0xff & (state >> 8);
+	} else {
+		// TODO this is defunct and needs to be handled via KSC
+		buf[0] = 0x14; // MICROP_KSC_ID_KEYPAD_LIGHT_RHOD;
+		buf[1] = 0x80; // ?? start?
+		buf[2] = brightness;
+	}
+
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+
+static int microp_led_set_auto_backlight(int val)
 {
 	int ret;
 	uint8_t buf[3] = { 0, 0, 0 };
@@ -114,14 +189,16 @@ static int htctopaz_microp_set_auto_backlight(int on)
 		return -EAGAIN;
 	}
 
+	printk(KERN_DEBUG "%s: %s (%d)\n", __func__, val ? "on" : "off", val);
+
 	if (machine_is_htctopaz()) {
 		buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL; // 0x23
-		buf[1] = on ? 0x01 : 0x00;
-		buf[2] = on ? 0x01 : 0x00;
+		buf[1] = val ? 0x01 : 0x00;
+		buf[2] = val ? 0x01 : 0x00;
 	} else {
 		buf[0] = 0x22; // RHOD
-		buf[1] = on ? 0xf3 : 0xf8;
-		buf[2] = on ? 0xf3 : 0xf8;
+		buf[1] = val ? 0xf3 : 0xf8;
+		buf[2] = val ? 0xf3 : 0xf8;
 	}
 
 	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
@@ -132,7 +209,7 @@ static int htctopaz_microp_set_auto_backlight(int on)
 	return ret;
 }
 
-static int htctopaz_microp_get_spi_auto_backlight_status(
+static int microp_led_get_spi_auto_backlight_status(
 	uint8_t* auto_backlight_status, uint8_t* spi_status)
 {
 	int ret;
@@ -191,40 +268,47 @@ static int microp_spi_enable(uint8_t on)
  * Worker functions
  */
 
-static void htctopaz_update_color_leds(struct work_struct* work)
+static void htctopaz_update_color_led(struct work_struct* work)
 {
-	//printk(KERN_DEBUG "%s\n", __func__);
+	enum led_brightness brightness_amber = htctopaz_leds[AMBER].brightness;
+	enum led_brightness brightness_green = htctopaz_leds[GREEN].brightness;
+
+	// give amber precedence over green
+	if (brightness_amber) {
+		microp_led_set_color_led(COLOR_AMBER);
+	} else if (brightness_green) {
+		microp_led_set_color_led(COLOR_GREEN);
+	} else {
+		microp_led_set_color_led(COLOR_OFF);
+	}
 }
 
-static void htctopaz_microp_update_backlight(struct work_struct* work)
+static void htctopaz_update_lcd_backlight(struct work_struct* work)
 {
-	uint8_t buf[2] = { 0, 0 };
 	enum led_brightness brightness = htctopaz_leds[LCD].brightness;
 
-	if (!client) {
-		return;
-	}
-
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
-
-	if (machine_is_htctopaz()) {
-		buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS; // 0x22
-	} else {
-		buf[0] = 0x24; // RHOD
-	}
-	buf[1] = brightness/2 & 0xf0;
-
-	microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	microp_led_set_lcd_backlight(brightness);
 }
 
-static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
+static void htctopaz_update_button_backlight(struct work_struct* work)
+{
+	enum led_brightness brightness = htctopaz_leds[BUTTONS].brightness;
+
+	microp_led_set_button_backlight(brightness);
+}
+
+/*
+ * dev_attr_auto_backlight for lcd-backlight led device
+ */
+
+static ssize_t htctopaz_auto_backlight_get(struct device *dev,
 	struct device_attribute *attr, char *ret_buf)
 {
 	int ret;
 	uint8_t auto_backlight_status;
 	uint8_t spi_status;
 
-	ret = htctopaz_microp_get_spi_auto_backlight_status(&auto_backlight_status, &spi_status);
+	ret = microp_led_get_spi_auto_backlight_status(&auto_backlight_status, &spi_status);
 	if (ret) {
 		return ret;
 	}
@@ -234,14 +318,12 @@ static ssize_t htctopaz_microp_auto_backlight_get(struct device *dev,
 	return sprintf(ret_buf, "%u\n", g_auto_backlight);
 }
 
-static ssize_t htctopaz_microp_auto_backlight_set(struct device *dev,
+static ssize_t htctopaz_auto_backlight_set(struct device *dev,
 	struct device_attribute *attr, const char *in_buf, size_t count)
 {
 	unsigned long val = simple_strtoul(in_buf, NULL, 10);
 
-	printk(KERN_DEBUG "%s: %lu\n", __func__, val);
-
-	if (htctopaz_microp_set_auto_backlight(val ? 1 : 0)) {
+	if (microp_led_set_auto_backlight(val)) {
 		return count;
 	}
 
@@ -249,31 +331,34 @@ static ssize_t htctopaz_microp_auto_backlight_set(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(auto_backlight, 0644, htctopaz_microp_auto_backlight_get,
-	htctopaz_microp_auto_backlight_set);
+static DEVICE_ATTR(auto_backlight, 0644, htctopaz_auto_backlight_get,
+	htctopaz_auto_backlight_set);
 
-static void htctopaz_update_button_light(struct work_struct* work)
-{
-	//printk(KERN_DEBUG "%s\n", __func__);
-}
+/*
+ * led_cdev brightness_set callbacks
+ */
 
-static void htctopaz_set_brightness_color(struct led_classdev *led_cdev,
+static void htctopaz_set_color_led(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
 	schedule_work(&colorled_wq);
 }
 
-static void htctopaz_set_button_light(struct led_classdev *led_cdev,
+static void htctopaz_set_button_backlight(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
 	schedule_work(&buttonlight_wq);
 }
 
-static void htctopaz_set_backlight(struct led_classdev *led_cdev,
+static void htctopaz_set_lcd_backlight(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
 	schedule_work(&backlight_wq);
 }
+
+/*
+ * Init
+ */
 
 static int htctopaz_microp_probe(struct platform_device *pdev)
 {
@@ -302,7 +387,7 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	}
 
 	// init auto backlight global
-	ret = htctopaz_microp_get_spi_auto_backlight_status(&auto_backlight_status,
+	ret = microp_led_get_spi_auto_backlight_status(&auto_backlight_status,
 		&spi_status);
 	if (ret) {
 		printk(KERN_ERR "%s: Failed reading auto_backlight status (%d)",
@@ -311,8 +396,10 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	}
 	g_auto_backlight = auto_backlight_status;
 
-	// reset the color led on boot
-	htctopaz_microp_set_color_led(COLOR_OFF);
+	// some defaults at boot
+	microp_led_set_color_led(COLOR_OFF);
+	microp_led_set_button_backlight(LED_OFF);
+	microp_led_set_lcd_backlight(LED_FULL);
 
 	return 0;
 
@@ -341,7 +428,7 @@ static int htctopaz_microp_remove(struct platform_device *pdev)
 #if CONFIG_PM
 static int htctopaz_microp_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	htctopaz_microp_set_color_led(COLOR_GREEN);
+	microp_led_set_color_led(COLOR_GREEN);
 
 	//microp_spi_enable(0);
 
@@ -352,7 +439,7 @@ static int htctopaz_microp_resume(struct platform_device *pdev)
 {
 	//microp_spi_enable(1);
 
-	htctopaz_microp_set_color_led(COLOR_OFF);
+	microp_led_set_color_led(COLOR_OFF);
 
 	return 0;
 }
