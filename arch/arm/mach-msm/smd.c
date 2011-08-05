@@ -289,31 +289,6 @@ static int ch_read(struct smd_channel *ch, void *_data, int len)
 	return orig_len - len;
 }
 
-int smd_readx(struct smd_channel *ch, int len, smd_readcb *func, void *ctxt)
-{
-	void *ptr;
-	unsigned n;
-	int orig_len = len;
-
-	while (len > 0) {
-		n = ch_read_buffer(ch, &ptr);
-		if (n == 0)
-			break;
-
-		if (n > len)
-			n = len;
-		func(ptr, n, ctxt);
-
-		len -= n;
-		ch_read_done(ch, n);
-	}
-
-	orig_len -= len;
-	if (orig_len > 0)
-		notify_other_smsm();
-	return orig_len;
-}
-
 static void update_stream_state(struct smd_channel *ch)
 {
 	/* streams have no special state requiring updating */

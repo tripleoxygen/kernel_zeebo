@@ -34,10 +34,6 @@ int smd_close(smd_channel_t *ch);
 /* passing a null pointer for data reads and discards */
 int smd_read(smd_channel_t *ch, void *data, int len);
 
-/* invoke the reader callback function with the data, len, and context */
-typedef void (smd_readcb)(void *data, int len, void *ctxt);
-int smd_readx(smd_channel_t *ch, int len, smd_readcb *func, void *ctxt);
-
 /* Write to stream channels may do a partial write and return
 ** the length actually written.
 ** Write to packet channels will never do a partial write --

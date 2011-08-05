@@ -18,6 +18,7 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <linux/slab.h>
 #include <linux/wait.h>
 #include <linux/wakelock.h>
 
@@ -28,6 +29,7 @@
 #include <mach/msm_smd.h>
 
 #define MAX_SMD_TTYS 32
+#define SMD_BUF_SIZE (16 * 1024)
 
 static DEFINE_MUTEX(smd_tty_lock);
 
@@ -37,6 +39,7 @@ struct smd_tty_info {
 	struct wake_lock wake_lock;
 	int open_count;
 	struct work_struct tty_work;
+	unsigned char *rx_buffer;
 };
 
 static struct smd_tty_info smd_tty[MAX_SMD_TTYS];
@@ -71,23 +74,24 @@ int smd_set_channel_list(const struct smd_tty_channel_desc *channels, int len)
  * ldisc_receive_buf  - pass receive data to line discipline
  */
 
-static void smd_readx_cb(void *data, int count, void *ctxt)
+static void ldisc_receive_buf(struct tty_struct *tty,
+	const __u8 *data, char *flags, int count)
 {
-	struct tty_struct *tty = ctxt;
 	struct tty_ldisc *ld;
 	if (!tty)
 		return;
 	ld = tty_ldisc_ref(tty);
 	if (ld) {
 		if (ld->ops->receive_buf)
-			ld->ops->receive_buf(tty, data, 0, count);
+			ld->ops->receive_buf(tty, data, flags, count);
 		tty_ldisc_deref(ld);
 	}
 }
 
 static void smd_tty_work_func(struct work_struct *work)
 {
-	int avail;
+	int avail, got;
+
 	struct smd_tty_info *info = container_of(work,
 						struct smd_tty_info,
 						tty_work);
@@ -112,13 +116,16 @@ static void smd_tty_work_func(struct work_struct *work)
 			break;
 		}
 
-		if (smd_readx(info->ch, avail, smd_readx_cb, (void *)tty) != avail) {
+		if ((got = smd_read(info->ch, info->rx_buffer, avail)) != avail) {
 			/* shouldn't be possible since we're in interrupt
 			** context here and nobody else could 'steal' our
 			** characters.
 			*/
-			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!\n");
+			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?! got %d, avail %d\n",
+				got, avail);
 		}
+		ldisc_receive_buf(tty, info->rx_buffer, 0, avail);
+
 		wake_lock_timeout(&info->wake_lock, HZ / 2);
 		mutex_unlock(&smd_tty_lock);
 	}
@@ -280,6 +287,7 @@ static int __init smd_tty_init(void)
 	for (i = 0; i < smd_tty_channels_len; i++) {
 		tty_register_device(smd_tty_driver, smd_tty_channels[i].id, 0);
 		INIT_WORK(&smd_tty[smd_tty_channels[i].id].tty_work, smd_tty_work_func);
+		smd_tty[smd_tty_channels[i].id].rx_buffer = (unsigned char *)kmalloc(SMD_BUF_SIZE,GFP_KERNEL);
 	}
 	return 0;
 }
