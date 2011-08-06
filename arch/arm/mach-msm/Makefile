@@ -70,7 +70,7 @@ obj-$(CONFIG_ARCH_QSD8X50) += board-qsd8x50.o devices-qsd8x50.o
 
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += amss_para.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += devices_htc.o devices-msm7x00.o
-obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += htc_acoustic_wince.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += htc_acoustic_wince.o htc_hw.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += mmc.o msm_vibrator.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o pwrsink.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += smd_diag.o

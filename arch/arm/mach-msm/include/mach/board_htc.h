@@ -81,4 +81,15 @@ void notify_usb_connected(int online);
 
 char *board_serialno(void);
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#define MACHINE_VARIANT_UNDEFINED	0x0
+#define MACHINE_VARIANT_RHOD_1XX	0x0101
+#define MACHINE_VARIANT_RHOD_2XX	0x0102
+#define MACHINE_VARIANT_RHOD_3XX	0x0103
+#define MACHINE_VARIANT_RHOD_4XX	0x0104
+#define MACHINE_VARIANT_RHOD_5XX	0x0105
+
+int get_machine_variant_type(void);
+#endif
+
 #endif
