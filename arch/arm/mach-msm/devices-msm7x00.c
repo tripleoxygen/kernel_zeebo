@@ -667,6 +667,13 @@ struct platform_device msm_device_rtc = {
 };
 #endif
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+struct platform_device msm_device_htc_hw = {
+	.name = "htc_hw",
+	.id = -1,
+};
+#endif
+
 #if defined(CONFIG_MSM_SMEM_BATTCHG)
 struct platform_device msm_device_htc_battery_smem = {
 	.name = "htc_battery",

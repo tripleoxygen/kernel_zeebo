@@ -251,7 +251,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_nand,
 	&msm_device_i2c,
 	&msm_device_rtc,
-//	&msm_device_htc_hw,
+	&msm_device_htc_hw,
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	&msm_device_htc_battery_smem,
 #endif
@@ -283,17 +283,6 @@ static struct msm_acpu_clock_platform_data halibut_clock_data = {
 //	.max_axi_khz = 160000,
 };
 
-void msm_serial_debug_init(unsigned int base, int irq, 
-			   const char *clkname, int signal_irq);
-
-#if 0
-static htc_hw_pdata_t msm_htc_hw_pdata = {
-	.set_vibrate = topaz_set_vibrate,
-	.battery_smem_offset = 0xfc110,
-	.battery_smem_field_size = 2,
-};
-#endif
-
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 static smem_batt_t htctopaz_htc_battery_smem_pdata = {
 	.gpio_battery_detect = TOPA100_BAT_IN,
@@ -310,7 +299,6 @@ static void __init htctopaz_init(void)
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
-//	msm_device_htc_hw.dev.platform_data = &msm_htc_hw_pdata;
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	msm_device_htc_battery_smem.dev.platform_data = &htctopaz_htc_battery_smem_pdata;
 #endif
