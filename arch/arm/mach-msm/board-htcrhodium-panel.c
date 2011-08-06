@@ -15,6 +15,7 @@
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
 
+#include <mach/board_htc.h>
 #include <mach/msm_fb.h>
 #include <mach/msm_iomap.h>
 #include <mach/vreg.h>
@@ -223,8 +224,6 @@ static int htcrhod_mddi_client_init(
 	}
 	client_data->auto_hibernate(client_data, 1);
 
-	printk(KERN_DEBUG "%s EXIT\n", __func__);
-
 	return 0;
 }
 
@@ -262,8 +261,6 @@ static int htcrhod_mddi_panel_unblank(
 	client_data->remote_write(client_data, 0x01, 0x2900);	// display on
 	client_data->remote_write(client_data, 0x2c, 0x5300);	// toggle autobl bit
 
-	printk(KERN_DEBUG "%s EXIT\n", __func__);
-
 	return 0;
 }
 
@@ -273,14 +270,17 @@ static void htcrhod_mddi_power_client(
 {
 	printk(KERN_DEBUG "%s(%s)\n", __func__, on ? "on" : "off");
 
-	// current vregs must only be enabled for non rhod400/500 due to
+	// vregs must only be enabled/disabled for non rhod400/500 due to
 	// MSM7600 using different vregs; otherwise radio+data will stop
 	// functioning when going into sleep
 
 	if (on) {
-		//~ vreg_enable(vreg_lcd_1);
-		//~ vreg_enable(vreg_lcd_2);
-		//~ mdelay(5);
+		if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
+			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+			vreg_enable(vreg_lcd_1);
+			vreg_enable(vreg_lcd_2);
+			mdelay(5);
+		}
 
 		gpio_tlmm_config(
 			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
@@ -295,8 +295,11 @@ static void htcrhod_mddi_power_client(
 			GPIO_CFG_DISABLE);
 		msleep(10);
 
-		//~ vreg_disable(vreg_lcd_1);
-		//~ vreg_disable(vreg_lcd_2);
+		if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
+			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+			vreg_disable(vreg_lcd_1);
+			vreg_disable(vreg_lcd_2);
+		}
 	}
 }
 
