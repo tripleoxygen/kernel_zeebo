@@ -333,6 +333,7 @@ static struct platform_device htcrhodium_microp_35mm = {
 static struct platform_device* htcrhodium_microp_clients[] = {
 	&htcrhodium_microp_leds,
 	&htcrhodium_microp_audio,
+	// this must be last; dropped when variant is not RHODW(RHOD400/RHOD500)
 	&htcrhodium_microp_35mm,
 };
 
@@ -662,6 +663,13 @@ static void __init htcrhodium_init(void)
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	platform_driver_register(&htcrhodium_keypad_led_driver);
+
+	/* Don't register htc_headset_microp for non 35mm variants. */
+	if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
+			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+		htcrhodium_microp_led_audio_pdata.nclients =
+			ARRAY_SIZE(htcrhodium_microp_clients) - 1;
+	}
 
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
