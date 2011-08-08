@@ -35,6 +35,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/mmc.h>
 #include <asm/setup.h>
+#include <mach/board_htc.h>
 #include <mach/htc_pwrsink.h>
 #include <mach/htc_headset.h>
 
@@ -326,6 +327,11 @@ static int htc_headset_microp_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct htc_headset_microp_platform_data *pdata = NULL;
+
+	if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
+			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+		return -ENODEV;
+	}
 
 	pdata = pdev->dev.platform_data;
 	private_microp_client = dev_get_drvdata(&pdev->dev);
