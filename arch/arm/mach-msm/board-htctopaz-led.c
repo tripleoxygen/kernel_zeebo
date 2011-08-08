@@ -21,6 +21,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include <linux/module.h>
+#include <linux/debugfs.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/leds.h>
@@ -91,7 +92,8 @@ static struct led_classdev htctopaz_leds[] = {
  * MicropP functions
  */
 
-static int microp_led_set_color_led(enum led_color led_color_value)
+static int microp_led_set_color_led(enum led_color front_led_color,
+	enum led_color back_led_color)
 {
 	int ret;
 	uint8_t buf[5] = { 0, 0, 0, 0, 0 };
@@ -100,15 +102,16 @@ static int microp_led_set_color_led(enum led_color led_color_value)
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: %s\n", __func__, led_color_name(led_color_value));
+	printk(KERN_DEBUG "%s: front=%s back=%s\n", __func__,
+		led_color_name(front_led_color), led_color_name(back_led_color));
 
 	if (machine_is_htctopaz()) {
 		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS; // 0x51
 	} else {
 		buf[0] = 0x50; // RHOD
 	}
-	buf[1] = 0;
-	buf[2] = led_color_value;
+	buf[1] = back_led_color;
+	buf[2] = front_led_color;
 	buf[3] = 0xff;
 	buf[4] = 0xff;
 
@@ -275,11 +278,11 @@ static void htctopaz_update_color_led(struct work_struct* work)
 
 	// give amber precedence over green
 	if (brightness_amber) {
-		microp_led_set_color_led(COLOR_AMBER);
+		microp_led_set_color_led(COLOR_AMBER, COLOR_OFF);
 	} else if (brightness_green) {
-		microp_led_set_color_led(COLOR_GREEN);
+		microp_led_set_color_led(COLOR_GREEN, COLOR_OFF);
 	} else {
-		microp_led_set_color_led(COLOR_OFF);
+		microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
 	}
 }
 
@@ -397,7 +400,7 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	g_auto_backlight = auto_backlight_status;
 
 	// some defaults at boot
-	microp_led_set_color_led(COLOR_OFF);
+	microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
 	microp_led_set_button_backlight(LED_OFF);
 	microp_led_set_lcd_backlight(LED_FULL);
 
@@ -428,7 +431,7 @@ static int htctopaz_microp_remove(struct platform_device *pdev)
 #if CONFIG_PM
 static int htctopaz_microp_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	microp_led_set_color_led(COLOR_GREEN);
+	microp_led_set_color_led(COLOR_GREEN, COLOR_OFF);
 
 	//microp_spi_enable(0);
 
@@ -439,7 +442,7 @@ static int htctopaz_microp_resume(struct platform_device *pdev)
 {
 	//microp_spi_enable(1);
 
-	microp_led_set_color_led(COLOR_OFF);
+	microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
 
 	return 0;
 }
@@ -471,3 +474,68 @@ static void __exit htctopaz_microp_exit(void)
 
 module_init(htctopaz_microp_init);
 module_exit(htctopaz_microp_exit)
+
+/*
+ * DebugFS
+ */
+
+#if defined(CONFIG_DEBUG_FS)
+static int microp_dbg_led_set_color_led(void *dat, u64 val)
+{
+	int ret;
+	uint8_t buf[5] = { 0, 0, 0, 0, 0 };
+
+	unsigned back = 0xff & (val >> 24);
+	unsigned front = 0xff & (val >> 16);
+	unsigned three = 0xff & (val >> 8);
+	unsigned four = 0xff & val;
+
+	if (!client) {
+		return -EAGAIN;
+	}
+
+	printk(KERN_DEBUG "%s: val=0x%08x (%llu) back=%d front=%d three=%d four=%d\n",
+		__func__, (unsigned)val, val, back, front, three, four);
+
+	if (machine_is_htctopaz()) {
+		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS; // 0x51
+	} else {
+		buf[0] = 0x50; // RHOD
+	}
+	buf[1] = back;
+	buf[2] = front;
+	buf[3] = three;
+	buf[4] = four;
+
+	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting color led value (%d)\n",
+			__func__, ret);
+	}
+	return ret;
+}
+
+static int microp_dbg_led_get_color_led(void *data, u64 *val) {
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(microp_dbg_led_set_color_led_fops,
+	microp_dbg_led_get_color_led,
+	microp_dbg_led_set_color_led, "%llu\n");
+
+static int __init microp_dbg_init(void)
+{
+	struct dentry *dent;
+
+	dent = debugfs_create_dir("microp_dbg", 0);
+	if (IS_ERR(dent))
+		return PTR_ERR(dent);
+
+	debugfs_create_file("color_led", 0666, dent, NULL,
+			&microp_dbg_led_set_color_led_fops);
+
+	return 0;
+}
+
+device_initcall(microp_dbg_init);
+#endif /* CONFIG_DEBUG_FS */
