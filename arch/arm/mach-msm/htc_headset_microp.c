@@ -57,11 +57,11 @@ static struct wake_lock microp_i2c_wakelock;
 #endif
 
 #define MICROP_I2C_WCMD_READ_ADC_VALUE_REQ	0x60
-#define MICROP_I2C_RCMD_ADC_VALUE		0x62
+#define MICROP_I2C_RCMD_ADC_VALUE			0x62
 #define MICROP_I2C_WCMD_GPI_INT_CTL_EN		0x80
 #define MICROP_I2C_WCMD_GPI_INT_CTL_DIS		0x81
 #define MICROP_I2C_RCMD_GPI_INT_STATUS		0x82
-#define MICROP_I2C_RCMD_GPI_STATUS		0x83
+#define MICROP_I2C_RCMD_GPI_STATUS			0x83
 #define MICROP_I2C_WCMD_GPI_INT_STATUS_CLR	0x84
 #define MICROP_I2C_RCMD_GPI_INT_SETTING		0x85
 
@@ -291,7 +291,6 @@ static void microp_i2c_intr_work_func(struct work_struct *work)
 	uint16_t intr_status = 0;
 	int ret = 0;
 
-
 	ret = i2c_read_block(MICROP_I2C_RCMD_GPI_INT_STATUS, data, 3);
 	if (ret < 0) {
 		SYS_ERR(": read interrupt status fail\n");
@@ -303,8 +302,9 @@ static void microp_i2c_intr_work_func(struct work_struct *work)
 	if (ret < 0) {
 		SYS_ERR(": clear interrupt status fail\n");
 	}
-	
-	if (intr_status > 0) printk("microp intr_status=0x%02x\n", intr_status);
+
+	if (intr_status > 0)
+		printk("%s: microp intr_status=0x%02x\n", __func__, intr_status);
 
 	if (intr_status & hi->pdata.hpin_int) {
 		hi->is_hpin_pin_stable = 0;
@@ -344,7 +344,12 @@ static int htc_headset_microp_probe(struct platform_device *pdev)
 		memcpy(hi->pdata.hpin_mask, pdata->hpin_mask,
 		       sizeof(hi->pdata.hpin_mask));
 
-	// FIXME this needs to be moved to microp_ng!
+#if 0
+	/* Don't reset the microP GPIOs as this resets all already requested GPIO
+	 * in H2W (htc_headset.c) and breaks extusb headset detection.
+	 */
+
+	// FIXME GPIO_UP_RESET_N should to be moved to platform data/microp_ng
 #define GPIO_UP_RESET_N 43 // for rhod!
 	ret = gpio_request(GPIO_UP_RESET_N, "microp_i2c_wm");
 	if (ret < 0) {
@@ -356,14 +361,15 @@ static int htc_headset_microp_probe(struct platform_device *pdev)
 		SYS_ERR("failed on gpio_direction_output reset");
 		goto err_gpio_reset;
 	}
+#endif
 
 	wake_lock_init(&microp_i2c_wakelock, WAKE_LOCK_SUSPEND,
 			 "microp_i2c_present");
 
 	/* Headset */
+	// FIXME detect headset at boot
 	hi->headset_is_in = 0;
 	hi->is_hpin_pin_stable = 1;
-
 
 	/* Setup IRQ handler */
 	INIT_WORK(&hi->work.work, microp_i2c_intr_work_func);
@@ -409,9 +415,11 @@ static int htc_headset_microp_probe(struct platform_device *pdev)
 
 err_intr:
 	wake_lock_destroy(&microp_i2c_wakelock);
+#if 0
 err_gpio_reset:
 	gpio_free(GPIO_UP_RESET_N);
 err_exit:
+#endif
 	return ret;
 }
 
