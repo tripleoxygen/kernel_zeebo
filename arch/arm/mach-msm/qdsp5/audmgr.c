@@ -26,6 +26,7 @@
 #include <mach/msm_rpcrouter.h>
 
 #include "audmgr.h"
+#include <mach/msm_smd.h>
 
 #define STATE_CLOSED    0
 #define STATE_DISABLED  1
@@ -204,11 +205,22 @@ int audmgr_open(struct audmgr *am)
 {
 	int rc;
 
+	uint32_t audmgr_prog, audmgr_vers;
+	if (!amss_get_num_value(AMSS_AUDMGR_PROG, &audmgr_prog)) {
+		printk(KERN_ERR "%s: unable to get AUDMGR_PROG\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!amss_get_num_value(AMSS_AUDMGR_VERS, &audmgr_vers)) {
+		printk(KERN_ERR "%s: unable to get AUDMGR_PROG\n", __func__);
+		return -EINVAL;
+	}
+
 	if (am->state != STATE_CLOSED)
 		return 0;
 
-	am->ept = msm_rpc_connect(AUDMGR_PROG,
-				AUDMGR_VERS,
+	am->ept = msm_rpc_connect(audmgr_prog,
+				audmgr_vers,
 				MSM_RPC_UNINTERRUPTIBLE | MSM_RPC_ENABLE_RECEIVE);
 
 	init_waitqueue_head(&am->wait);
@@ -245,6 +257,12 @@ int audmgr_enable(struct audmgr *am, struct audmgr_config *cfg)
 	struct audmgr_enable_msg msg;
 	int rc;
 
+	uint32_t audmgr_prog;
+	if (!amss_get_num_value(AMSS_AUDMGR_PROG, &audmgr_prog)) {
+		printk(KERN_ERR "%s: unable to get AUDMGR_PROG\n", __func__);
+		return -EINVAL;
+	}
+
 	if (am->state == STATE_ENABLED)
 		return 0;
 
@@ -266,7 +284,7 @@ int audmgr_enable(struct audmgr *am, struct audmgr_config *cfg)
 	msg.args.client_data = cpu_to_be32(0x11223344);
 #endif
 
-	msm_rpc_setup_req(&msg.hdr, AUDMGR_PROG, msm_rpc_get_vers(am->ept),
+	msm_rpc_setup_req(&msg.hdr, audmgr_prog, msm_rpc_get_vers(am->ept),
 			  AUDMGR_ENABLE_CLIENT);
 
 	rc = msm_rpc_write(am->ept, &msg, sizeof(msg));
@@ -291,10 +309,17 @@ int audmgr_disable(struct audmgr *am)
 	struct audmgr_disable_msg msg;
 	int rc;
 
+	uint32_t audmgr_prog;
+	if (!amss_get_num_value(AMSS_AUDMGR_PROG, &audmgr_prog)) {
+		printk(KERN_ERR "%s: unable to get AUDMGR_PROG\n", __func__);
+		return -EINVAL;
+	}
+
+
 	if (am->state == STATE_DISABLED)
 		return 0;
 
-	msm_rpc_setup_req(&msg.hdr, AUDMGR_PROG, msm_rpc_get_vers(am->ept),
+	msm_rpc_setup_req(&msg.hdr, audmgr_prog, msm_rpc_get_vers(am->ept),
 			  AUDMGR_DISABLE_CLIENT);
 	msg.handle = cpu_to_be32(am->handle);
 

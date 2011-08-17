@@ -17,6 +17,8 @@
 #ifndef _ARCH_ARM_MACH_MSM_AUDMGR_NEW_H
 #define _ARCH_ARM_MACH_MSM_AUDMGR_NEW_H
 
+#error You don't want to mess with 6350
+
 enum rpc_aud_def_sample_rate_type {
 	RPC_AUD_DEF_SAMPLE_RATE_NONE,
 	RPC_AUD_DEF_SAMPLE_RATE_8000,

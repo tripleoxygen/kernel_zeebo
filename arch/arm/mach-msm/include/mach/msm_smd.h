@@ -17,6 +17,8 @@
 #ifndef __ASM_ARCH_MSM_SMD_H
 #define __ASM_ARCH_MSM_SMD_H
 
+#include <linux/types.h>
+
 typedef struct smd_channel smd_channel_t;
 
 extern int (*msm_check_for_modem_crash)(void);
@@ -115,5 +117,55 @@ struct smd_tty_channel_desc {
 };
 
 int smd_set_channel_list(const struct smd_tty_channel_desc *, int len);
+
+/******* Platform Data setup **********/
+enum amss_id {
+	AMSS_AUDMGR_PROG,
+	AMSS_AUDMGR_VERS,
+	AMSS_RPC_SND_PROG,
+	AMSS_RPC_SND_VERS,
+	AMSS_SND_SET_DEVICE_PROC,
+	AMSS_SND_SET_VOLUME_PROC,
+	AMSS_AUDMGR_CB_PROG,
+	AMSS_AUDMGR_CB_VERS,
+	AMSS_TIME_REMOTE_MTOA_VERS,
+	AMSS_TIME_TOD_SET_APPS_BASES,
+	AMSS_PM_LIBVERS,
+	AMSS_RPC_DOG_KEEPALIVE_PROG,
+	AMSS_RPC_DOG_KEEPALIVE_VERS,
+	AMSS_RPC_DOG_KEEPALIVE_BEACON,
+};
+
+enum amss_value_type {
+	AMSS_VAL_UINT,
+	AMSS_VAL_STRING,
+};
+
+struct amss_value {
+	enum amss_id id;
+	enum amss_value_type type;
+	union {
+		uint32_t value;
+		const char* string;
+	};
+};
+
+struct msm_early_server {
+	uint32_t cid;
+	uint32_t pid;
+	uint32_t prog;
+	uint32_t vers;
+};
+
+struct msm_smd_platform_data {
+		struct amss_value *amss_values;
+		int n_amss_values;
+		struct msm_early_server *early_servers;
+		int n_early_servers;
+		bool use_v2_alloc_elm;
+};
+
+extern bool amss_get_num_value(enum amss_id, uint32_t* out);
+extern const char* amss_get_str_value(enum amss_id);
 
 #endif

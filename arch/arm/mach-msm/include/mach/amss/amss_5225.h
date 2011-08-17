@@ -1,0 +1,22 @@
+#ifndef __AMSS_5225_H__
+#define __AMSS_5225_H__
+
+#include <mach/msm_smd.h>
+
+extern struct amss_value amss_5225_para[];
+
+#define	ADSP_RTOS_ATOM_PROG_5225	0x3000000a
+#define	ADSP_RTOS_MTOA_PROG_5225	0x3000000b
+#define	ADSP_RTOS_ATOM_VERS_5225	0x0
+#define	ADSP_RTOS_MTOA_VERS_5225	0x0
+#define	ADSP_RTOS_ATOM_NULL_PROC_5225	0x0
+#define	ADSP_RTOS_MTOA_NULL_PROC_5225	0x0
+#define	ADSP_RTOS_ATOM_PROC_5225	0x1
+#define	ADSP_RTOS_MTOA_PROC_5225	0x1
+#define ADSP_RTOS_MTOA_EP_5225		0xfadefade
+#define ADSP_RTOS_SND_PROG_5225		0x30000002
+#define ADSP_RTOS_SND_VERS_5225		0
+#define ADSP_RTOS_SND_DEV_PROC_5225		1
+#define ADSP_RTOS_SND_VOL_PROC_5225		2
+
+#endif

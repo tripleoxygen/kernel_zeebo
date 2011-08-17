@@ -103,6 +103,11 @@ struct msm_snd_endpoint {
 	char name[64]; /* output only */
 };
 
+struct msm_snd_platform_data {
+	struct msm_snd_endpoint *endpoints;
+	unsigned num_endpoints;
+};
+
 /* Takes an index between 0 and one less than the number returned by
  * SND_GET_NUM_ENDPOINTS, and returns the SND index and name of a
  * SND endpoint.  On input, the .id field contains the number of the

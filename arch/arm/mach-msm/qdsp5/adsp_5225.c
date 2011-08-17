@@ -14,9 +14,11 @@
  */
 
 #include "adsp.h"
+#include <mach/amss/amss_5225.h>
+#include <mach/irqs.h>
 
 /* Firmware modules */
-typedef enum { 
+typedef enum {
 	QDSP_MODULE_KERNEL,		// 0x0
 	QDSP_MODULE_AFETASK,		// 0x1
 	QDSP_MODULE_AUDPLAY0TASK,	// 0x2+
@@ -40,7 +42,7 @@ typedef enum {
 	QDSP_MODULE_VOICEPROCTASK,	// 0x14
 	QDSP_MODULE_VIDEOENCTASK,	// 0x15
 	QDSP_MODULE_VFETASK,		// 0x16+
-	QDSP_MODULE_WAV_ENC,		// 0x17	
+	QDSP_MODULE_WAV_ENC,		// 0x17
 	QDSP_MODULE_AACLC_ENC,		// 0x18
 	QDSP_MODULE_VIDEO_AMR,		// 0x19
 	QDSP_MODULE_VOC_AMR,		// 0x1a
@@ -94,7 +96,7 @@ static uint32_t qdsp_gaudio_queue_offset_table[] = {
 	QDSP_RTOS_NO_QUEUE,  /* QDSP_lpmCommandQueue              */
 	0x3c8,               /* QDSP_mpuAfeQueue                  */
 	0x3f8,               /* QDSP_mpuGraphicsCmdQueue          */
-	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuModmathCmdQueue           */ 
+	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuModmathCmdQueue           */
 	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuVDecCmdQueue              */
 	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuVDecPktQueue              */
 	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuVEncCmdQueue              */
@@ -149,7 +151,7 @@ static qdsp_module_type qdsp_combo_task_to_module_table[] = {
 static uint32_t qdsp_combo_queue_offset_table[] = {
 	0x6a4,               /* QDSP_lpmCommandQueue              */
 	0x650,               /* QDSP_mpuAfeQueue                  */
-	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuGraphicsCmdQueue          */ 
+	QDSP_RTOS_NO_QUEUE,  /* QDSP_mpuGraphicsCmdQueue          */
 	0x664,               /* QDSP_mpuModmathCmdQueue           */
 	0x678,               /* QDSP_mpuVDecCmdQueue              */
 	0x67c,               /* QDSP_mpuVDecPktQueue              */
@@ -269,23 +271,61 @@ static struct adsp_module_info module_info[] = {
 		adsp_videoenc_verify_cmd, NULL),
 };
 
-int adsp_init_info_5225(struct adsp_info *info)
+static struct adsp_info info = {
+	.send_irq =   0x00c00200,
+	.read_ctrl =  0x00400038,
+	.write_ctrl = 0x00400034,
+
+	.max_msg16_size = 193,
+	.max_msg32_size = 8,
+
+	.max_task_id = QDSP_RTOS_MAX_TASK_ID,
+	.max_module_id = QDSP_MODULE_MAX - 1,
+	.max_queue_id = QDSP_QUEUE_MAX,
+	.max_image_id = 2,
+	.queue_offset = qdsp_queue_offset_table,
+	.task_to_module = qdsp_task_to_module,
+
+	.module_count = ARRAY_SIZE(module_info),
+	.module = module_info,
+
+	.mtoa_vers = ADSP_RTOS_MTOA_VERS_5225,
+	.atom_vers = ADSP_RTOS_ATOM_VERS_5225,
+	.atom_proc = ADSP_RTOS_ATOM_PROC_5225,
+	.mtoa_proc = ADSP_RTOS_MTOA_PROC_5225,
+	.atom_null_proc = ADSP_RTOS_ATOM_NULL_PROC_5225,
+	.mtoa_null_proc = ADSP_RTOS_MTOA_NULL_PROC_5225,
+	.mtoa_prog = ADSP_RTOS_MTOA_PROG_5225,
+	.atom_prog = ADSP_RTOS_ATOM_PROG_5225,
+	.mtoa_endpoint = ADSP_RTOS_MTOA_EP_5225,
+	.snd_prog = ADSP_RTOS_SND_PROG_5225,
+	.snd_vers = ADSP_RTOS_SND_VERS_5225,
+	.snd_device_proc = ADSP_RTOS_SND_DEV_PROC_5225,
+	.snd_volume_proc = ADSP_RTOS_SND_VOL_PROC_5225,
+
+	.irq_adsp = INT_ADSP_A11,
+};
+
+static int adsp_probe_5225(struct platform_device *pdev)
 {
-	info->send_irq =   0x00c00200;
-	info->read_ctrl =  0x00400038;
-	info->write_ctrl = 0x00400034;
-
-	info->max_msg16_size = 193;
-	info->max_msg32_size = 8;
-
-	info->max_task_id = QDSP_RTOS_MAX_TASK_ID;
-	info->max_module_id = QDSP_MODULE_MAX - 1;
-	info->max_queue_id = QDSP_QUEUE_MAX;
-	info->max_image_id = 2;
-	info->queue_offset = qdsp_queue_offset_table;
-	info->task_to_module = qdsp_task_to_module;
-
-	info->module_count = ARRAY_SIZE(module_info);
-	info->module = module_info;
-	return 0;
+  	int rc;
+	printk("+%s\n", __func__);
+	rc = msm_adsp_probe(&info);
+	printk("-%s rc=%d\n", __func__, rc);
+	return rc;
 }
+
+static struct platform_driver msm_adsp_driver = {
+	.probe = adsp_probe_5225,
+	.driver = {
+		.name = "msm_adsp_5225",
+		.owner = THIS_MODULE,
+	},
+};
+
+static int __init adsp_5225_init(void)
+{
+	return platform_driver_register(&msm_adsp_driver);
+}
+
+device_initcall(adsp_5225_init);

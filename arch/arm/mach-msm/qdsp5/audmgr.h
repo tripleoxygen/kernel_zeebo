@@ -1,6 +1,6 @@
 /* arch/arm/mach-msm/qdsp5/audmgr.h
  *
- * Copyright 2008 (c) QUALCOMM Incorporated. 
+ * Copyright 2008 (c) QUALCOMM Incorporated.
  * Copyright (C) 2008 Google, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -132,35 +132,21 @@ struct rpc_audmgr_enable_client_args {
 	uint32_t client_data;
 };
 
+//FIXME: make it dynamic
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-#define AUDMGR_ENABLE_CLIENT			1
-#define AUDMGR_DISABLE_CLIENT			2
-#define AUDMGR_SUSPEND_EVENT_RSP		3
-#else	
-#define AUDMGR_ENABLE_CLIENT			2
-#define AUDMGR_DISABLE_CLIENT			3
-#define AUDMGR_SUSPEND_EVENT_RSP		4
-#define AUDMGR_REGISTER_OPERATION_LISTENER	5
-#define AUDMGR_UNREGISTER_OPERATION_LISTENER	6
-#define AUDMGR_REGISTER_CODEC_LISTENER		7
-#define AUDMGR_GET_RX_SAMPLE_RATE		8
-#define AUDMGR_GET_TX_SAMPLE_RATE		9
-#define AUDMGR_SET_DEVICE_MODE			10
-#endif
-
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-// FIXME needs to be made dynamic
-#define AUDMGR_PROG_VERS "rs30000013:00000000"
-#define AUDMGR_PROG 0x30000013
-#define AUDMGR_VERS 0x00000000
-#elif CONFIG_MSM_AMSS_VERSION < 6220
-#define AUDMGR_PROG_VERS "rs30000013:46255756"
-#define AUDMGR_PROG 0x30000013
-#define AUDMGR_VERS 0x46255756
+	#define AUDMGR_ENABLE_CLIENT			1
+	#define AUDMGR_DISABLE_CLIENT			2
+	#define AUDMGR_SUSPEND_EVENT_RSP		3
 #else
-#define AUDMGR_PROG_VERS "rs30000013:e94e8f0c"
-#define AUDMGR_PROG 0x30000013
-#define AUDMGR_VERS 0xe94e8f0c
+	#define AUDMGR_ENABLE_CLIENT			2
+	#define AUDMGR_DISABLE_CLIENT			3
+	#define AUDMGR_SUSPEND_EVENT_RSP		4
+	#define AUDMGR_REGISTER_OPERATION_LISTENER	5
+	#define AUDMGR_UNREGISTER_OPERATION_LISTENER	6
+	#define AUDMGR_REGISTER_CODEC_LISTENER		7
+	#define AUDMGR_GET_RX_SAMPLE_RATE		8
+	#define AUDMGR_GET_TX_SAMPLE_RATE		9
+	#define AUDMGR_SET_DEVICE_MODE			10
 #endif
 
 struct rpc_audmgr_cb_func_ptr {
@@ -182,18 +168,6 @@ struct rpc_audmgr_cb_func_ptr {
 #define AUDMGR_CB_FUNC_PTR			1
 #define AUDMGR_OPR_LSTNR_CB_FUNC_PTR		2
 #define AUDMGR_CODEC_LSTR_FUNC_PTR		3
-
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-// FIXME needs to be made dynamic
-#define AUDMGR_CB_PROG 0x31000013
-#define AUDMGR_CB_VERS 0x00000000
-#elif CONFIG_MSM_AMSS_VERSION < 6220
-#define AUDMGR_CB_PROG 0x31000013
-#define AUDMGR_CB_VERS 0x5fa922a9
-#else
-#define AUDMGR_CB_PROG 0x31000013
-#define AUDMGR_CB_VERS 0x21570ba7
-#endif
 
 struct audmgr {
 	wait_queue_head_t wait;

@@ -14,9 +14,11 @@
  */
 
 #include "adsp.h"
+#include <mach/amss/amss_6220.h>
+#include <mach/irqs.h>
 
 /* Firmware modules */
-typedef enum { 
+typedef enum {
 	QDSP_MODULE_KERNEL,
 	QDSP_MODULE_AFETASK,
 	QDSP_MODULE_AUDPLAY0TASK,
@@ -262,23 +264,57 @@ static struct adsp_module_info module_info[] = {
 	QDSP_MODULE(VDEC_LP_MODE),
 };
 
-int adsp_init_info(struct adsp_info *info)
-{
-	info->send_irq =   0x00c00200;
-	info->read_ctrl =  0x00400038;
-	info->write_ctrl = 0x00400034;
+static struct adsp_info info = {
+	.send_irq =   0x00c00200,
+	.read_ctrl =  0x00400038,
+	.write_ctrl = 0x00400034,
 
-	info->max_msg16_size = 193;
-	info->max_msg32_size = 8;
+	.max_msg16_size = 193,
+	.max_msg32_size = 8,
 
-	info->max_task_id = 16;
-	info->max_module_id = QDSP_MODULE_MAX - 1;
-	info->max_queue_id = QDSP_QUEUE_MAX;
-	info->max_image_id = 2;
-	info->queue_offset = qdsp_queue_offset_table;
-	info->task_to_module = qdsp_task_to_module;
+	.max_task_id = 16,
+	.max_module_id = QDSP_MODULE_MAX - 1,
+	.max_queue_id = QDSP_QUEUE_MAX,
+	.max_image_id = 2,
+	.queue_offset = qdsp_queue_offset_table,
+	.task_to_module = qdsp_task_to_module,
 
-	info->module_count = ARRAY_SIZE(module_info);
-	info->module = module_info;
-	return 0;
+	.module_count = ARRAY_SIZE(module_info),
+	.module = module_info,
+
+	.mtoa_vers = ADSP_RTOS_MTOA_VERS_6220,
+	.atom_vers = ADSP_RTOS_ATOM_VERS_6220,
+	.atom_proc = ADSP_RTOS_ATOM_PROC_6220,
+	.mtoa_proc = ADSP_RTOS_MTOA_PROC_6220,
+	.atom_null_proc = ADSP_RTOS_ATOM_NULL_PROC_6220,
+	.mtoa_null_proc = ADSP_RTOS_MTOA_NULL_PROC_6220,
+	.mtoa_prog = ADSP_RTOS_MTOA_PROG_6220,
+	.atom_prog = ADSP_RTOS_ATOM_PROG_6220,
+	.snd_prog = ADSP_RTOS_SND_PROG_6220,
+	.snd_vers = ADSP_RTOS_SND_VERS_6220,
+	.snd_device_proc = ADSP_RTOS_SND_DEV_PROC_6220,
+	.snd_volume_proc = ADSP_RTOS_SND_VOL_PROC_6220,
+
+	.irq_adsp = INT_ADSP_A9_A11,
+};
+
+static int adsp_probe_6220(struct platform_device *pdev) {
+  	int rc;
+	rc = msm_adsp_probe(&info);
+	return rc;
 }
+
+static struct platform_driver msm_adsp_driver = {
+	.probe = adsp_probe_6220,
+	.driver = {
+		.name = "msm_adsp_6220",
+		.owner = THIS_MODULE,
+	},
+};
+
+static int __init adsp_6220_init(void)
+{
+	return platform_driver_register(&msm_adsp_driver);
+}
+
+device_initcall(adsp_6220_init);

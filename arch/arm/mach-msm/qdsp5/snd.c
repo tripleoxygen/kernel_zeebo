@@ -27,34 +27,17 @@
 #include <asm/ioctls.h>
 #include <mach/board.h>
 #include <mach/msm_rpcrouter.h>
+#include <mach/msm_smd.h>
+#include "adsp.h"
 
 struct snd_ctxt {
 	struct mutex lock;
 	int opened;
 	struct msm_rpc_endpoint *ept;
-	struct msm_snd_endpoints *snd_epts;
+	struct msm_snd_platform_data *snd_pdata;
 };
 
 static struct snd_ctxt the_snd;
-
-#define RPC_SND_PROG    0x30000002
-#define RPC_SND_CB_PROG 0x31000002
-#if CONFIG_MSM_AMSS_VERSION == 6210
-#define RPC_SND_VERS	0x94756085 /* 2490720389 */
-#elif (CONFIG_MSM_AMSS_VERSION == 6220) || \
-      (CONFIG_MSM_AMSS_VERSION == 6225)
-#define RPC_SND_VERS	0xaa2b1a44 /* 2854951492 */
-#elif CONFIG_MSM_AMSS_VERSION == 6350
-#define RPC_SND_VERS 	MSM_RPC_VERS(1,0)
-#elif defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-#include <mach/amss_para.h>
-// FIXME dynamic lookup
-#define RPC_SND_VERS MSM_RPC_VERS(amss_get_num_value(AMSS_ID_RPC_SND_VERS), 0)
-#endif
-
-// FIXME non-AMSS6125 needs 1 & 2
-#define SND_SET_DEVICE_PROC 2
-#define SND_SET_VOLUME_PROC 3
 
 struct rpc_snd_set_device_args {
 	uint32_t device;
@@ -84,40 +67,7 @@ struct snd_set_volume_msg {
 	struct rpc_snd_set_volume_args args;
 };
 
-struct snd_endpoint *get_snd_endpoints(int *size);
-
-static int current_snd_device_id = 0;
-static int idle_snd_device_id = 0;
-
-static inline int get_idle_device_id(void)
-{
-	int i;
-	struct snd_ctxt *snd = &the_snd;
-
-	for (i = 0; i < snd->snd_epts->num; i++) {
-		if (!strcmp("IDLE", snd->snd_epts->endpoints[i].name)) {
-			printk(KERN_DEBUG "%s: Found SND_DEVICE_IDLE id %d\n", __func__,
-				snd->snd_epts->endpoints[i].id);
-			return snd->snd_epts->endpoints[i].id;
-		}
-	}
-
-	printk(KERN_DEBUG "%s: SND_DEVICE_IDLE not found\n", __func__);
-	/* default to earcuple */
-	return 0;
-}
-
-static inline void check_device(int *device)
-{
-	/* Is device ID out of range ? */
-	if (*device > idle_snd_device_id) {
-		pr_err("%s: snd device %d out of range, using last device id %d.\n",
-			__func__, *device, current_snd_device_id);
-		*device = current_snd_device_id;
-	} else {
-		current_snd_device_id = *device;
-	}
-}
+struct msm_snd_endpoint *get_msm_snd_endpoints(int *size);
 
 static inline int check_mute(int mute)
 {
@@ -136,14 +86,14 @@ static int get_endpoint(struct snd_ctxt *snd, unsigned long arg)
 	}
 
 	index = ept.id;
-	if (index < 0 || index >= snd->snd_epts->num) {
+	if (index < 0 || index >= snd->snd_pdata->num_endpoints) {
 		pr_err("snd_ioctl get endpoint: invalid index!\n");
 		return -EINVAL;
 	}
 
-	ept.id = snd->snd_epts->endpoints[index].id;
+	ept.id = snd->snd_pdata->endpoints[index].id;
 	strncpy(ept.name,
-		snd->snd_epts->endpoints[index].name,
+		snd->snd_pdata->endpoints[index].name,
 		sizeof(ept.name));
 
 	if (copy_to_user((void __user *)arg, &ept, sizeof(ept))) {
@@ -172,19 +122,15 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+		dmsg.args.device = cpu_to_be32(dev.device);
+		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
+		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		if (check_mute(dev.ear_mute) < 0 ||
 				check_mute(dev.mic_mute) < 0) {
 			pr_err("snd_ioctl set device: invalid mute status.\n");
 			rc = -EINVAL;
 			break;
 		}
-
-		/* Prevent wrong device to make the snd processor crashing */
-		check_device(&dev.device);
-
-		dmsg.args.device = cpu_to_be32(dev.device);
-		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
-		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		dmsg.args.cb_func = -1;
 		dmsg.args.client_data = 0;
 
@@ -197,7 +143,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 
 		rc = msm_rpc_call(snd->ept,
-			SND_SET_DEVICE_PROC,
+			adsp_info->snd_device_proc,
 			&dmsg, sizeof(dmsg), 5 * HZ);
 		break;
 
@@ -224,13 +170,13 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						vol.method, vol.volume);
 
 		rc = msm_rpc_call(snd->ept,
-			SND_SET_VOLUME_PROC,
+			adsp_info->snd_volume_proc,
 			&vmsg, sizeof(vmsg), 5 * HZ);
 		break;
 
 	case SND_GET_NUM_ENDPOINTS:
 		if (copy_to_user((void __user *)arg,
-				&snd->snd_epts->num, sizeof(unsigned))) {
+				&snd->snd_pdata->num_endpoints, sizeof(unsigned))) {
 			pr_err("snd_ioctl get endpoint: invalid pointer.\n");
 			rc = -EFAULT;
 		}
@@ -268,7 +214,7 @@ static int snd_open(struct inode *inode, struct file *file)
 	mutex_lock(&snd->lock);
 	if (snd->opened == 0) {
 		if (snd->ept == NULL) {
-			snd->ept = msm_rpc_connect(RPC_SND_PROG, RPC_SND_VERS,
+			snd->ept = msm_rpc_connect(adsp_info->snd_prog, adsp_info->snd_vers,
 					MSM_RPC_UNINTERRUPTIBLE);
 			if (IS_ERR(snd->ept)) {
 				rc = PTR_ERR(snd->ept);
@@ -304,14 +250,20 @@ struct miscdevice snd_misc = {
 
 static int snd_probe(struct platform_device *pdev)
 {
+	int rc;
 	struct snd_ctxt *snd = &the_snd;
+	printk("+%s()\n", __func__);
+	if (!adsp_info) {
+		printk(KERN_ERR "%s: ADSP is not registered, aborting\n", __func__);
+		rc = -ENODEV;
+		goto ret;
+	}
 	mutex_init(&snd->lock);
-	snd->snd_epts = (struct msm_snd_endpoints *)pdev->dev.platform_data;
-
-	/* Find the idle sound device */
-	idle_snd_device_id = get_idle_device_id();
-
-	return misc_register(&snd_misc);
+	snd->snd_pdata = (struct msm_snd_platform_data *)pdev->dev.platform_data;
+	rc = misc_register(&snd_misc);
+ret:
+	printk("-%s() rc=%d\n", __func__, rc);
+	return rc;
 }
 
 static struct platform_driver snd_plat_driver = {
