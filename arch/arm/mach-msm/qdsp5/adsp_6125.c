@@ -527,7 +527,7 @@ static struct adsp_info info = {
 	.snd_device_proc = ADSP_RTOS_SND_DEV_PROC_6125,
 	.snd_volume_proc = ADSP_RTOS_SND_VOL_PROC_6125,
 
-	.irq_adsp = INT_ADSP_A11,
+	.irq_adsp = INT_ADSP_A9_A11,
 };
 
 static int adsp_probe_6125(struct platform_device *pdev)
