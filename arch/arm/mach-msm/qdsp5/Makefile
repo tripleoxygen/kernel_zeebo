@@ -9,7 +9,6 @@ obj-y += adsp_6150.o
 obj-y += adsp_6210.o
 obj-y += adsp_6220.o
 obj-y += adsp_6225.o
-obj-y += external.o
 endif
 
 obj-y += adsp_driver.o
