@@ -90,6 +90,7 @@ static smd_channel_t *smd_channel;
 static int initialized;
 static wait_queue_head_t newserver_wait;
 static wait_queue_head_t smd_wait;
+static wait_queue_head_t init_wait;
 static int smd_wait_count; /* odd while waiting */
 
 static DEFINE_SPINLOCK(local_endpoints_lock);
@@ -132,6 +133,10 @@ static struct platform_device rpcrouter_pdev = {
 	.id		= -1,
 };
 
+static struct msm_smd_platform_data *pdata = NULL;
+
+int hot_boot = 1;
+module_param_named(hot_boot, hot_boot, int, 0);
 
 static int rpcrouter_send_control_msg(union rr_control_msg *msg)
 {
@@ -159,7 +164,7 @@ static int rpcrouter_send_control_msg(union rr_control_msg *msg)
 	hdr.src_cid = RPCROUTER_ROUTER_ADDRESS;
 	hdr.confirm_rx = 0;
 	hdr.size = sizeof(*msg);
-	hdr.dst_pid = 0;
+	hdr.dst_pid = RPCROUTER_PID_REMOTE;
 	hdr.dst_cid = RPCROUTER_ROUTER_ADDRESS;
 
 	/* TODO: what if channel is full? */
@@ -387,12 +392,28 @@ static struct rr_remote_endpoint *rpcrouter_lookup_remote_endpoint(uint32_t cid)
 	return NULL;
 }
 
+static void early_server(struct msm_early_server *srv)
+{
+
+	int rc;
+	union rr_control_msg msg;
+
+	msg.srv.cmd = RPCROUTER_CTRL_CMD_NEW_SERVER;
+	msg.srv.pid = srv->pid;
+	msg.srv.cid = srv->cid;
+	msg.srv.prog = srv->prog;
+	msg.srv.vers = srv->vers;
+	rc = rpcrouter_send_control_msg(&msg);
+	RR("x EARLY_SERVER %x\n", srv->prog);
+
+}
+
 static int process_control_msg(union rr_control_msg *msg, int len)
 {
 	union rr_control_msg ctl;
 	struct rr_server *server;
 	struct rr_remote_endpoint *r_ept;
-	int rc = 0;
+	int rc = 0, i;
 	unsigned long flags;
 
 	if (len != sizeof(*msg)) {
@@ -408,16 +429,24 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 		RR("x HELLO\n");
 		memset(&ctl, 0, sizeof(ctl));
 
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-		ctl.cmd = RPCROUTER_CTRL_CMD_BYE;
-		rpcrouter_send_control_msg(&ctl);
-		msleep(50);
-#endif
+		if (hot_boot) {
+			ctl.cmd = RPCROUTER_CTRL_CMD_BYE;
+			rpcrouter_send_control_msg(&ctl);
+			msleep(50);
+		}
 
 		ctl.cmd = RPCROUTER_CTRL_CMD_HELLO;
 		rpcrouter_send_control_msg(&ctl);
 
+		if (hot_boot)
+			msleep(50);
+
 		initialized = 1;
+
+		if (hot_boot && pdata) {
+			for (i = 0; i < pdata->n_early_servers; i++)
+					early_server(&pdata->early_servers[i]);
+		}
 
 		/* Send list of servers one at a time */
 		ctl.cmd = RPCROUTER_CTRL_CMD_NEW_SERVER;
@@ -535,6 +564,7 @@ static void do_create_rpcrouter_pdev(struct work_struct *work)
 {
 	if (atomic_cmpxchg(&rpcrouter_pdev_created, 0, 1) == 0)
 		platform_device_register(&rpcrouter_pdev);
+	wake_up(&init_wait);
 }
 
 static void do_create_pdevs(struct work_struct *work)
@@ -587,8 +617,7 @@ static int rr_read(void *data, int len)
 {
 	int rc;
 	unsigned long flags;
-//	printk("rr_read() %d\n", len);
-	for(;;) {
+	for (;;) {
 		spin_lock_irqsave(&smd_lock, flags);
 		if (smd_read_avail(smd_channel) >= len) {
 			rc = smd_read(smd_channel, data, len);
@@ -602,7 +631,6 @@ static int rr_read(void *data, int len)
 		wake_unlock(&rpcrouter_wake_lock);
 		spin_unlock_irqrestore(&smd_lock, flags);
 
-//		printk("rr_read: waiting (%d)\n", len);
 		smd_wait_count++;
 		wake_up(&smd_wait);
 		wait_event(smd_wait, smd_read_avail(smd_channel) >= len);
@@ -664,7 +692,7 @@ static void do_read_data(struct work_struct *work)
 
 	ept = rpcrouter_lookup_local_endpoint(hdr.dst_cid);
 	if (!ept) {
-		DIAG("no local ept for cid %08x\n", hdr.dst_cid);
+		DIAG("no local ept for dst cid %08x\n", hdr.dst_cid);
 		kfree(frag);
 		goto done;
 	}
@@ -1000,6 +1028,10 @@ int msm_rpc_call_reply(struct msm_rpc_endpoint *ept, uint32_t proc,
 	if (request_size < sizeof(*req))
 		return -ETOOSMALL;
 
+	if (!ept) {
+		D("%s: ept is NULL\n", __func__);
+		return -EINVAL;
+	}
 	if (ept->dst_pid == 0xffffffff)
 		return -ENOTCONN;
 
@@ -1155,7 +1187,8 @@ int __msm_rpc_read(struct msm_rpc_endpoint *ept,
 #if TRACE_RPC_MSG
 	else if ((rc >= (sizeof(uint32_t) * 3)) && (rq->type == 1))
 		IO("READ on ept %p is a REPLY\n", ept);
-	else IO("READ on ept %p (%d bytes)\n", ept, rc);
+	else
+		IO("READ on ept %p (%d bytes)\n", ept, rc);
 #endif
 
 	kfree(pkt);
@@ -1207,6 +1240,8 @@ struct msm_rpc_endpoint *msm_rpc_connect(uint32_t prog, uint32_t vers, unsigned 
 {
 	struct msm_rpc_endpoint *ept;
 	struct rr_server *server;
+
+	RR("%s (prog=%08x, vers=%08x)\n", __func__, prog, vers);
 
 #if !defined(CONFIG_MSM_LEGACY_7X00A_AMSS)
 	if (!(vers & RPC_VERSION_MODE_MASK)) {
@@ -1267,6 +1302,8 @@ int msm_rpc_register_server(struct msm_rpc_endpoint *ept,
 	RR("x NEW_SERVER id=%d:%08x prog=%08x:%08x\n",
 	   ept->pid, ept->cid, prog, vers);
 
+	wait_event_interruptible(init_wait, initialized != 0);
+
 	rc = rpcrouter_send_control_msg(&msg);
 	if (rc < 0)
 		return rc;
@@ -1297,6 +1334,7 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	union rr_control_msg msg = { 0 };
 #endif
+	pdata = pdev->dev.platform_data;
 
 	/* Initialize what we need to start processing */
 	INIT_LIST_HEAD(&local_endpoints);
@@ -1304,6 +1342,8 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&newserver_wait);
 	init_waitqueue_head(&smd_wait);
+	init_waitqueue_head(&init_wait);
+
 	wake_lock_init(&rpcrouter_wake_lock, WAKE_LOCK_SUSPEND, "SMD_RPCCALL");
 
 	rpcrouter_workqueue = create_singlethread_workqueue("rpcrouter");
@@ -1326,18 +1366,19 @@ static int msm_rpcrouter_probe(struct platform_device *pdev)
 
 	queue_work(rpcrouter_workqueue, &work_read_data);
 
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-	printk(KERN_DEBUG "%s: sending CMD_HELLO\n", __func__);
-	msg.cmd = RPCROUTER_CTRL_CMD_HELLO;
-	process_control_msg(&msg, sizeof(msg));
-	msleep(100);
-#endif
+	if (hot_boot) {
+		msg.cmd = RPCROUTER_CTRL_CMD_HELLO;
+		process_control_msg(&msg, sizeof(msg));
+		msleep(100);
+	}
 
 	return 0;
 
  fail_remove_devices:
+	printk(KERN_ERR "%s: RPC smd_open failed\n", __func__);
 	msm_rpcrouter_exit_devices();
  fail_destroy_workqueue:
+	printk(KERN_ERR "%s: RPC init failed\n", __func__);
 	destroy_workqueue(rpcrouter_workqueue);
 	return rc;
 }
@@ -1365,6 +1406,7 @@ static struct platform_driver msm_smd_channel2_driver = {
 
 static int __init rpcrouter_init(void)
 {
+	printk(KERN_DEBUG "RPC %s\n", __func__);
 	return platform_driver_register(&msm_smd_channel2_driver);
 }
 

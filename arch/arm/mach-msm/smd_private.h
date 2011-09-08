@@ -236,7 +236,7 @@ typedef enum
 	SMEM_SMEM_LOG_POWER_WRAP,
 	SMEM_SMEM_LOG_POWER_EVENTS,
 	SMEM_ERR_CRASH_LOG,
-	SMEM_ERR_F3_TRACE_LOG,	
+	SMEM_ERR_F3_TRACE_LOG,
 	SMEM_NUM_ITEMS,
 } smem_mem_type;
 
@@ -258,9 +258,14 @@ struct smd_alloc_elm {
 	char name[20];
 	uint32_t cid;
 	uint32_t ctype;
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-	uint32_t unknown;
-#endif
+	uint32_t ref_count;
+};
+
+struct smd_alloc_elm_v2 {
+	char name[20];
+	uint32_t cid;
+	uint32_t ctype;
+	uint32_t unknown1;
 	uint32_t ref_count;
 };
 
@@ -288,7 +293,7 @@ struct smd_shared_v1 {
 struct smd_shared_v2 {
 	struct smd_half_channel ch0;
 	struct smd_half_channel ch1;
-};	
+};
 
 struct smd_channel {
 	volatile struct smd_half_channel *send;

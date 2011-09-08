@@ -319,6 +319,7 @@ int msm_rpcrouter_init_devices(void)
 	int rc;
 	int major;
 
+	printk("+%s()\n", __func__);
 	/* Create the device nodes */
 	msm_rpcrouter_class = class_create(THIS_MODULE, "oncrpc");
 	if (IS_ERR(msm_rpcrouter_class)) {
@@ -353,6 +354,7 @@ int msm_rpcrouter_init_devices(void)
 	if (rc < 0)
 		goto fail_destroy_device;
 
+	printk("-%s()\n", __func__);
 	return 0;
 
 fail_destroy_device:
