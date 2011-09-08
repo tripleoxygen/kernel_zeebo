@@ -36,7 +36,6 @@
 #include <linux/android_pmem.h>
 #include <mach/msm_rpcrouter.h>
 #include <asm/mach/mmc.h>
-#include <mach/htc_acoustic_wince.h>
 
 static char *df_serialno = "000000000000";
 
@@ -596,52 +595,3 @@ static int __init board_serialno_setup(char *serialno)
 }
 
 __setup("androidboot.serialno=", board_serialno_setup);
-
-/******************************************************************************
- * Acoustic driver settings
- ******************************************************************************/
-static struct msm_rpc_endpoint *mic_endpoint = NULL;
-
-static void amss_5225_mic_bias_callback(bool on) {
-	  struct {
-			  struct rpc_request_hdr hdr;
-			  uint32_t data;
-	  } req;
-
-	  if (!mic_endpoint)
-			  mic_endpoint = msm_rpc_connect(0x30000061, 0x0, 0);
-	  if (!mic_endpoint) {
-			  printk(KERN_ERR "%s: couldn't open rpc endpoint\n", __func__);
-			  return;
-	  }
-	  req.data=cpu_to_be32(on);
-	  msm_rpc_call(mic_endpoint, 0x1c, &req, sizeof(req), 5 * HZ);
-}
-
-static struct htc_acoustic_wce_amss_data amss_5225_acoustic_data = {
-	.volume_table = (MSM_SHARED_RAM_BASE+0xfc300),
-	.ce_table = (MSM_SHARED_RAM_BASE+0xfc600),
-	.adie_table = (MSM_SHARED_RAM_BASE+0xfd000),
-	.codec_table = (MSM_SHARED_RAM_BASE+0xfdc00),
-	.mic_offset = (MSM_SHARED_RAM_BASE+0xfed00),
-	.voc_cal_field_size = 10,
-	.mic_bias_callback = amss_5225_mic_bias_callback,
-};
-
-struct htc_acoustic_wce_amss_data amss_6120_acoustic_data = {
-	.volume_table = (MSM_SHARED_RAM_BASE+0xfc300),
-	.ce_table = (MSM_SHARED_RAM_BASE+0xfc600),
-	.adie_table = (MSM_SHARED_RAM_BASE+0xf8000),
-	.codec_table = (MSM_SHARED_RAM_BASE+0xf9000),
-	.mic_offset = (MSM_SHARED_RAM_BASE+0xfb9c0),
-	.voc_cal_field_size = 11,
-	.mic_bias_callback = amss_5225_mic_bias_callback,
-};
-
-struct platform_device acoustic_device = {
-	.name = "htc_acoustic",
-	.id = -1,
-	.dev = {
-		.platform_data = &amss_5225_acoustic_data,
-		},
-};

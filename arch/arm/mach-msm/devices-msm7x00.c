@@ -365,11 +365,6 @@ struct platform_device msm_device_nand = {
 	},
 };
 
-struct platform_device msm_device_smd = {
-	.name	= "msm_smd",
-	.id	= -1,
-};
-
 static struct resource resources_sdc1[] = {
 	{
 		.start	= MSM_SDC1_PHYS,

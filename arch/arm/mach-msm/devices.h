@@ -37,8 +37,6 @@ extern struct platform_device msm_device_i2c2;
 
 extern struct platform_device msm_device_qup_i2c;
 
-extern struct platform_device msm_device_smd;
-
 extern struct platform_device msm_device_nand;
 extern struct platform_device msm_device_mddi0;
 extern struct platform_device msm_device_mddi1;
@@ -56,9 +54,6 @@ extern struct platform_device msm_device_htc_battery_smem;
 #endif
 
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-extern struct platform_device acoustic_device;
-extern struct htc_acoustic_wce_amss_data amss_6120_acoustic_data;
-
 extern struct platform_device msm_device_htc_hw;
 #endif
 
