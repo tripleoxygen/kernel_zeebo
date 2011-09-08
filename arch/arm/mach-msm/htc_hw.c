@@ -90,7 +90,8 @@ static ssize_t machtype_show(struct class *class, struct class_attribute *attr,
 	return sprintf(buf, "%d\n", machine_arch_type);
 }
 
-extern unsigned int __amss_version; // amss_para.c
+// FIXME!
+static unsigned int __amss_version = 6125;
 static ssize_t amss_show(struct class *class, struct class_attribute *attr,
 	char *buf)
 {
