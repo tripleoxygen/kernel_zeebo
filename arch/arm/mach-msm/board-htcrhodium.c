@@ -426,42 +426,22 @@ static struct i2c_board_info i2c_devices[] = {
 };
 
 /******************************************************************************
+ * AMSS-specific stuff
+ ******************************************************************************/
+static struct platform_device htcrhodium_amss_device = {
+	.name = "amss_6125",
+	.id = -1,
+};
+
+/******************************************************************************
  * Sound
  ******************************************************************************/
-#define SND(num, desc) { .name = desc, .id = num }
-static struct snd_endpoint snd_endpoints_list[] = {
-	SND(0, "HANDSET"),
-	SND(1, "SPEAKER"),
-	SND(2, "HEADSET"),
-	SND(2, "NO_MIC_HEADSET"),
-	SND(3, "BT"),
-	SND(3, "BT_EC_OFF"),
-
-	SND(13, "SPEAKER_MIC"),
-
-	SND(0x11, "IDLE"),
-	SND(256, "CURRENT"),
-};
-#undef SND
-
-static struct msm_snd_endpoints htcrhodium_snd_endpoints = {
-	.endpoints = snd_endpoints_list,
-	.num = ARRAY_SIZE(snd_endpoints_list),
-};
-
-static struct platform_device htcrhodium_snd = {
-	.name = "msm_snd",
-	.id = -1,
-	.dev = {
-		.platform_data = &htcrhodium_snd_endpoints,
-	},
-};
-
 extern void htcrhodium_set_headset_amp(bool enable);
 
 static struct htc_acoustic_wce_board_data htcrhodium_acoustic_data = {
 	.set_headset_amp = htcrhodium_set_headset_amp,
-    .set_speaker_amp = tpa2016d2_set_power,
+	.set_speaker_amp = tpa2016d2_set_power,
+	.dual_mic_supported = true,
 };
 
 #if 0
@@ -577,7 +557,7 @@ static struct platform_device htcrhodium_gpio_keys = {
 };
 
 static struct platform_device *devices[] __initdata = {
-	&msm_device_smd,
+	&htcrhodium_amss_device,
 	&msm_device_nand,
 	&msm_device_i2c,
 	&msm_device_rtc,
@@ -585,7 +565,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	&msm_device_htc_battery_smem,
 #endif
-	&htcrhodium_snd,
 	&htcrhodium_gpio_keys,
 //	&raphael_rfkill,
 	&msm_device_touchscreen,
@@ -596,7 +575,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_HTC_HEADSET
 	&rhodium_h2w,
 #endif
-	&acoustic_device,
 };
 
 extern struct sys_timer msm_timer;
@@ -645,8 +623,6 @@ static smem_batt_t htcrhodium_htc_battery_smem_pdata = {
 
 static void __init htcrhodium_init(void)
 {
-	struct htc_acoustic_wce_amss_data *acoustic_pdata;
-
 	msm_acpu_clock_init(&halibut_clock_data);
 	msm_proc_comm_wince_init();
 
@@ -656,9 +632,6 @@ static void __init htcrhodium_init(void)
 	msm_device_touchscreen.dev.platform_data = &htcrhodium_ts_pdata;
 
 	// Set acoustic device specific parameters
-	acoustic_device.dev.platform_data = &amss_6120_acoustic_data;
-	acoustic_pdata = acoustic_device.dev.platform_data;
-	acoustic_pdata->mic_bias_callback = NULL;
 	htc_acoustic_wce_board_data = &htcrhodium_acoustic_data;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));

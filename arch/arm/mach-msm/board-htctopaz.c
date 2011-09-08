@@ -49,7 +49,6 @@
 #include <linux/mfd/microp-ng.h>
 
 #include <mach/board_htc.h>
-#include <mach/htc_acoustic_wince.h>
 #include <mach/htc_headset.h>
 
 #include "proc_comm_wince.h"
@@ -137,33 +136,11 @@ static struct i2c_board_info i2c_devices[] = {
 };
 
 /******************************************************************************
- * Sound
+ * AMSS-specific stuff
  ******************************************************************************/
-#define SND(num, desc) { .name = desc, .id = num }
-static struct snd_endpoint snd_endpoints_list[] = {
-	SND(0, "HANDSET"),
-	SND(1, "SPEAKER"),
-	SND(2, "HEADSET"),
-	SND(2, "NO_MIC_HEADSET"),
-	SND(3, "BT"),
-	SND(3, "BT_EC_OFF"),
-
-	SND(0x11, "IDLE"),
-	SND(256, "CURRENT"),
-};
-#undef SND
-
-static struct msm_snd_endpoints htctopaz_snd_endpoints = {
-	.endpoints = snd_endpoints_list,
-	.num = ARRAY_SIZE(snd_endpoints_list),
-};
-
-static struct platform_device htctopaz_snd = {
-	.name = "msm_snd",
+static struct platform_device htctopaz_amss_device = {
+	.name = "amss_6125",
 	.id = -1,
-	.dev = {
-		.platform_data = &htctopaz_snd_endpoints,
-	},
 };
 
 /******************************************************************************
@@ -247,7 +224,7 @@ static struct msm_ts_platform_data htctopaz_ts_pdata = {
 };
 
 static struct platform_device *devices[] __initdata = {
-	&msm_device_smd,
+	&htctopaz_amss_device,
 	&msm_device_nand,
 	&msm_device_i2c,
 	&msm_device_rtc,
@@ -255,7 +232,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	&msm_device_htc_battery_smem,
 #endif
-	&htctopaz_snd,
 #ifdef CONFIG_HTC_HEADSET
 	&htctopaz_h2w,
 #endif
@@ -264,7 +240,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
-	&acoustic_device,
 };
 
 extern struct sys_timer msm_timer;
@@ -303,9 +278,6 @@ static void __init htctopaz_init(void)
 	msm_device_htc_battery_smem.dev.platform_data = &htctopaz_htc_battery_smem_pdata;
 #endif
 	msm_device_touchscreen.dev.platform_data = &htctopaz_ts_pdata;
-
-	// Set acoustic device specific parameters
-	acoustic_device.dev.platform_data = &amss_6120_acoustic_data;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
