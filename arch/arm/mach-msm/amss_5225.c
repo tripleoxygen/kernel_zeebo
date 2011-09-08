@@ -95,7 +95,7 @@ static struct platform_device amss_5225_snd = {
 	.id = -1,
 	.dev = {
 		.platform_data = &amss_5225_snd_pdata,
-		},
+	},
 };
 
 /******************************************************************************
@@ -103,7 +103,7 @@ static struct platform_device amss_5225_snd = {
  ******************************************************************************/
 static struct msm_rpc_endpoint *mic_endpoint = NULL;
 
-static void amss_5225_mic_bias_callback(bool on, bool enable_dualmic) {
+static void amss_5225_mic_bias_callback(bool on /*, bool enable_dualmic*/) {
 	  struct {
 			  struct rpc_request_hdr hdr;
 			  uint32_t data;
@@ -134,7 +134,7 @@ static struct platform_device acoustic_device = {
 	.id = -1,
 	.dev = {
 		.platform_data = &amss_5225_acoustic_data,
-		},
+	},
 };
 
 static int amss_5225_probe(struct platform_device *pdev)
