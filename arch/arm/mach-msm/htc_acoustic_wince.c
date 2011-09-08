@@ -430,7 +430,7 @@ static long acoustic_ioctl(struct file *file, unsigned int cmd,
 			D("ioctl: ACOUSTIC_GET_CAPABILITIES called %d.\n",
 				task_pid_nr(current));
 			rc = acoustic_get_capabilities((void __user *)arg);
-		break;
+			break;
 
 		case ACOUSTIC_ARM11_DONE:
 			rc = dex_update_audio_done();
@@ -501,7 +501,7 @@ static int htc_acoustic_wince_probe(struct platform_device *pdev)
 	void *ret;
 	struct htc_acoustic_wce_amss_data *pdata = pdev->dev.platform_data;
 
-	printk("Initialize HTC acoustic driver for wince based devices\n");
+	printk("%s\n", __func__);
 
 	if (!pdata) {
 		E("%s: no platform data\n", __func__);
