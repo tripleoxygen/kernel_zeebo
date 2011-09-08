@@ -67,6 +67,8 @@ static struct msm_snd_endpoint snd_endpoints_list[] = {
 	SND(3, "BT"),
 	SND(3, "BT_EC_OFF"),
 
+	SND(13, "SPEAKER_MIC"), // RHOD only?
+
 	SND(0x11, "IDLE"),
 	SND(256, "CURRENT"),
 };
@@ -82,7 +84,7 @@ static struct platform_device amss_6125_snd = {
 	.id = -1,
 	.dev = {
 		.platform_data = &amss_6125_snd_pdata,
-		},
+	},
 };
 
 /******************************************************************************
@@ -102,7 +104,7 @@ static struct platform_device acoustic_device = {
 	.id = -1,
 	.dev = {
 		.platform_data = &amss_6125_acoustic_data,
-		},
+	},
 };
 
 static int amss_6125_probe(struct platform_device *pdev)
