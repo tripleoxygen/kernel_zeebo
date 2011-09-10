@@ -27,10 +27,6 @@
 #include <linux/pm.h>
 #include <linux/slab.h>
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#endif
-
 #include <linux/input/msm_ts.h>
 
 #define DRV_NAME "msm_touchscreen"
@@ -69,9 +65,6 @@ struct msm_ts {
 	unsigned int	sample_irq;
 	unsigned int	pen_up_irq;
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend		early_suspend;
-#endif
 	struct device			*dev;
 };
 
@@ -291,29 +284,10 @@ static int msm_ts_resume(struct device *dev)
 }
 
 static struct dev_pm_ops msm_touchscreen_pm_ops = {
-#ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend	= msm_ts_suspend,
 	.resume	= msm_ts_resume,
-#endif
 };
 #endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void msm_ts_early_suspend(struct early_suspend *h)
-{
-	struct msm_ts *ts = container_of(h, struct msm_ts, early_suspend);
-
-	msm_ts_suspend(ts->dev);
-}
-
-static void msm_ts_late_resume(struct early_suspend *h)
-{
-	struct msm_ts *ts = container_of(h, struct msm_ts, early_suspend);
-
-	msm_ts_resume(ts->dev);
-}
-#endif
-
 
 static int __devinit msm_ts_probe(struct platform_device *pdev)
 {
@@ -414,13 +388,6 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ts);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
-	ts->early_suspend.suspend = msm_ts_early_suspend;
-	ts->early_suspend.resume = msm_ts_late_resume;
-	register_early_suspend(&ts->early_suspend);
-#endif
-
 	device_init_wakeup(&pdev->dev, pdata->can_wakeup);
 
 	if (msm_tsdebug & MSM_TS_DEBUG_REGS) {
@@ -458,9 +425,6 @@ static int __devexit msm_ts_remove(struct platform_device *pdev)
 	free_irq(ts->pen_up_irq, ts);
 	input_unregister_device(ts->input_dev);
 	iounmap(ts->tssc_base);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	unregister_early_suspend(&ts->early_suspend);
-#endif
 	platform_set_drvdata(pdev, NULL);
 	kfree(ts);
 
