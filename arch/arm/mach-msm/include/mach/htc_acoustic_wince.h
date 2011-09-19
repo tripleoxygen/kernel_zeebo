@@ -37,7 +37,7 @@ struct htc_acoustic_wce_amss_data {
 	void *codec_table;
 	void *mic_offset;
 	int voc_cal_field_size;
-	void (*mic_bias_callback)(bool enable);
+	void (*mic_bias_callback)(bool enable, bool enable_dualmic);
 };
 
 struct htc_acoustic_wce_board_data {
