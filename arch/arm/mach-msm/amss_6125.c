@@ -100,7 +100,7 @@ static struct htc_acoustic_wce_amss_data amss_6125_acoustic_data = {
 };
 
 static struct platform_device acoustic_device = {
-	.name = "htc_acoustic",
+	.name = "htc_acoustic_wince",
 	.id = -1,
 	.dev = {
 		.platform_data = &amss_6125_acoustic_data,
