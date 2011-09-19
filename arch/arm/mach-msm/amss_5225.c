@@ -81,7 +81,7 @@ static struct msm_snd_endpoint snd_endpoints_list[] = {
 	SND(3, "BT_EC_OFF"),
 
 	SND(0xd, "IDLE"),
-	SND(256, "CURRENT"),
+	SND(0xd, "CURRENT"),
 };
 #undef SND
 
@@ -103,7 +103,7 @@ static struct platform_device amss_5225_snd = {
  ******************************************************************************/
 static struct msm_rpc_endpoint *mic_endpoint = NULL;
 
-static void amss_5225_mic_bias_callback(bool on /*, bool enable_dualmic*/) {
+static void amss_5225_mic_bias_callback(bool on, bool enable_dualmic) {
 	  struct {
 			  struct rpc_request_hdr hdr;
 			  uint32_t data;
