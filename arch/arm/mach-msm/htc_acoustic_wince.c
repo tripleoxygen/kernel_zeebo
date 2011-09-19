@@ -80,10 +80,10 @@ enum dex_audio_cmd {
 	DEX_AUDIO_DONE = 0x10,
 };
 
-#define E(fmt, args...) printk(KERN_ERR "htc-acoustic_wince: "fmt, ##args)
+#define E(fmt, args...) printk(KERN_ERR "htc_acoustic_wince: "fmt, ##args)
 
 #if 1
-	#define D(fmt, args...) printk(KERN_INFO "htc-acoustic_wince: "fmt, ##args)
+	#define D(fmt, args...) printk(KERN_INFO "htc_acoustic_wince: "fmt, ##args)
 #else
 	#define D(fmt, args...) do {} while (0)
 #endif
@@ -251,11 +251,8 @@ static void ADIE_ForceADIEAwake(bool bForce) {
 
 static void ADIE_ForceADIEUpdate(bool bForce) {
     int adie;
-
-    printk("%s %d\n", __func__, bForce);
-
+    D("%s: %d\n", __func__, bForce);
     smem_semaphore_down(ACOUSTIC_SHARED_MUTEX_ADDR, ACOUSTIC_ARM11_MUTEX_ID);
-
     adie = readl(MSM_SHARED_RAM_BASE + 0xfc0d0);
 
     if (bForce) {
@@ -349,7 +346,7 @@ static int turn_mic_bias_on_internal(bool on, bool bDualMicEn)
 			{0x93, 0, 0x93, 4, 0x93, 1, 0x93, 4, 0xFF, 0xFF} };
 
 
-	D("%s(%d)\n", __func__, on);
+	D("%s(on=%d, dual=%d)\n", __func__, on, bDualMicEn);
 
 	/* enable handset mic */
 	if ( machine_is_htcrhodium() && bDualMicEn && on ) {
@@ -368,7 +365,7 @@ static int turn_mic_bias_on_internal(bool on, bool bDualMicEn)
 	}
 
 	if (amss_data->mic_bias_callback)
-		amss_data->mic_bias_callback(on);
+		amss_data->mic_bias_callback(on, bDualMicEn);
 
 	return 0;
 }
@@ -492,7 +489,7 @@ static struct file_operations acoustic_fops = {
 
 static struct miscdevice acoustic_wince_misc = {
 	.minor = MISC_DYNAMIC_MINOR,
-	.name = "htc-acoustic_wince",
+	.name = "htc_acoustic_wince",
 	.fops = &acoustic_fops,
 };
 
@@ -549,7 +546,7 @@ static struct platform_driver htc_acoustic_wince_driver = {
 	.probe		= htc_acoustic_wince_probe,
 	.remove		= htc_acoustic_wince_remove,
 	.driver		= {
-		.name		= "htc_acoustic",
+		.name		= "htc_acoustic_wince",
 		.owner		= THIS_MODULE,
 	},
 };
@@ -614,7 +611,6 @@ static int dbg_reset(char *buf, int max) {
     return readl(MSM_AD5_BASE + 0x00400030);
 }
 #endif
-
 
 #define DEBUG_BUFMAX 8192
 static char debug_buffer[DEBUG_BUFMAX];
