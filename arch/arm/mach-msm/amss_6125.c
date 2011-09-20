@@ -70,7 +70,7 @@ static struct msm_snd_endpoint snd_endpoints_list[] = {
 	SND(13, "SPEAKER_MIC"), // RHOD only?
 
 	SND(0x11, "IDLE"),
-	SND(256, "CURRENT"),
+	SND(0x11, "CURRENT"),
 };
 #undef SND
 
@@ -90,6 +90,24 @@ static struct platform_device amss_6125_snd = {
 /******************************************************************************
  * Acoustic driver settings
  ******************************************************************************/
+static struct msm_rpc_endpoint *mic_endpoint = NULL;
+ 
+static void amss_6125_mic_bias_callback(bool on, bool enable_dualmic) {
+	struct {
+		struct rpc_request_hdr hdr;
+		uint32_t data;
+	} req;
+
+	if (!mic_endpoint)
+		mic_endpoint = msm_rpc_connect(0x30000061, 0x0, 0);
+	if (!mic_endpoint) {
+		printk(KERN_ERR "%s: couldn't open rpc endpoint\n", __func__);
+		return;
+	}
+	req.data=cpu_to_be32(on);
+	msm_rpc_call(mic_endpoint, 0x1c, &req, sizeof(req), 5 * HZ);
+}
+ 
 static struct htc_acoustic_wce_amss_data amss_6125_acoustic_data = {
 	.volume_table = (MSM_SHARED_RAM_BASE+0xfc300),
 	.ce_table = (MSM_SHARED_RAM_BASE+0xfc600),
@@ -97,6 +115,7 @@ static struct htc_acoustic_wce_amss_data amss_6125_acoustic_data = {
 	.codec_table = (MSM_SHARED_RAM_BASE+0xf9000),
 	.mic_offset = (MSM_SHARED_RAM_BASE+0xfb9c0),
 	.voc_cal_field_size = 0xb,
+	.mic_bias_callback = amss_6125_mic_bias_callback,
 };
 
 static struct platform_device acoustic_device = {
