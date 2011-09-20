@@ -42,16 +42,24 @@ static void htctopaz_set_color_led(struct led_classdev*, enum led_brightness);
 static void htctopaz_set_lcd_backlight(struct led_classdev*, enum led_brightness);
 static void htctopaz_set_button_backlight(struct led_classdev*, enum led_brightness);
 
+static int htctopaz_set_color_led_blink(struct led_classdev*, unsigned long*, unsigned long*);
+
 static DECLARE_WORK(colorled_wq, htctopaz_update_color_led);
 static DECLARE_WORK(backlight_wq, htctopaz_update_lcd_backlight);
 static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_backlight);
 static struct i2c_client *client = NULL;
 static uint8_t g_auto_backlight = 0;
+static uint8_t g_blink_status = 0;
+
+static unsigned int led_regime=0;
+module_param_named(led_regime, led_regime, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 enum led_color {
 	COLOR_OFF = 0,
 	COLOR_GREEN = 1,
 	COLOR_AMBER = 2,
+	BLINK_GREEN = 4,
+	BLINK_AMBER = 5,
 };
 
 static char* led_color_name(enum led_color color) {
@@ -62,6 +70,10 @@ static char* led_color_name(enum led_color color) {
 			return "GREEN";
 		case COLOR_AMBER:
 			return "AMBER";
+		case BLINK_GREEN:
+			return "BLINK GREEN";
+		case BLINK_AMBER:
+			return "BLINK AMBER";
 		default:
 			return "UNKNOWN";
 	}
@@ -73,10 +85,12 @@ static struct led_classdev htctopaz_leds[] = {
 	[AMBER] = {
 		.name = "amber",
 		.brightness_set = htctopaz_set_color_led,
+		.blink_set = htctopaz_set_color_led_blink,
 	},
 	[GREEN] = {
 		.name = "green",
 		.brightness_set = htctopaz_set_color_led,
+		.blink_set = htctopaz_set_color_led_blink,
 	},
 	[LCD] = {
 		.name = "lcd-backlight",
@@ -278,9 +292,11 @@ static void htctopaz_update_color_led(struct work_struct* work)
 
 	// give amber precedence over green
 	if (brightness_amber) {
-		microp_led_set_color_led(COLOR_AMBER, COLOR_OFF);
+		microp_led_set_color_led(g_blink_status ? BLINK_AMBER : COLOR_AMBER,
+			COLOR_OFF);
 	} else if (brightness_green) {
-		microp_led_set_color_led(COLOR_GREEN, COLOR_OFF);
+		microp_led_set_color_led(g_blink_status ? BLINK_GREEN : COLOR_GREEN,
+			COLOR_OFF);
 	} else {
 		microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
 	}
@@ -338,6 +354,37 @@ static DEVICE_ATTR(auto_backlight, 0644, htctopaz_auto_backlight_get,
 	htctopaz_auto_backlight_set);
 
 /*
+ * dev_attr_blink for amber and green led device
+ */
+
+static ssize_t htctopaz_color_led_blink_get(struct device *dev,
+	struct device_attribute *attr, char *ret_buf)
+{
+	return sprintf(ret_buf, "%u\n", g_blink_status);
+}
+
+static ssize_t htctopaz_color_led_blink_set(struct device *dev,
+	struct device_attribute *attr, const char *in_buf, size_t count)
+{
+	unsigned long val = simple_strtoul(in_buf, NULL, 10);
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	if (!led_cdev->blink_set) {
+		printk(KERN_ERR "%s: led device %s has no blink_set assigned!\n",
+			__func__, led_cdev->name);
+		return -ENODATA;
+	}
+
+	g_blink_status = val ? 1 : 0;
+
+	led_cdev->blink_set(led_cdev, 0, 0);
+	return count;
+}
+
+static DEVICE_ATTR(blink, 0644, htctopaz_color_led_blink_get,
+	htctopaz_color_led_blink_set);
+
+/*
  * led_cdev brightness_set callbacks
  */
 
@@ -345,6 +392,12 @@ static void htctopaz_set_color_led(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
 	schedule_work(&colorled_wq);
+}
+
+static int htctopaz_set_color_led_blink(struct led_classdev* led_cdev,
+	unsigned long *delay_on, unsigned long* delay_off)
+{
+	return schedule_work(&colorled_wq);
 }
 
 static void htctopaz_set_button_backlight(struct led_classdev *led_cdev,
@@ -380,6 +433,14 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 				htctopaz_leds[i].name);
 			goto led_fail;
 		}
+		if (htctopaz_leds[i].blink_set) {
+			ret = device_create_file(htctopaz_leds[i].dev, &dev_attr_blink);
+			if (ret < 0) {
+				printk(KERN_ERR "%s: Failed registering blink attribute %s",
+					__func__, htctopaz_leds[i].name);
+				goto led_fail;
+			}
+		}
 	}
 
 	ret = device_create_file(htctopaz_leds[LCD].dev, &dev_attr_auto_backlight);
@@ -411,6 +472,9 @@ attr_fail:
 led_fail:
 	for (i--; i >= 0; i--) {
 		led_classdev_unregister(&htctopaz_leds[i]);
+		if (htctopaz_leds[i].blink_set) {
+			device_remove_file(htctopaz_leds[i].dev, &dev_attr_blink);
+		}
 	}
 	return ret;
 }
@@ -431,7 +495,14 @@ static int htctopaz_microp_remove(struct platform_device *pdev)
 #if CONFIG_PM
 static int htctopaz_microp_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	microp_led_set_color_led(COLOR_GREEN, COLOR_OFF);
+	// set color led to OFF when sleeping in led_regime mode 1
+	if (led_regime == 1) {
+		microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
+	}
+	// set color led to GREEN when sleeping in led_regime mode 2
+	if (led_regime == 2) {
+		microp_led_set_color_led(COLOR_GREEN, COLOR_OFF);
+	}
 
 	//microp_spi_enable(0);
 
@@ -442,7 +513,10 @@ static int htctopaz_microp_resume(struct platform_device *pdev)
 {
 	//microp_spi_enable(1);
 
-	microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
+	// set color led to AMBER when awake in led_regime mode 1 or 2
+	if (led_regime) {
+		microp_led_set_color_led(COLOR_AMBER, COLOR_OFF);
+	}
 
 	return 0;
 }
