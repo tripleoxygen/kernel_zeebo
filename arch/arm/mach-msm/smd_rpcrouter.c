@@ -45,15 +45,15 @@
 #include <mach/msm_smd.h>
 #include "smd_rpcrouter.h"
 
-#define TRACE_R2R_MSG 1
-#define TRACE_R2R_RAW 1
-#define TRACE_RPC_MSG 1
-#define TRACE_NOTIFY_MSG 1
+#define TRACE_R2R_MSG 0
+#define TRACE_R2R_RAW 0
+#define TRACE_RPC_MSG 0
+#define TRACE_NOTIFY_MSG 0
 
-#define MSM_RPCROUTER_DEBUG 1
-#define MSM_RPCROUTER_DEBUG_PKT 1
-#define MSM_RPCROUTER_R2R_DEBUG 1
-#define DUMP_ALL_RECEIVED_HEADERS 1
+#define MSM_RPCROUTER_DEBUG 0
+#define MSM_RPCROUTER_DEBUG_PKT 0
+#define MSM_RPCROUTER_R2R_DEBUG 0
+#define DUMP_ALL_RECEIVED_HEADERS 0
 
 #define DIAG(x...) printk("[RR] ERROR " x)
 
