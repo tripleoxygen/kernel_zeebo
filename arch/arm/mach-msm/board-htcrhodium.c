@@ -23,6 +23,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/leds.h>
 #include <linux/mm.h>
+#include <linux/capella_cm3602.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -444,11 +445,46 @@ static struct htc_acoustic_wce_board_data htcrhodium_acoustic_data = {
 	.dual_mic_supported = true,
 };
 
-#if 0
-static struct platform_device rhod_prox = {
-    .name       = "rhodium_proximity",
+/******************************************************************************
+ * Proximity Sensor (Capella CM3602)
+ ******************************************************************************/
+static int htcrhodium_capella_cm3602_power(int enable)
+{
+	static uint8_t gpio_requested = 0;
+	int rc = 0;
+
+	printk(KERN_DEBUG "%s(enable=%d)\n", __func__, enable);
+
+	if (!gpio_requested) {
+		rc = gpio_request(RHODIUM_GPIO_PROXIMITY_EN, "gpio_proximity_en");
+		if (rc < 0) {
+			printk(KERN_ERR "%s: gpio %d request failed (%d)\n", __func__,
+				RHODIUM_GPIO_PROXIMITY_EN, rc);
+			return rc;
+		}
+		gpio_requested = 1;
+	}
+
+	if (enable) {
+		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN, 1);
+	} else {
+		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN, 0);
+	}
+	return rc;
+}
+
+static struct capella_cm3602_platform_data htcrhodium_capella_cm3602_pdata = {
+	.power = htcrhodium_capella_cm3602_power,
+	.p_out = RHODIUM_GPIO_PROXIMITY_INT_N
 };
-#endif
+
+static struct platform_device htcrhodium_capella_cm3602 = {
+	.name = CAPELLA_CM3602,
+	.id = -1,
+	.dev = {
+		.platform_data = &htcrhodium_capella_cm3602_pdata
+	}
+};
 
 /******************************************************************************
  * H2W
@@ -571,7 +607,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
-	// &rhod_prox,	
+	&htcrhodium_capella_cm3602,
 #ifdef CONFIG_HTC_HEADSET
 	&rhodium_h2w,
 #endif

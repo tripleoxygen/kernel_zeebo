@@ -18,6 +18,9 @@
 #define RHODIUM_GSENROR_MOT		49	/* microp interrupt for 3.5mm detect */
 #define RHODIUM_GPIO_UP_RESET_N	43
 
+#define RHODIUM_GPIO_PROXIMITY_EN		102
+#define RHODIUM_GPIO_PROXIMITY_INT_N	90
+
 #define RHODIUM_BAT_IRQ			28  // GPIO IRQ
 #define RHODIUM_USB_AC_PWR		32
 #define RHODIUM_CHARGE_EN_N		44
