@@ -304,7 +304,7 @@ static struct microp_platform_data htcrhodium_microp_keypad_pdata = {
 };
 
 /******************************************************************************
- * MicroP LED & Audio
+ * MicroP LED, Audio, Light Sensor (Capella CM3602) & 3.5mm Headset
  ******************************************************************************/
 static struct platform_device htcrhodium_microp_leds = {
 	.id = -1,
@@ -315,6 +315,11 @@ static struct platform_device htcrhodium_microp_leds = {
 static struct platform_device htcrhodium_microp_audio = {
 	.id = -1,
 	.name = "htcrhodium-microp-audio",
+};
+
+static struct platform_device htcrhodium_microp_ls = {
+	.id = -1,
+	.name = "lightsensor_microp",
 };
 
 static struct htc_headset_microp_platform_data htc_headset_microp_data = {
@@ -334,6 +339,7 @@ static struct platform_device htcrhodium_microp_35mm = {
 static struct platform_device* htcrhodium_microp_clients[] = {
 	&htcrhodium_microp_leds,
 	&htcrhodium_microp_audio,
+	&htcrhodium_microp_ls,
 	// this must be last; dropped when variant is not RHODW(RHOD400/RHOD500)
 	&htcrhodium_microp_35mm,
 };
