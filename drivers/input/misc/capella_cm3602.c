@@ -27,6 +27,9 @@
 
 #define D(x...) pr_info(x)
 
+static unsigned int report_far=0;
+module_param_named(report_far, report_far, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
 static struct capella_cm3602_data {
 	struct input_dev *input_dev;
 	struct capella_cm3602_platform_data *pdata;
@@ -43,7 +46,11 @@ static int capella_cm3602_report(struct capella_cm3602_data *data)
 		return val;
 	}
 
-	D("proximity %d\n", val);
+	if (report_far) {
+		val = 1;
+	}
+
+	D("proximity %s\n", val ? "FAR" : "NEAR");
 
 	/* 0 is close, 1 is far */
 	input_report_abs(data->input_dev, ABS_DISTANCE, val);
@@ -54,7 +61,7 @@ static int capella_cm3602_report(struct capella_cm3602_data *data)
 static irqreturn_t capella_cm3602_irq_handler(int irq, void *data)
 {
 	struct capella_cm3602_data *ip = data;
-	int val = capella_cm3602_report(ip);
+	capella_cm3602_report(ip);
 	return IRQ_HANDLED;
 }
 
