@@ -9,6 +9,10 @@
 #define DECLARE_MSM_IOMAP
 #include <mach/msm_iomap.h>
 
+#define RHODIUM_BT_SHUTDOWN_N	31
+#define RHODIUM_BT_nRST			91
+#define RHODIUM_BT_HOST_WAKE	94
+#define RHODIUM_BT_WAKE			35
 
 #define RHODIUM_CABLE_IN1		42
 #define RHODIUM_CABLE_IN2		45

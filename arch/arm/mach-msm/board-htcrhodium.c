@@ -33,7 +33,11 @@
 #include <asm/mach/mmc.h>
 #include <linux/mmc/sdio_ids.h>
 #include <asm/setup.h>
+#include <mach/msm7200a_rfkill.h>
 #include <mach/msm_serial_hs.h>
+#if defined(CONFIG_SERIAL_BCM_BT_LPM)
+#include <mach/bcm_bt_lpm.h>
+#endif
 
 #include <mach/board.h>
 #ifdef CONFIG_MSM_SMEM_BATTCHG
@@ -69,14 +73,6 @@
 
 
 extern int init_mmc(void);
-
-#ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
-	//.wakeup_irq = MSM_GPIO_TO_INT(21),
-	.inject_rx_on_wakeup = 1,
-	.rx_to_inject = 0x32,
-};
-#endif
 
 /******************************************************************************
  * MicroP Keypad LEDs
@@ -387,13 +383,6 @@ static struct msm_hsusb_platform_data htcrhodium_hsusb_board_pdata = {
 	.usb_connected = notify_usb_connected,
 };
 
-#if 0
-static struct platform_device raphael_rfkill = {
-	.name = "htcraphael_rfkill",
-	.id = -1,
-};
-#endif
-
 static struct tpa2016d2_platform_data tpa2016d2_data = {
 	.gpio_tpa2016_spk_en = RHODIUM_SPKR_PWR,
 };
@@ -598,6 +587,115 @@ static struct platform_device htcrhodium_gpio_keys = {
 	.id = -1,
 };
 
+/******************************************************************************
+ * Bluetooth
+ ******************************************************************************/
+#ifdef CONFIG_SERIAL_MSM_HS
+static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
+	.rx_wakeup_irq = MSM_GPIO_TO_INT(21),
+	.inject_rx_on_wakeup = 0,
+# if defined(CONFIG_SERIAL_BCM_BT_LPM)
+	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
+# endif
+};
+
+# if defined(CONFIG_SERIAL_BCM_BT_LPM)
+static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
+	.gpio_wake = RHODIUM_BT_WAKE,
+	.gpio_host_wake = RHODIUM_BT_HOST_WAKE,
+	.request_clock_off_locked = msm_hs_request_clock_off_locked,
+	.request_clock_on_locked = msm_hs_request_clock_on_locked,
+};
+
+struct platform_device bcm_bt_lpm_device = {
+	.name = "bcm_bt_lpm",
+	.id = 0,
+	.dev = {
+		.platform_data = &bcm_bt_lpm_pdata,
+	},
+};
+# endif
+#endif
+
+static struct msm_gpio bt_init_gpio_table_rhodium[] = {
+	{	.gpio_cfg = GPIO_CFG(RHODIUM_BT_nRST, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+		.label = "RHODIUM_BT_nRST" },
+	{	.gpio_cfg = GPIO_CFG(RHODIUM_BT_SHUTDOWN_N, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+		.label = "RHODIUM_BT_SHUTDOWN_N" },
+	{	.gpio_cfg = GPIO_CFG(RHODIUM_BT_HOST_WAKE, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+		.label = "RHODIUM_BT_HOST_WAKE" },
+	{	.gpio_cfg = GPIO_CFG(RHODIUM_BT_WAKE, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+		.label = "RHODIUM_BT_WAKE" },
+};
+
+static int htcrhodium_bt_power(void *data, bool blocked)
+{
+	printk(KERN_DEBUG "%s(%s)\n", __func__, blocked ? "off" : "on");
+
+	if (!blocked) {
+		gpio_direction_output(RHODIUM_BT_nRST, 1);
+		msleep(150);
+		gpio_direction_output(RHODIUM_BT_SHUTDOWN_N, 1);
+	} else {
+		gpio_direction_output(RHODIUM_BT_SHUTDOWN_N, 0);
+		msleep(150);
+		gpio_direction_output(RHODIUM_BT_nRST, 0);
+	}
+	return 0;
+}
+
+static int htcrhodium_bt_init(struct platform_device *pdev)
+{
+	int rc;
+
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	rc = msm_gpios_request(bt_init_gpio_table_rhodium,
+		ARRAY_SIZE(bt_init_gpio_table_rhodium));
+	if (rc)
+		goto fail_setup_gpio;
+
+	msm_gpios_disable(bt_init_gpio_table_rhodium,
+		ARRAY_SIZE(bt_init_gpio_table_rhodium));
+
+	return 0;
+
+fail_setup_gpio:
+	printk(KERN_ERR "%s: failed with %d\n", __func__, rc);
+	return rc;
+}
+
+static void htcrhodium_bt_exit(struct platform_device *pdev) {
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	msm_gpios_disable_free(bt_init_gpio_table_rhodium,
+		ARRAY_SIZE(bt_init_gpio_table_rhodium));
+}
+
+static struct msm7200a_rfkill_pdata htcrhodium_rfkill_data = {
+	.init = htcrhodium_bt_init,
+	.exit = htcrhodium_bt_exit,
+	.set_power = htcrhodium_bt_power,
+	.uart_number = 2,
+	.rfkill_name = "bcm4325",
+	.configure_bt_pcm = 1,
+};
+
+static struct platform_device htcrhodium_rfkill = {
+	.name = "msm7200a_rfkill",
+	.id = -1,
+	.dev = {
+		.platform_data = &htcrhodium_rfkill_data,
+	},
+};
+
+/******************************************************************************
+ * Platform devices
+ ******************************************************************************/
 static struct platform_device *devices[] __initdata = {
 	&htcrhodium_amss_device,
 	&msm_device_nand,
@@ -608,11 +706,14 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_htc_battery_smem,
 #endif
 	&htcrhodium_gpio_keys,
-//	&raphael_rfkill,
-	&msm_device_touchscreen,
+	&htcrhodium_rfkill,
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+	&bcm_bt_lpm_device,
+#endif
+	&msm_device_touchscreen,
 	&htcrhodium_capella_cm3602,
 #ifdef CONFIG_HTC_HEADSET
 	&rhodium_h2w,
@@ -676,6 +777,10 @@ static void __init htcrhodium_init(void)
 	// Set acoustic device specific parameters
 	htc_acoustic_wce_board_data = &htcrhodium_acoustic_data;
 
+#ifdef CONFIG_SERIAL_MSM_HS
+	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
+#endif
+
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	platform_driver_register(&htcrhodium_keypad_led_driver);
 
@@ -687,10 +792,6 @@ static void __init htcrhodium_init(void)
 	}
 
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
-
-#ifdef CONFIG_SERIAL_MSM_HS
-	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
-#endif
 
 	msm_add_usb_devices(&htcrhodium_hsusb_board_pdata);
 
