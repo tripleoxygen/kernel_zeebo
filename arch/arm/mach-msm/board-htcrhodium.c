@@ -676,10 +676,24 @@ static void htcrhodium_bt_exit(struct platform_device *pdev) {
 		ARRAY_SIZE(bt_init_gpio_table_rhodium));
 }
 
+#define BDADDR_STR_SIZE 18
+static char bdaddr[BDADDR_STR_SIZE];
+
+static const char* htcrhodium_get_btaddr(void) {
+	unsigned char *b = (unsigned char *)(MSM_SPL_BASE + 0x81C34);
+	memset(bdaddr, 0, sizeof(bdaddr));
+
+	snprintf(bdaddr, BDADDR_STR_SIZE, "%02X:%02X:%02X:%02X:%02X:%02X",
+		b[5], b[4], b[3], b[2], b[1], b[0]);
+
+	return bdaddr;
+}
+
 static struct msm7200a_rfkill_pdata htcrhodium_rfkill_data = {
 	.init = htcrhodium_bt_init,
 	.exit = htcrhodium_bt_exit,
 	.set_power = htcrhodium_bt_power,
+	.get_bdaddr = htcrhodium_get_btaddr,
 	.uart_number = 2,
 	.rfkill_name = "bcm4325",
 	.configure_bt_pcm = 1,
