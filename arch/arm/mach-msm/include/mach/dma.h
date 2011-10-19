@@ -113,7 +113,11 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 #define DMOV_HSUART2_TX_CHAN   4
 #define DMOV_HSUART2_TX_CRCI   14
 
+#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#define DMOV_HSUART2_RX_CHAN   9
+#else
 #define DMOV_HSUART2_RX_CHAN   11
+#endif
 #define DMOV_HSUART2_RX_CRCI   15
 
 
