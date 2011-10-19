@@ -36,6 +36,7 @@ struct msm7200a_rfkill_pdata {
 	int (*set_power)(void* data, bool blocked);
 	int (*init)(struct platform_device *pdev);
 	void (*exit)(struct platform_device *pdev);
+	const char* (*get_bdaddr)(void);
 	bool configure_bt_pcm;
 };
 

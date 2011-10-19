@@ -176,6 +176,25 @@ static struct rfkill_ops msm_rfkill_ops = {
 	.set_block = bluetooth_set_power,
 };
 
+static ssize_t msm_rfkill_bdaddr_get(struct device *dev,
+	struct device_attribute *attr, char *ret_buf)
+{
+	if (!rfk_pdata->get_bdaddr) {
+		return -ENOTSUPP;
+	}
+
+	return sprintf(ret_buf, "%s\n", rfk_pdata->get_bdaddr());
+}
+
+static ssize_t msm_rfkill_bdaddr_set(struct device *dev,
+	struct device_attribute *attr, const char *in_buf, size_t count)
+{
+	return -ENOTSUPP;
+}
+
+static DEVICE_ATTR(bdaddr, 0644, msm_rfkill_bdaddr_get,
+	msm_rfkill_bdaddr_set);
+
 static int msm_rfkill_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -238,8 +257,17 @@ static int msm_rfkill_probe(struct platform_device *pdev)
 	if (rc)
 		goto fail_rfk_reg;
 
+	if (pdata->get_bdaddr) {
+		rc = device_create_file(&pdev->dev, &dev_attr_bdaddr);
+		if (rc)
+			goto fail_bdaddr_attr;
+	}
+
+	printk(KERN_INFO "%s: initialized\n", __func__);
 	return 0;
 
+fail_bdaddr_attr:
+	rfkill_unregister(bt_rfk);
 fail_rfk_reg:
 	rfkill_destroy(bt_rfk);
 fail_rfk_alloc:
@@ -265,6 +293,7 @@ fail_gpios:
 	if (pdata->exit)
 		pdata->exit(pdev);
 fail_platform_init:
+	printk(KERN_ERR "%s: init failure %d\n", __func__, rc);
 	return rc;
 }
 
