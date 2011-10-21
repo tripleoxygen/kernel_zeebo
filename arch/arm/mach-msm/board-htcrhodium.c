@@ -592,7 +592,7 @@ static struct platform_device htcrhodium_gpio_keys = {
  ******************************************************************************/
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
-	.rx_wakeup_irq = MSM_GPIO_TO_INT(21),
+	.rx_wakeup_irq = MSM_GPIO_TO_INT(MSM7200A_UART2DM_RX),
 	.inject_rx_on_wakeup = 0,
 # if defined(CONFIG_SERIAL_BCM_BT_LPM)
 	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
