@@ -29,6 +29,7 @@
 #include <asm/mach/flash.h>
 #include <asm/mach/mmc.h>
 #include <asm/setup.h>
+#include <mach/msm7200a_rfkill.h>
 #include <mach/msm_serial_hs.h>
 
 #include <mach/board.h>
@@ -57,14 +58,6 @@
 #include "gpio_chip.h"
 
 extern int init_mmc(void);
-
-#ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
-	.rx_wakeup_irq = MSM_GPIO_TO_INT(TOPA100_UART2DM_RX),
-	.inject_rx_on_wakeup = 1,
-	.rx_to_inject = 0x32,
-};
-#endif
 
 /******************************************************************************
  * MicroP
@@ -189,13 +182,6 @@ static struct platform_device htctopaz_h2w = {
 };
 #endif
 
-#if 0
-static struct platform_device topaz_bt_rfkill = {
-	.name = "htcraphael_rfkill",
-	.id = -1,
-};
-#endif
-
 static struct ts_virt_key htctopaz_ts_keys_y[] = {
 	// key      min   max
 	{KEY_UP,    105, 267}, //  420, 1068},
@@ -223,6 +209,86 @@ static struct msm_ts_platform_data htctopaz_ts_pdata = {
 	.vkeys_y	= &htctopaz_ts_virtual_keys_y,
 };
 
+/******************************************************************************
+ * Bluetooth
+ ******************************************************************************/
+#ifdef CONFIG_SERIAL_MSM_HS
+static struct msm_serial_hs_platform_data msm_uart_dm2_pdata = {
+	.rx_wakeup_irq = MSM_GPIO_TO_INT(MSM7200A_UART2DM_RX),
+	.inject_rx_on_wakeup = 1,
+	.rx_to_inject = 0x32,
+};
+#endif
+
+static struct vreg *vreg_bt;
+
+static int htctopaz_bt_power(void *data, bool blocked)
+{
+	printk(KERN_DEBUG "%s(%s)\n", __func__, blocked ? "off" : "on");
+
+	if (!blocked) {
+		vreg_enable(vreg_bt);
+		gpio_direction_output(TOPA100_BT_RST, 0);
+		mdelay(50);
+		gpio_direction_output(TOPA100_BT_RST, 1);
+	} else {
+		gpio_direction_output(TOPA100_BT_RST, 0);
+		vreg_disable(vreg_bt);
+	}
+	return 0;
+}
+
+static int htctopaz_bt_init(struct platform_device *pdev)
+{
+	int rc;
+
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	vreg_bt = vreg_get_by_id(0, 11); // rftx
+	if (IS_ERR(vreg_bt)) {
+		rc = PTR_ERR(vreg_bt);
+		goto fail_vreg_bt;
+	}
+	rc = gpio_request(TOPA100_BT_RST, "BT Power");
+	if (rc)
+		goto fail_power_gpio;
+
+	return 0;
+
+fail_power_gpio:
+	vreg_put(vreg_bt);
+fail_vreg_bt:
+	printk(KERN_ERR "%s: failed with %d\n", __func__, rc);
+	return rc;
+}
+
+static void htctopaz_bt_exit(struct platform_device *pdev) {
+	printk(KERN_DEBUG "%s\n", __func__);
+
+	gpio_free(TOPA100_BT_RST);
+	vreg_put(vreg_bt);
+}
+
+static struct msm7200a_rfkill_pdata htctopaz_rfkill_data = {
+	.init = htctopaz_bt_init,
+	.exit = htctopaz_bt_exit,
+	.set_power = htctopaz_bt_power,
+	.uart_number = 2,
+	.rfkill_name = "brf6300",
+};
+
+static struct platform_device htctopaz_rfkill = {
+	.name = "msm7200a_rfkill",
+	.id = -1,
+	.dev = {
+		.platform_data = &htctopaz_rfkill_data,
+	},
+};
+
+/******************************************************************************
+ * Platform devices
+ ******************************************************************************/
+
 static struct platform_device *devices[] __initdata = {
 	&htctopaz_amss_device,
 	&msm_device_nand,
@@ -235,11 +301,11 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_HTC_HEADSET
 	&htctopaz_h2w,
 #endif
-//	&topaz_bt_rfkill,
-	&msm_device_touchscreen,
+	&htctopaz_rfkill,
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
+	&msm_device_touchscreen,
 };
 
 extern struct sys_timer msm_timer;
@@ -279,12 +345,12 @@ static void __init htctopaz_init(void)
 #endif
 	msm_device_touchscreen.dev.platform_data = &htctopaz_ts_pdata;
 
-	platform_add_devices(devices, ARRAY_SIZE(devices));
-	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
-
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
 #endif
+
+	platform_add_devices(devices, ARRAY_SIZE(devices));
+	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
 	msm_add_usb_devices(&htctopaz_hsusb_board_pdata);
 

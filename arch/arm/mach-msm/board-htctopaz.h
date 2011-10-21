@@ -13,10 +13,6 @@
 #define TOPA100_POWER_KEY			83
 
 /* BT */
-#define TOPA100_UART2DM_RTS			19
-#define TOPA100_UART2DM_CTS			20
-#define TOPA100_UART2DM_RX			21
-#define TOPA100_UART2DM_TX			108
 #define TOPA100_BT_RST				101
 
 /* H2W */
