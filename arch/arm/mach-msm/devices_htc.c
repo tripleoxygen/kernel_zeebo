@@ -522,37 +522,28 @@ int __init parse_tag_monodie(const struct tag *tags)
 	printk(KERN_DEBUG "parse_tag_monodie: mono-die = 0x%x\n", mono_die);
 	return mono_die;
 #else
-	int skuid_pcba;
+	/* We need CONFIG_DEBUG_LL, otherwise our readl() will freeze the device
+	 * on boot. (HaRET boot at least.)
+	 */
+#if !defined(CONFIG_DEBUG_LL)
+#error CONFIG_DEBUG_LL is required!
+#endif
+
+	int die_selection;
 
 	// restrict to htctopaz for now
 	if (!machine_is_htctopaz())
 		return mono_die;
 
-	/* Dynamic memory die detection.
-	 * We can't use:
-	 * - HaRET's passed ATAG_MEM as it is just one entry and too
-	 *   uninformal as of (2010-08-29) (option would be to locate and
-	 *   and parse OEMAddressTable dynamically)
-	 * - SMEM PCB XC (base+0xfc048) or PCB ID (base+0xfc0ef >> 24)
-	 *   as all values are identical for dualdie and monodie
-	 *   pcb_xc 0x1ffc048=0x00000001
-	 *   pcb_id 0x1ffc0ef=0x00000000
-	 * We use:
-	 * - SKUID of PCBA at phys 0x081C00
-	 *   dualdie: 0x050001ed
-	 *   monodie: 0x190001ed
-	 *   monodie: 0x140001ed
-	 *   monodie: 0x1e0001ed
+	/* Dynamic memory die detection via phys 0x081c94.
+	 *   dualdie: 0x00000001
+	 *   monodie: 0x00000002
 	 */
-	// FIXME: this works fine on .27 during machine fixup
-	// reading SMI during fixup on .35 freezes
-	// reading on init works though
-	skuid_pcba = 0;//readl(0x00081c00);
+	die_selection = readl(0x00081c94);
 
-	printk(KERN_DEBUG "%s: SKUID_PCBA=0x%08x\n", __func__, skuid_pcba);
+	printk(KERN_DEBUG "%s: die_selection=0x%08x\n", __func__, die_selection);
 
-	mono_die = skuid_pcba == 0x190001ed || skuid_pcba == 0x140001ed
-		|| skuid_pcba == 0x1e0001ed;
+	mono_die = die_selection == 0x00000002;
 
 	printk(KERN_DEBUG "%s: mono-die = 0x%x\n", __func__, mono_die);
 	return mono_die;
