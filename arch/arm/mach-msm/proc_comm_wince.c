@@ -328,9 +328,11 @@ static void msm_proc_comm_wince_interrupt_do_work(struct work_struct *work)
         processed_int |= DEX_INT_AUD_REC_GET_BUF;
     }
     if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK0 ) {
+        printk(KERN_WARNING "DEX_INT_UNK0 %x\n", msm_proc_comm_wince_pending_ints);
         processed_int |= DEX_INT_UNK0;
     }
     if ( msm_proc_comm_wince_pending_ints & DEX_INT_UNK1 ) {
+        printk(KERN_WARNING "DEX_INT_UNK1 %x\n", msm_proc_comm_wince_pending_ints);
         processed_int |= DEX_INT_UNK1;
     }
     if ( msm_proc_comm_wince_pending_ints & DEX_INT_M2A_NOTIFY_ARM9_REQ_RESTART ) {
