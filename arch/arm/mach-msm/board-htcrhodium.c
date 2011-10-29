@@ -555,7 +555,7 @@ static struct msm_ts_platform_data htcrhodium_ts_pdata = {
 	.min_y		= 10,
 	.max_y		= 835,
 	.inv_y		= 950,
-	.min_press	= 100,
+	.min_press	= 0,
 	.max_press	= 256,
 #if 0
 	.virt_y_start = 862,
