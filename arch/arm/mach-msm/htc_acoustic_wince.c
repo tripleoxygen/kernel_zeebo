@@ -364,7 +364,7 @@ static int turn_mic_bias_on_internal(bool on, bool bDualMicEn)
 		}
 	}
 
-	if (amss_data->mic_bias_callback)
+	if (amss_data->mic_bias_callback && !machine_is_htcrhodium())
 		amss_data->mic_bias_callback(on, bDualMicEn);
 
 	return 0;
