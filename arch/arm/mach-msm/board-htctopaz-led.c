@@ -47,7 +47,7 @@ static int htctopaz_set_color_led_blink(struct led_classdev*, unsigned long*, un
 static DECLARE_WORK(colorled_wq, htctopaz_update_color_led);
 static DECLARE_WORK(backlight_wq, htctopaz_update_lcd_backlight);
 static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_backlight);
-static struct i2c_client *client = NULL;
+static struct i2c_client *klt_client = NULL;
 static uint8_t g_auto_backlight = 0;
 static uint8_t g_blink_status = 0;
 
@@ -112,7 +112,7 @@ static int microp_led_set_color_led(enum led_color front_led_color,
 	int ret;
 	uint8_t buf[5] = { 0, 0, 0, 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -129,7 +129,7 @@ static int microp_led_set_color_led(enum led_color front_led_color,
 	buf[3] = 0xff;
 	buf[4] = 0xff;
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed setting color led value (%d)\n",
 			__func__, ret);
@@ -142,7 +142,7 @@ static int microp_led_set_lcd_backlight(enum led_brightness brightness)
 	int ret;
 	uint8_t buf[2] = { 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -155,7 +155,7 @@ static int microp_led_set_lcd_backlight(enum led_brightness brightness)
 	}
 	buf[1] = brightness / 2 & 0xf0; // should be revised
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed setting lcd backlight value (%d)\n",
 			__func__, ret);
@@ -169,7 +169,7 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 	unsigned state;
 	uint8_t buf[3] = { 0, 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -189,7 +189,7 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 		buf[2] = brightness;
 	}
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
 			__func__, ret);
@@ -202,7 +202,7 @@ static int microp_led_set_auto_backlight(int val)
 	int ret;
 	uint8_t buf[3] = { 0, 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -218,7 +218,7 @@ static int microp_led_set_auto_backlight(int val)
 		buf[2] = val ? 0xf3 : 0xf8;
 	}
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed writing auto backlight status (%d)\n",
 			__func__, ret);
@@ -233,13 +233,13 @@ static int microp_led_get_spi_auto_backlight_status(
 	uint8_t cmd;
 	uint8_t buf[2] = { 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
 	cmd = machine_is_htctopaz() ? MICROP_I2C_RCMD_SPI_BL_STATUS /*0x24*/ : 0x21; // RHOD testing
 
-	ret = microp_ng_read(client, cmd, buf, 2);
+	ret = microp_ng_read(klt_client, cmd, buf, 2);
 	if (ret) {
 		printk(KERN_ERR "%s: Failed reading SPI backlight status with ret=%d.\n",
 			__func__, ret);
@@ -261,7 +261,7 @@ static int microp_spi_enable(uint8_t on)
 	int ret;
 	uint8_t buf[2] = { 0, 0 };
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -270,7 +270,7 @@ static int microp_spi_enable(uint8_t on)
 	buf[0] = MICROP_I2C_WCMD_SPI_EN;
 	buf[1] = on;
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret < 0) {
 		printk(KERN_ERR "%s: Failed %s SPI bus. (%d)\n", __func__,
 			on ? "enabling" : "disabling", ret);
@@ -424,7 +424,7 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	uint8_t spi_status;
 
 	printk(KERN_INFO "%s\n", __func__);
-	client = dev_get_drvdata(&pdev->dev);
+	klt_client = dev_get_drvdata(&pdev->dev);
 
 	for (i = 0; i < ARRAY_SIZE(htctopaz_leds); i++) {
 		ret = led_classdev_register(&pdev->dev, &htctopaz_leds[i]);
@@ -488,7 +488,7 @@ static int htctopaz_microp_remove(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(htctopaz_leds); i++) {
 		led_classdev_unregister(&htctopaz_leds[i]);
 	}
-	client = NULL;
+	klt_client = NULL;
 	return 0;
 }
 
@@ -564,7 +564,7 @@ static int microp_dbg_led_set_color_led(void *dat, u64 val)
 	unsigned three = 0xff & (val >> 8);
 	unsigned four = 0xff & val;
 
-	if (!client) {
+	if (!klt_client) {
 		return -EAGAIN;
 	}
 
@@ -581,7 +581,7 @@ static int microp_dbg_led_set_color_led(void *dat, u64 val)
 	buf[3] = three;
 	buf[4] = four;
 
-	ret = microp_ng_write(client, buf, ARRAY_SIZE(buf));
+	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed setting color led value (%d)\n",
 			__func__, ret);
