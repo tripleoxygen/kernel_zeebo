@@ -282,9 +282,15 @@ static struct platform_device htcrhodium_keypad_led = {
 	.id = -1,
 };
 
+static struct platform_device htcrhodium_microp_led_ksc = {
+	.name = "microp-led-ksc",
+	.id = -1,
+};
+
 static struct platform_device* htcrhodium_microp_keypad_clients[] = {
 	&htcrhodium_keypad,
 	&htcrhodium_keypad_led,
+	&htcrhodium_microp_led_ksc,
 };
 
 static uint16_t micropksc_compatible_versions[] = {
@@ -302,10 +308,9 @@ static struct microp_platform_data htcrhodium_microp_keypad_pdata = {
 /******************************************************************************
  * MicroP LED, Audio, Light Sensor (Capella CM3602) & 3.5mm Headset
  ******************************************************************************/
-static struct platform_device htcrhodium_microp_leds = {
+static struct platform_device htcrhodium_microp_led_klt = {
 	.id = -1,
-	// use the topaz led setup until an LED framework is invented
-	.name = "htctopaz-microp-leds",
+	.name = "microp-led-klt",
 };
 
 static struct platform_device htcrhodium_microp_audio = {
@@ -333,7 +338,7 @@ static struct platform_device htcrhodium_microp_35mm = {
 };
 
 static struct platform_device* htcrhodium_microp_clients[] = {
-	&htcrhodium_microp_leds,
+	&htcrhodium_microp_led_klt,
 	&htcrhodium_microp_audio,
 	&htcrhodium_microp_ls,
 	// this must be last; dropped when variant is not RHODW(RHOD400/RHOD500)
@@ -407,27 +412,30 @@ static struct i2c_board_info i2c_devices[] = {
 		I2C_BOARD_INFO("bma150", 0x70>>1),
 	},
 	{
+		// Keyboard controller
+		// should be registered before 0x66 so that ksc client is initialized
+		// when "microp-led-klt" initial led setup is performed
+		// (which requires the -ksc instance)
+		I2C_BOARD_INFO("microp-ng", 0x67),
+		.platform_data = &htcrhodium_microp_keypad_pdata,
+	},
+	{
 		// LED & Audio controller
 		I2C_BOARD_INFO("microp-ng", 0x66),
 		.platform_data = &htcrhodium_microp_led_audio_pdata,
 	},
 	{
-		// Keyboard controller
-		I2C_BOARD_INFO("microp-ng", 0x67),
-		.platform_data = &htcrhodium_microp_keypad_pdata,
-	},
-	{		
 		I2C_BOARD_INFO("mt9t013", 0x6c>>1),
 		/* .irq = TROUT_GPIO_TO_INT(TROUT_GPIO_CAM_BTN_STEP1_N), */
 	},
-	{		
+	{
 		I2C_BOARD_INFO("tpa2016d2", 0xb0>>1),
 		.platform_data = &tpa2016d2_data,
 	},
-	{		
+	{
 //		I2C_BOARD_INFO("audience_A1010", 0xf4>>1),
 	},
-	{		
+	{
 		I2C_BOARD_INFO("adc3001", 0x30>>1),
 	},
 };

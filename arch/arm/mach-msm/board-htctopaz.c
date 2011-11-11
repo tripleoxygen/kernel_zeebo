@@ -64,7 +64,7 @@ extern int init_mmc(void);
  ******************************************************************************/
 static struct platform_device htctopaz_microp_leds = {
 	.id = -1,
-	.name = "htctopaz-microp-leds",
+	.name = "microp-led-klt",
 };
 
 static struct platform_device* htctopaz_microp_clients[] = {

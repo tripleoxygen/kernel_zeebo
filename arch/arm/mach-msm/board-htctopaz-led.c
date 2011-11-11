@@ -48,6 +48,7 @@ static DECLARE_WORK(colorled_wq, htctopaz_update_color_led);
 static DECLARE_WORK(backlight_wq, htctopaz_update_lcd_backlight);
 static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_backlight);
 static struct i2c_client *klt_client = NULL;
+static struct i2c_client *ksc_client = NULL;
 static uint8_t g_auto_backlight = 0;
 static uint8_t g_blink_status = 0;
 
@@ -168,10 +169,7 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 	int ret;
 	unsigned state;
 	uint8_t buf[3] = { 0, 0, 0 };
-
-	if (!klt_client) {
-		return -EAGAIN;
-	}
+	struct i2c_client *client_to_use = NULL;
 
 	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
 
@@ -179,17 +177,22 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 	state = brightness ? 0x01 : 0x00;
 
 	if (machine_is_htctopaz()) {
+		client_to_use = klt_client;
 		buf[0] = 0x40; // MICROP_KLT_ID_LED_STATE;
 		buf[1] = 0xff & state;
 		buf[2] = 0xff & (state >> 8);
 	} else {
-		// TODO this is defunct and needs to be handled via KSC
+		client_to_use = ksc_client;
 		buf[0] = 0x14; // MICROP_KSC_ID_KEYPAD_LIGHT_RHOD;
-		buf[1] = 0x80; // ?? start?
-		buf[2] = brightness;
+		buf[1] = 0x80; // brightness? variable?
+		buf[2] = state; // just on/off?
 	}
 
-	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
+	if (!client_to_use) {
+		return -EAGAIN;
+	}
+
+	ret = microp_ng_write(client_to_use, buf, ARRAY_SIZE(buf));
 	if (ret) {
 		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
 			__func__, ret);
@@ -525,29 +528,58 @@ static int htctopaz_microp_resume(struct platform_device *pdev)
 #define htctopaz_microp_resume NULL
 #endif
 
-static struct platform_driver htctopaz_microp_driver = {
+static struct platform_driver microp_led_klt_driver = {
 	.probe		= htctopaz_microp_probe,
 	.remove		= htctopaz_microp_remove,
 	.suspend	= htctopaz_microp_suspend,
 	.resume		= htctopaz_microp_resume,
 	.driver		= {
-		.name		= "htctopaz-microp-leds",
+		.name		= "microp-led-klt",
 		.owner		= THIS_MODULE,
 	},
 };
 
-static int __init htctopaz_microp_init(void)
+static int microp_led_ksc_probe(struct platform_device *pdev)
 {
-	return platform_driver_register(&htctopaz_microp_driver);
+	printk(KERN_INFO "%s\n", __func__);
+	ksc_client = dev_get_drvdata(&pdev->dev);
+	return 0;
 }
 
-static void __exit htctopaz_microp_exit(void)
+static int microp_led_ksc_remove(struct platform_device *pdev)
 {
-	platform_driver_unregister(&htctopaz_microp_driver);
+	ksc_client = NULL;
+	return 0;
 }
 
-module_init(htctopaz_microp_init);
-module_exit(htctopaz_microp_exit)
+static struct platform_driver microp_led_ksc_driver = {
+	.probe		= microp_led_ksc_probe,
+	.remove		= microp_led_ksc_remove,
+	.driver		= {
+		.name		= "microp-led-ksc",
+		.owner		= THIS_MODULE,
+	},
+};
+
+static int __init microp_led_init(void)
+{
+	int rc;
+
+	rc = platform_driver_register(&microp_led_klt_driver);
+	if (rc) {
+		return rc;
+	}
+	return platform_driver_register(&microp_led_ksc_driver);
+}
+
+static void __exit microp_led_exit(void)
+{
+	platform_driver_unregister(&microp_led_klt_driver);
+	platform_driver_unregister(&microp_led_ksc_driver);
+}
+
+module_init(microp_led_init);
+module_exit(microp_led_exit);
 
 /*
  * DebugFS
