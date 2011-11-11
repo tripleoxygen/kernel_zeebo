@@ -357,23 +357,34 @@ static struct microp_platform_data htcrhodium_microp_led_audio_pdata = {
  ******************************************************************************/
 static void htcrhodium_usb_disable(void)
 {
-	gpio_set_value(RHODIUM_USBPHY_RST, 0); 
+	gpio_direction_output(RHODIUM_USBPHY_RST, 0); 
 	mdelay(3);
 }
 
 static void htcrhodium_usb_enable(void)
 {
-	gpio_set_value(RHODIUM_USBPHY_RST, 1);
+	gpio_direction_output(RHODIUM_USBPHY_RST, 1);
 	mdelay(3);
 }
 
 static void htcrhodium_usb_hw_reset(bool off)
 {
+	static bool gpio_requested = false;
+
 	printk(KERN_WARNING "%s(%d)\n", __func__, off ? 1 : 0);
+
+	if (!gpio_requested) {
+		if (gpio_request(RHODIUM_USBPHY_RST, "RHODIUM_USBPHY_RST")) {
+			printk(KERN_ERR "%s: gpio %d request failed\n", __func__,
+				RHODIUM_USBPHY_RST);
+		}
+		gpio_requested = true;
+	}
 
 	if (off) {
 		htcrhodium_usb_disable();
 	} else {
+		htcrhodium_usb_disable();
 		htcrhodium_usb_enable();
 	}
 }
