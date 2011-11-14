@@ -37,11 +37,13 @@
 static void htctopaz_update_color_led(struct work_struct* work);
 static void htctopaz_update_lcd_backlight(struct work_struct* work);
 static void htctopaz_update_button_backlight(struct work_struct* work);
+static void htctopaz_update_keyboard_backlight(struct work_struct* work);
 static void htctopaz_update_meta_key_brightness(struct work_struct* work);
 
 static void htctopaz_set_color_led(struct led_classdev*, enum led_brightness);
 static void htctopaz_set_lcd_backlight(struct led_classdev*, enum led_brightness);
 static void htctopaz_set_button_backlight(struct led_classdev*, enum led_brightness);
+static void htctopaz_set_keyboard_backlight(struct led_classdev*, enum led_brightness);
 static void htctopaz_set_meta_key_brightness(struct led_classdev*, enum led_brightness);
 
 static int htctopaz_set_color_led_blink(struct led_classdev*, unsigned long*, unsigned long*);
@@ -49,6 +51,7 @@ static int htctopaz_set_color_led_blink(struct led_classdev*, unsigned long*, un
 static DECLARE_WORK(colorled_wq, htctopaz_update_color_led);
 static DECLARE_WORK(backlight_wq, htctopaz_update_lcd_backlight);
 static DECLARE_WORK(buttonlight_wq, htctopaz_update_button_backlight);
+static DECLARE_WORK(keyboardlight_wq, htctopaz_update_keyboard_backlight);
 static DECLARE_WORK(meta_key_wq, htctopaz_update_meta_key_brightness);
 static struct i2c_client *klt_client = NULL;
 static struct i2c_client *ksc_client = NULL;
@@ -83,26 +86,36 @@ static char* led_color_name(enum led_color color) {
 	}
 }
 
-enum supported_led {AMBER, GREEN, LCD, BUTTONS, CAPS, FUNC};
+enum supported_led {AMBER, GREEN, LCD, BUTTONS, KEYBOARD, CAPS, FUNC};
 
 static struct led_classdev htctopaz_leds[] = {
 	[AMBER] = {
 		.name = "amber",
+		.brightness = LED_OFF,
 		.brightness_set = htctopaz_set_color_led,
 		.blink_set = htctopaz_set_color_led_blink,
 	},
 	[GREEN] = {
 		.name = "green",
+		.brightness = LED_OFF,
 		.brightness_set = htctopaz_set_color_led,
 		.blink_set = htctopaz_set_color_led_blink,
 	},
 	[LCD] = {
 		.name = "lcd-backlight",
+		.brightness = LED_FULL,
 		.brightness_set = htctopaz_set_lcd_backlight,
 	},
 	[BUTTONS] = {
 		.name = "button-backlight",
+		.brightness = LED_OFF,
 		.brightness_set = htctopaz_set_button_backlight,
+	},
+	[KEYBOARD] = {
+		.name = "keyboard-backlight",
+		.brightness = LED_OFF,
+		.brightness_set = htctopaz_set_keyboard_backlight,
+		.default_trigger = "microp-keypad",
 	},
 	[CAPS] = {
 		.name = "caps",
@@ -210,6 +223,46 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
 			__func__, ret);
 	}
+	return ret;
+}
+
+static int microp_led_set_keyboard_backlight(enum led_brightness brightness)
+{
+	int ret;
+	uint8_t buffer[4] = {};
+	static uint8_t last_brightness = 0;
+
+	if (machine_is_htctopaz()) {
+		return -ENODEV;
+	}
+
+	if (!ksc_client) {
+		return -EAGAIN;
+	}
+
+	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+
+	buffer[0] = 0x32; // RHOD_MICROP_KSC_LED_BRIGHTNESS;
+	buffer[1] = last_brightness;    /* initial brightness */
+	buffer[2] = 255;                /* transition duration */
+	buffer[3] = brightness;         /* target brightness */
+	ret = microp_ng_write(ksc_client, buffer, 4);
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
+			__func__, ret);
+		return ret;
+	}
+
+	buffer[0] = 0x30; // RHOD_MICROP_KSC_LED_STATE;
+	buffer[1] = 0;
+	buffer[2] = !!brightness;
+	microp_ng_write(ksc_client, buffer, 3);
+	if (ret) {
+		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
+			__func__, ret);
+		return ret;
+	}
+	last_brightness = brightness;
 	return ret;
 }
 
@@ -376,6 +429,13 @@ static void htctopaz_update_button_backlight(struct work_struct* work)
 	microp_led_set_button_backlight(brightness);
 }
 
+static void htctopaz_update_keyboard_backlight(struct work_struct* work)
+{
+	enum led_brightness brightness = htctopaz_leds[KEYBOARD].brightness;
+
+	microp_led_set_keyboard_backlight(brightness);
+}
+
 static void htctopaz_update_meta_key_brightness(struct work_struct* work)
 {
 	enum led_brightness caps_brightness = htctopaz_leds[CAPS].brightness;
@@ -480,6 +540,12 @@ static void htctopaz_set_button_backlight(struct led_classdev *led_cdev,
 	schedule_work(&buttonlight_wq);
 }
 
+static void htctopaz_set_keyboard_backlight(struct led_classdev *led_cdev,
+	enum led_brightness brightness)
+{
+	schedule_work(&keyboardlight_wq);
+}
+
 static void htctopaz_set_meta_key_brightness(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
@@ -538,6 +604,7 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
 	microp_led_set_button_backlight(LED_OFF);
 	microp_led_set_lcd_backlight(LED_FULL);
+	microp_led_set_keyboard_backlight(LED_OFF);
 	microp_led_set_meta_key_backlight(LED_OFF, LED_OFF);
 
 	return 0;
