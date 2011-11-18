@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Wed Nov 16 20:29:20 2011
+# Fri Nov 18 23:13:32 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1118,6 +1118,7 @@ CONFIG_INPUT_GPIO=y
 # CONFIG_INPUT_PCF8574 is not set
 # CONFIG_INPUT_GPIO_ROTARY_ENCODER is not set
 CONFIG_INPUT_CAPELLA_CM3602=y
+CONFIG_BOSCH_BMA150=y
 
 #
 # Hardware I/O ports
