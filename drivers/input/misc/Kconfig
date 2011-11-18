@@ -412,4 +412,11 @@ config INPUT_CAPELLA_CM3602
 	  Say Y here to enable the Capella CM3602 Short Distance Proximity
 	  Sensor with Ambient Light Sensor.
 
+config BOSCH_BMA150
+        tristate "SMB380/BMA150 acceleration sensor support"
+        depends on I2C=y
+        help
+          If you say yes here you get support for Bosch Sensortec's
+          acceleration sensors SMB380/BMA150.
+
 endif
