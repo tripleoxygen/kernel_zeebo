@@ -23,6 +23,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/leds.h>
 #include <linux/mm.h>
+#include <linux/bma150.h>
 #include <linux/capella_cm3602.h>
 
 #include <mach/hardware.h>
@@ -320,12 +321,32 @@ static struct tpa2016d2_platform_data tpa2016d2_data = {
 };
 
 /******************************************************************************
+ * G-Sensor (Bosch BMA150)
+ ******************************************************************************/
+// TODO: GPIO and/or VREG setup on suspend/resume?
+static int htcrhodium_bma150_power_on(void)
+{
+	printk(KERN_DEBUG "%s\n", __func__);
+	return 0;
+}
+
+static void htcrhodium_bma150_power_off(void)
+{
+	printk(KERN_DEBUG "%s\n", __func__);
+}
+
+static struct bma150_platform_data htcrhodium_bma150_pdata = {
+	.power_on = htcrhodium_bma150_power_on,
+	.power_off = htcrhodium_bma150_power_off,
+};
+
+/******************************************************************************
  * I2C
  ******************************************************************************/
 static struct i2c_board_info i2c_devices[] = {
 	{
-		//gsensor 0x38
 		I2C_BOARD_INFO("bma150", 0x70>>1),
+		.platform_data = &htcrhodium_bma150_pdata,
 	},
 	{
 		// Keyboard controller
