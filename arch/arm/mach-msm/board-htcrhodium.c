@@ -706,22 +706,35 @@ static struct msm_acpu_clock_platform_data halibut_clock_data = {
 //	.max_axi_khz = 160000,
 };
 
-/*
+/******************************************************************************
+ * Wi-Fi
+ ******************************************************************************/
 //TODO: use platform data
-int wifi_set_power(int on, unsigned long msec) {
+int wifi_set_power(int on, unsigned long msec)
+{
+	printk(KERN_DEBUG "%s(%d)\n", __func__, on);
 	if(machine_is_htcrhodium()) {
-		gpio_configure(25, GPIOF_OWNER_ARM11);
+		msm_gpio_set_flags(25, GPIOF_OWNER_ARM11);
 		gpio_direction_output(25, 0);
 		msleep(0x64);
 		gpio_direction_output(25, 1);
 	}
 	return 0;
 }
+EXPORT_SYMBOL(wifi_set_power);
 
-int wifi_get_irq_number(int on, unsigned long msec) {
+int wifi_get_irq_number(int on, unsigned long msec)
+{
+	printk(KERN_DEBUG "%s(%d)\n", __func__, on);
 	return gpio_to_irq(29);
 }
-*/
+EXPORT_SYMBOL(wifi_get_irq_number);
+
+int wifi_get_mac_addr(unsigned char *buf)
+{
+	return -1;
+}
+EXPORT_SYMBOL(wifi_get_mac_addr);
 
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 static smem_batt_t htcrhodium_htc_battery_smem_pdata = {
