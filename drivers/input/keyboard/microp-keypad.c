@@ -265,19 +265,18 @@ static int microp_keypad_remove(struct platform_device *pdev)
 #if CONFIG_PM
 static int microp_keypad_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	printk("+%s\n", __func__);
 	if (microp_keypad.pdata->gpio_clamshell > 0)
 		cancel_work_sync(&microp_keypad.clamshell_work);
 	cancel_work_sync(&microp_keypad.keypad_work);
 	led_trigger_event(microp_keypad.bl_trigger, LED_OFF);
-	printk("-%s\n", __func__);
 	return 0;
 }
 
 static int microp_keypad_resume(struct platform_device *pdev)
 {
-	led_trigger_event(microp_keypad.bl_trigger,
-					microp_keypad.last_clamshell_state ? LED_FULL : LED_OFF);
+	schedule_work(&microp_keypad.keypad_work);
+	if (microp_keypad.pdata->gpio_clamshell > 0)
+		schedule_work(&microp_keypad.clamshell_work);
 	return 0;
 }
 #else
