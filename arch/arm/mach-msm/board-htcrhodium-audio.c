@@ -255,6 +255,10 @@ static int htcrhodium_microp_audio_probe(struct platform_device *pdev)
 	audio_data.client = dev_get_drvdata(&pdev->dev);
 	mutex_unlock(&audio_data.lock);
 
+	micropklt_codec_set(0);
+	micropklt_dualmic_set(1);
+	micropklt_dualmic_set(0);
+
 	return 0;
 }
 
