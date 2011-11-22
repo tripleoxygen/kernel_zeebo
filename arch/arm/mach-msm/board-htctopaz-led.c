@@ -34,6 +34,15 @@
 
 #include "board-htctopaz.h"
 
+#define DEBUG 0
+
+#if DEBUG
+ #define D(fmt, arg...) printk(KERN_DEBUG "%s: " fmt, __FUNCTION__, ## arg);
+#else
+ #define D(fmt, arg...) do {} while(0)
+#endif
+#define E(fmt, arg...) printk(KERN_ERR "%s: " fmt, __FUNCTION__, ## arg);
+
 static void htctopaz_update_color_led(struct work_struct* work);
 static void htctopaz_update_lcd_backlight(struct work_struct* work);
 static void htctopaz_update_button_backlight(struct work_struct* work);
@@ -69,6 +78,7 @@ enum led_color {
 	BLINK_AMBER = 5,
 };
 
+#if DEBUG
 static char* led_color_name(enum led_color color) {
 	switch(color) {
 		case COLOR_OFF:
@@ -85,6 +95,7 @@ static char* led_color_name(enum led_color color) {
 			return "UNKNOWN";
 	}
 }
+#endif
 
 enum supported_led {AMBER, GREEN, LCD, BUTTONS, KEYBOARD, CAPS, FUNC};
 
@@ -143,8 +154,8 @@ static int microp_led_set_color_led(enum led_color front_led_color,
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: front=%s back=%s\n", __func__,
-		led_color_name(front_led_color), led_color_name(back_led_color));
+	D("front=%s back=%s\n", led_color_name(front_led_color),
+		led_color_name(back_led_color));
 
 	if (machine_is_htctopaz()) {
 		buf[0] = TOPA_MICROP_COLOR_LED_ADDRESS; // 0x51
@@ -158,8 +169,7 @@ static int microp_led_set_color_led(enum led_color front_led_color,
 
 	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
-		printk(KERN_ERR "%s: Failed setting color led value (%d)\n",
-			__func__, ret);
+		E("Failed setting color led value (%d)\n", ret);
 	}
 	return ret;
 }
@@ -173,7 +183,7 @@ static int microp_led_set_lcd_backlight(enum led_brightness brightness)
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+	D("brightness=%d\n", brightness);
 
 	if (machine_is_htctopaz()) {
 		buf[0] = MICROP_I2C_WCMD_LCD_BRIGHTNESS; // 0x22
@@ -184,8 +194,7 @@ static int microp_led_set_lcd_backlight(enum led_brightness brightness)
 
 	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
-		printk(KERN_ERR "%s: Failed setting lcd backlight value (%d)\n",
-			__func__, ret);
+		E("Failed setting lcd backlight value (%d)\n", ret);
 	}
 	return ret;
 }
@@ -197,7 +206,7 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 	uint8_t buf[3] = { 0, 0, 0 };
 	struct i2c_client *client_to_use = NULL;
 
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+	D("brightness=%d\n", brightness);
 
 	// TODO this needs to be tracked
 	state = brightness ? 0x01 : 0x00;
@@ -220,8 +229,7 @@ static int microp_led_set_button_backlight(enum led_brightness brightness)
 
 	ret = microp_ng_write(client_to_use, buf, ARRAY_SIZE(buf));
 	if (ret) {
-		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
-			__func__, ret);
+		E("Failed setting button backlight value (%d)\n", ret);
 	}
 	return ret;
 }
@@ -240,7 +248,7 @@ static int microp_led_set_keyboard_backlight(enum led_brightness brightness)
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: brightness=%d\n", __func__, brightness);
+	D("brightness=%d\n", brightness);
 
 	buffer[0] = 0x32; // RHOD_MICROP_KSC_LED_BRIGHTNESS;
 	buffer[1] = last_brightness;    /* initial brightness */
@@ -258,8 +266,7 @@ static int microp_led_set_keyboard_backlight(enum led_brightness brightness)
 	buffer[2] = !!brightness;
 	microp_ng_write(ksc_client, buffer, 3);
 	if (ret) {
-		printk(KERN_ERR "%s: Failed setting button backlight value (%d)\n",
-			__func__, ret);
+		E("Failed setting button backlight value (%d)\n", ret);
 		return ret;
 	}
 	last_brightness = brightness;
@@ -284,8 +291,7 @@ static int microp_led_set_meta_key_backlight(enum led_brightness caps_brightness
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: caps=%d func=%d\n", __func__, caps_brightness,
-		func_brightness);
+	D("caps=%d func=%d\n", caps_brightness, func_brightness);
 
 	bit = (1<<0); //RHOD_MICROP_KSC_LED_CAPS;
 	if (htctopaz_leds[CAPS].brightness)
@@ -304,8 +310,7 @@ static int microp_led_set_meta_key_backlight(enum led_brightness caps_brightness
 
 	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
-		printk(KERN_ERR "%s: Failed setting meta key backlight value (%d)\n",
-			__func__, ret);
+		E("Failed setting meta key backlight value (%d)\n", ret);
 	}
 	return ret;
 }
@@ -319,7 +324,7 @@ static int microp_led_set_auto_backlight(int val)
 		return -EAGAIN;
 	}
 
-	printk(KERN_DEBUG "%s: %s (%d)\n", __func__, val ? "on" : "off", val);
+	D("%s (%d)\n", val ? "on" : "off", val);
 
 	if (machine_is_htctopaz()) {
 		buf[0] = MICROP_I2C_WCMD_AUTO_BL_CTL; // 0x23
@@ -333,8 +338,7 @@ static int microp_led_set_auto_backlight(int val)
 
 	ret = microp_ng_write(klt_client, buf, ARRAY_SIZE(buf));
 	if (ret) {
-		printk(KERN_ERR "%s: Failed writing auto backlight status (%d)\n",
-			__func__, ret);
+		E("Failed writing auto backlight status (%d)\n", ret);
 	}
 	return ret;
 }
