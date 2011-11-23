@@ -605,7 +605,7 @@ static int htctopaz_microp_probe(struct platform_device *pdev)
 	g_auto_backlight = auto_backlight_status;
 
 	// some defaults at boot
-	microp_led_set_color_led(COLOR_OFF, COLOR_OFF);
+	microp_led_set_color_led(led_regime ? COLOR_AMBER : COLOR_OFF, COLOR_OFF);
 	microp_led_set_button_backlight(LED_OFF);
 	microp_led_set_lcd_backlight(LED_FULL);
 	microp_led_set_keyboard_backlight(LED_OFF);
