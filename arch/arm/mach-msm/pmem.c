@@ -92,10 +92,10 @@ static int __init msm_pmem_init(void) {
             //SMI 32 + EBI 2*128 or 1*256 (newer htctopaz)
 
             // only htctopaz for now
-            //~ if (board_mcp_monodie()) {
-                //~ // we can start right after the first 128MB
-                //~ pmem_shift = 0x8000000;
-            //~ }
+            if (board_mcp_monodie()) {
+                // we can start right after the first 128MB
+                pmem_shift = 0x8000000;
+            }
 
             pmem_setting.pmem_start=MSM_EBIN_BASE+128*1024*1024-50*1024*1024-pmem_shift;
             pmem_setting.pmem_size=32*1024*1024;            // 32MB
