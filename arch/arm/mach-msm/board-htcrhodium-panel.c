@@ -283,14 +283,29 @@ static void htcrhod_mddi_power_client(
 		}
 
 		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+		gpio_tlmm_config(
 			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_ENABLE);
 		msleep(10);
-
 	} else {
 		gpio_tlmm_config(
 			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
+		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
+		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_DISABLE);
 		msleep(10);
@@ -367,14 +382,20 @@ int __init htcrhod_init_panel(void)
 	if (IS_ERR(vreg_lcd_2))
 		return PTR_ERR(vreg_lcd_2);
 
-	rc = gpio_request(RHOD_LCD_VSYNC, "vsync");
+	rc = gpio_request(RHOD_LCD_VSYNC, "lcd vsync");
 	if (rc)
 		return rc;
 	rc = gpio_direction_input(RHOD_LCD_VSYNC);
 	if (rc)
 		return rc;
 
-	rc = gpio_request(RHOD_LCD_RST, "lcdpwr");
+	rc = gpio_request(RHOD_LCD_RST, "lcd reset");
+	if (rc)
+		return rc;
+	rc = gpio_request(RHOD_LCD_PWR1, "lcd pwr1");
+	if (rc)
+		return rc;
+	rc = gpio_request(RHOD_LCD_PWR2, "lcd pwr2");
 	if (rc)
 		return rc;
 

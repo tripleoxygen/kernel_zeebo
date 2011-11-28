@@ -39,10 +39,10 @@
 #define RHODIUM_SPKR_PWR        84
 #define RHODIUM_HS_AMP_PWR      85
 
+#define RHOD_LCD_RST			82
 #define RHOD_LCD_VSYNC			97
-#define RHOD_LCD_PWR1			99	//0x63
-#define RHOD_LCD_PWR2			98	//0x62
-#define RHOD_LCD_RST			82	//0x52
+#define RHOD_LCD_PWR1			98
+#define RHOD_LCD_PWR2			99
 
 #define RHODIUM_USBPHY_RST		100
 
