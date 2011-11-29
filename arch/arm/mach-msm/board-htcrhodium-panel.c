@@ -64,6 +64,11 @@ struct nov_regs nov_init_seq1[] = {
 	{0x1300, 0x01},		// normal mode
 	{0x3500, 0x00},		// tearing effect
 	{0x3a00, 0x55},		// bits per pixel
+	{0x3b00, 0x00},		// hsp/vsp high trigger
+	{0x3b02, 0x01},		// vbp 1 clk
+	{0x3b03, 0x01},		// vfp 1 clk
+	{0x3b04, 0x01},		// hbp 1 clk
+	{0x3b05, 0x01},		// hfp 1 clk
 	{0x4405, 0x00},		// set tear line 1st param
 	{0x4401, 0x00},		// set tear line 2nd param
 	{0x4e00, 0x00},		// set spi/i2c mode
@@ -95,6 +100,11 @@ struct nov_regs nov_init_seq2[] = {
 	{0x1300, 0x01},		// normal mode
 	{0x3500, 0x00},		// tearing effect
 	{0x3a00, 0x55},		// bits per pixel
+	{0x3b00, 0x00},		// hsp/vsp high trigger
+	{0x3b02, 0x01},		// vbp 1 clk
+	{0x3b03, 0x01},		// vfp 1 clk
+	{0x3b04, 0x01},		// hbp 1 clk
+	{0x3b05, 0x01},		// hfp 1 clk
 	{0x4405, 0x00},		// set tear line 1st param
 	{0x4401, 0x00},		// set tear line 2nd param
 	{0x4e00, 0x00},		// set spi/i2c mode
