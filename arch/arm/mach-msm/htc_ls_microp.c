@@ -68,6 +68,7 @@ static uint16_t levels[10] = { 0, 2, 7, 17, 33, 172, 299, 326, 344, 1023 };
 
 static struct i2c_client *private_microp_client;
 
+#if 0
 static char *hex2string(uint8_t *data, int len)
 {
 	static char buf[101];
@@ -82,6 +83,7 @@ static char *hex2string(uint8_t *data, int len)
 
 	return buf;
 }
+#endif
 
 #define I2C_READ_RETRY_TIMES  10
 #define I2C_WRITE_RETRY_TIMES 10
@@ -369,6 +371,7 @@ static struct miscdevice lightsensor_misc = {
 	.fops = &lightsensor_fops
 };
 
+#if 0
 int panel_switch(int on, int bl)
 {
 	/* This is called by Panel unblank. */
@@ -398,6 +401,7 @@ int autobacklight_control(int enable)
 	return 0;
 }
 EXPORT_SYMBOL(autobacklight_control);
+#endif
 
 static ssize_t ls_adc_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
