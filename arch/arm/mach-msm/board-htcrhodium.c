@@ -243,7 +243,7 @@ static struct platform_device htcrhodium_microp_ls = {
 static struct htc_headset_microp_platform_data htc_headset_microp_data = {
 	.hpin_mask		= {0x00, 0x01, 0x00},	/* READ_GPI_STATE_HPIN */
 	.hpin_int		= BIT_35MM_HEADSET,		/* IRQ_HEADSETIN */
-	.hpin_irq		= MSM_GPIO_TO_INT(RHODIUM_GSENROR_MOT),
+	.hpin_irq		= MSM_GPIO_TO_INT(RHODIUM_GSENSOR_MOT),
 };
 
 static struct platform_device htcrhodium_microp_35mm = {
@@ -324,15 +324,35 @@ static struct tpa2016d2_platform_data tpa2016d2_data = {
  * G-Sensor (Bosch BMA150)
  ******************************************************************************/
 // TODO: GPIO and/or VREG setup on suspend/resume?
+// GPIO 49 toggles in WinCE when orientation is changed. It seems to
+// have no functional effect/influence on BMA150 operation, though.
+// On RHODW (400/500) this gpio is used as an interrupt for 3.5mm headset
+// detection. Doesn't harm 3.5mm operation. Should be reviewed, though.
+static struct msm_gpio htcrhodium_bma150_spi_gpio_config_data[] = {
+	{ GPIO_CFG(RHODIUM_GSENSOR_MOT, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "bma150_irq" },
+};
+
 static int htcrhodium_bma150_power_on(void)
 {
+	int rc = 0;
+
 	printk(KERN_DEBUG "%s\n", __func__);
-	return 0;
+
+	rc = msm_gpios_request_enable(htcrhodium_bma150_spi_gpio_config_data,
+		ARRAY_SIZE(htcrhodium_bma150_spi_gpio_config_data));
+	if (rc) {
+		pr_err("%s: Failed enabling GPIOs (%d)\n", __func__, rc);
+	}
+
+	return rc;
 }
 
 static void htcrhodium_bma150_power_off(void)
 {
 	printk(KERN_DEBUG "%s\n", __func__);
+
+	msm_gpios_disable_free(htcrhodium_bma150_spi_gpio_config_data,
+		ARRAY_SIZE(htcrhodium_bma150_spi_gpio_config_data));
 }
 
 static struct bma150_platform_data htcrhodium_bma150_pdata = {

@@ -19,7 +19,7 @@
 #define RHODIUM_H2W_CLK			46
 #define RHODIUM_H2W_DATA		92
 #define RHODIUM_H2W_UART_MUX	103
-#define RHODIUM_GSENROR_MOT		49	/* microp interrupt for 3.5mm detect */
+#define RHODIUM_GSENSOR_MOT		49	/* microp interrupt for 3.5mm detect */
 #define RHODIUM_GPIO_UP_RESET_N	43
 
 #define RHODIUM_GPIO_PROXIMITY_EN		102
