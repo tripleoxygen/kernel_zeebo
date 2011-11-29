@@ -255,7 +255,7 @@ static int lightsensor_enable(void)
 	if (li->is_suspend) {
 		li->als_intr_enabled = 1;
 		pr_err("%s: microp is suspended\n", __func__);
-		return 0;
+		return -EIO;
 	}
 	if (!li->als_intr_enabled) {
 		ret = ls_microp_intr_enable(1);
@@ -285,7 +285,7 @@ static int lightsensor_disable(void)
 	if (li->is_suspend) {
 		li->als_intr_enabled = 0;
 		pr_err("%s: microp is suspended\n", __func__);
-		return 0;
+		return -EIO;
 	}
 
 	if (li->als_intr_enabled) {
