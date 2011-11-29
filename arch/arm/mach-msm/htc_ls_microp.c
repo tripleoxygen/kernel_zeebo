@@ -53,13 +53,14 @@ struct microp_ls_info {
 	int is_suspend;
 };
 
-#define POLL_DELAY   2000
+#define POLL_DELAY   	2000
+#define INITIAL_DELAY   350
 
 struct microp_ls_info *ls_info;
 
 //static int ls_enable_num;
 static int polling_enabled = 0;
-static uint16_t levels[10] = { 1, 4, 8, 17, 33, 172, 299, 326, 344, 1023 };
+static uint16_t levels[10] = { 0, 2, 7, 17, 33, 172, 299, 326, 344, 1023 };
 
 /* ------------------------------------------------------------------*/
 /* The following needs to be moved to a common location.             */
@@ -266,7 +267,7 @@ static int lightsensor_enable(void)
 			input_report_abs(li->ls_input_dev, ABS_MISC, -1);
 			input_sync(li->ls_input_dev);
 		}
-		if (polling_enabled) schedule_delayed_work(&li->work, msecs_to_jiffies(POLL_DELAY));
+		if (polling_enabled) schedule_delayed_work(&li->work, msecs_to_jiffies(INITIAL_DELAY));
 	}
 	return 0;
 }
@@ -473,8 +474,7 @@ static ssize_t ls_polling_store(struct device *dev,
 static DEVICE_ATTR(ls_polling, 0666, ls_polling_show, ls_polling_store);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-static void light_sensor_suspend \
-	(struct early_suspend *h)
+static void light_sensor_suspend(struct early_suspend *h)
 {
 	struct microp_ls_info *li = ls_info;
 	int ret;
