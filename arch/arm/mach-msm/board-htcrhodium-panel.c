@@ -280,51 +280,59 @@ static void htcrhod_mddi_power_client(
 {
 	printk(KERN_DEBUG "%s(%s)\n", __func__, on ? "on" : "off");
 
-	// vregs must only be enabled/disabled for non rhod400/500 due to
-	// MSM7600 using different vregs; otherwise radio+data will stop
-	// functioning when going into sleep
-
 	if (on) {
-		if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
-			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+		if (get_machine_variant_type() < MACHINE_VARIANT_RHOD_4XX) {
 			vreg_enable(vreg_lcd_1);
 			vreg_enable(vreg_lcd_2);
-			mdelay(5);
+		} else {
+			gpio_tlmm_config(
+				GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA),
+				GPIO_CFG_ENABLE);
+			gpio_tlmm_config(
+				GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA),
+				GPIO_CFG_ENABLE);
 		}
+		mdelay(20);
 
-		gpio_tlmm_config(
-			GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA),
-			GPIO_CFG_ENABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA),
-			GPIO_CFG_ENABLE);
 		gpio_tlmm_config(
 			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_ENABLE);
-		msleep(10);
+		mdelay(10);
+		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_DISABLE);
+		mdelay(1);
+		gpio_tlmm_config(
+			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+		mdelay(25);
 	} else {
+		//~ mdelay(104);
 		gpio_tlmm_config(
 			GPIO_CFG(RHOD_LCD_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
 				GPIO_CFG_2MA),
 			GPIO_CFG_DISABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA),
-			GPIO_CFG_DISABLE);
-		gpio_tlmm_config(
-			GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA),
-			GPIO_CFG_DISABLE);
-		msleep(10);
+		mdelay(25);
 
-		if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
-			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+		if (get_machine_variant_type() < MACHINE_VARIANT_RHOD_4XX) {
 			vreg_disable(vreg_lcd_1);
 			vreg_disable(vreg_lcd_2);
+		} else {
+			gpio_tlmm_config(
+				GPIO_CFG(RHOD_LCD_PWR2, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA),
+				GPIO_CFG_DISABLE);
+			gpio_tlmm_config(
+				GPIO_CFG(RHOD_LCD_PWR1, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA),
+				GPIO_CFG_DISABLE);
 		}
+		mdelay(3);
 	}
 }
 
@@ -384,11 +392,11 @@ int __init htcrhod_init_panel(void)
 	if (rc)
 		return rc;
 
-	vreg_lcd_1 = vreg_get(0, "gp2");
+	vreg_lcd_1 = vreg_get(0, "rftx");
 	if (IS_ERR(vreg_lcd_1))
 		return PTR_ERR(vreg_lcd_1);
 
-	vreg_lcd_2 = vreg_get(0, "gp4");
+	vreg_lcd_2 = vreg_get(0, "rfrx2");
 	if (IS_ERR(vreg_lcd_2))
 		return PTR_ERR(vreg_lcd_2);
 
