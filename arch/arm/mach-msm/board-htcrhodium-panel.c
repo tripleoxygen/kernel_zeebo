@@ -801,16 +801,9 @@ static int htcrhod_mddi_client_uninit(
 	struct msm_mddi_bridge_platform_data *bridge_data,
 	struct msm_mddi_client_data *client_data)
 {
-	int i;
-	unsigned reg, val;
-
 	printk(KERN_DEBUG "%s\n", __func__);
 
-	for (i = 0; i < ARRAY_SIZE(nov_deinit_seq); i++) {
-		reg = cpu_to_le32(nov_deinit_seq[i].reg);
-		val = cpu_to_le32(nov_deinit_seq[i].val);
-		client_data->remote_write(client_data, val, reg);
-	}
+	process_mddi_table(client_data, nov_deinit_seq, ARRAY_SIZE(nov_deinit_seq));
 
 	return 0;
 }
