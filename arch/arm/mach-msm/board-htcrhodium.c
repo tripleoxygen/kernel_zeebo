@@ -390,7 +390,7 @@ static struct i2c_board_info i2c_devices[] = {
 		.platform_data = &tpa2016d2_data,
 	},
 	{
-//		I2C_BOARD_INFO("audience_A1010", 0xf4>>1),
+		I2C_BOARD_INFO("audience_A1010", 0xf4>>1),
 	},
 	{
 		I2C_BOARD_INFO("adc3001", 0x30>>1),
