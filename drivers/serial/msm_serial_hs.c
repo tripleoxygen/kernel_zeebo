@@ -1254,6 +1254,12 @@ static int msm_hs_startup(struct uart_port *uport)
 
 	msm_hs_write(uport, UARTDM_TFWR_ADDR, 0);  /* TXLEV on empty TX fifo */
 
+	if (use_low_power_rx_wakeup(msm_uport)) {
+		ret = set_irq_wake(msm_uport->rx_wakeup.irq, 1);
+		if (unlikely(ret))
+			return ret;
+	}
+
 
 	ret = request_irq(uport->irq, msm_hs_isr, IRQF_TRIGGER_HIGH,
 			  "msm_hs_uart", msm_uport);
@@ -1382,8 +1388,6 @@ static int msm_hs_probe(struct platform_device *pdev)
 
 		if (unlikely(msm_uport->rx_wakeup.irq < 0))
 			return -ENXIO;
-		if (unlikely(set_irq_wake(msm_uport->rx_wakeup.irq, 1)))
-			return -ENXIO;
 	}
 
 	if (pdata == NULL)
@@ -1479,11 +1483,6 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	/* Disable the receiver */
 	msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_RX_DISABLE_BMSK);
 
-	/* Free the interrupt */
-	free_irq(uport->irq, msm_uport);
-	if (use_low_power_rx_wakeup(msm_uport))
-		free_irq(msm_uport->rx_wakeup.irq, msm_uport);
-
 	msm_uport->imr_reg = 0;
 	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
 
@@ -1503,6 +1502,14 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 	if (cancel_work_sync(&msm_uport->rx.tty_work))
 		msm_hs_tty_flip_buffer_work(&msm_uport->rx.tty_work);
+
+	if (use_low_power_rx_wakeup(msm_uport))
+		set_irq_wake(msm_uport->rx_wakeup.irq, 0);
+
+	/* Free the interrupt */
+	free_irq(uport->irq, msm_uport);
+	if (use_low_power_rx_wakeup(msm_uport))
+		free_irq(msm_uport->rx_wakeup.irq, msm_uport);
 }
 
 static void __exit msm_serial_hs_exit(void)
