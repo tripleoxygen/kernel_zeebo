@@ -751,7 +751,9 @@ static int htcrhod_mddi_client_init(
 	struct msm_mddi_bridge_platform_data *bridge_data,
 	struct msm_mddi_client_data *client_data)
 {
-	printk(KERN_DEBUG "%s\n", __func__);
+	static int initial_init = 1;
+
+	printk(KERN_DEBUG "+%s\n", __func__);
 
 	switch (panel_id)
 	{
@@ -794,6 +796,20 @@ static int htcrhod_mddi_client_init(
 		return 0;
 	}
 
+	/* The init sequence disables the backlight brightness (0x5100 set to 0).
+	 * On first boot, unblank is called around second 20. Until then the panel
+	 * is kept blank. We set the initial panel brightness to full in order to
+	 * see the output.
+	 */
+	if (initial_init) {
+		initial_init = 0;
+		printk(KERN_DEBUG "%s: setting initial panel brightness=%d\n", __func__,
+			LED_FULL);
+		client_data->remote_write(client_data, LED_FULL, 0x5100);
+	}
+
+	printk(KERN_DEBUG "-%s\n", __func__);
+
 	return 0;
 }
 
@@ -801,9 +817,11 @@ static int htcrhod_mddi_client_uninit(
 	struct msm_mddi_bridge_platform_data *bridge_data,
 	struct msm_mddi_client_data *client_data)
 {
-	printk(KERN_DEBUG "%s\n", __func__);
+	printk(KERN_DEBUG "+%s\n", __func__);
 
 	process_mddi_table(client_data, nov_deinit_seq, ARRAY_SIZE(nov_deinit_seq));
+
+	printk(KERN_DEBUG "-%s\n", __func__);
 
 	return 0;
 }
@@ -812,6 +830,13 @@ static int htcrhod_mddi_panel_blank(
 	struct msm_mddi_bridge_platform_data *bridge_data,
 	struct msm_mddi_client_data *client_data)
 {
+	printk(KERN_DEBUG "+%s\n", __func__);
+
+	client_data->remote_write(client_data, 0x24, 0x5300);		// BL bit=0
+	//~ client_data->remote_write(client_data, LED_OFF, 0x5100);	// BL off
+
+	printk(KERN_DEBUG "-%s\n", __func__);
+
 	return 0;
 }
 
@@ -819,10 +844,12 @@ static int htcrhod_mddi_panel_unblank(
 	struct msm_mddi_bridge_platform_data *bridge_data,
 	struct msm_mddi_client_data *client_data)
 {
-	printk(KERN_DEBUG "%s\n", __func__);
+	printk(KERN_DEBUG "+%s\n", __func__);
 
-	client_data->remote_write(client_data, 0x01, 0x2900);	// display on
-	client_data->remote_write(client_data, 0x2c, 0x5300);	// toggle autobl bit
+	//~ client_data->remote_write(client_data, LED_FULL, 0x5100);	// BL full
+	client_data->remote_write(client_data, 0x2c, 0x5300);		// BL bit=1
+
+	printk(KERN_DEBUG "-%s\n", __func__);
 
 	return 0;
 }
@@ -831,7 +858,7 @@ static void htcrhod_mddi_power_client(
 	struct msm_mddi_client_data *client_data,
 	int on)
 {
-	printk(KERN_DEBUG "%s(%s)\n", __func__, on ? "on" : "off");
+	printk(KERN_DEBUG "+%s(%s)\n", __func__, on ? "on" : "off");
 
 	if (on) {
 		if (get_machine_variant_type() < MACHINE_VARIANT_RHOD_4XX) {
@@ -887,6 +914,8 @@ static void htcrhod_mddi_power_client(
 		}
 		mdelay(3);
 	}
+
+	printk(KERN_DEBUG "-%s(%s)\n", __func__, on ? "on" : "off");
 }
 
 extern struct resource resources_msm_fb[];
