@@ -16,6 +16,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
@@ -67,27 +68,45 @@ static irqreturn_t capella_cm3602_irq_handler(int irq, void *data)
 
 static int capella_cm3602_enable(struct capella_cm3602_data *data)
 {
+	int rc;
+	int irq = gpio_to_irq(data->pdata->p_out);
+
 	D("%s\n", __func__);
 	if (data->enabled) {
 		D("%s: already enabled\n", __func__);
-	} else {
-		data->pdata->power(1);
-		data->enabled = 1;
-		capella_cm3602_report(data);
+		return 0;
 	}
-	return 0;
+	disable_irq(irq);
+
+	rc = data->pdata->power(PS_PWR_ON, 1);
+
+	msleep(220);
+
+	data->enabled = !rc;
+	if (!rc)
+		capella_cm3602_report(data);
+
+	enable_irq(irq);
+	return rc;
 }
 
 static int capella_cm3602_disable(struct capella_cm3602_data *data)
 {
+	int rc = -EIO;
 	D("%s\n", __func__);
-	if (data->enabled) {
-		data->pdata->power(0);
-		data->enabled = 0;
-	} else {
+	if (!data->enabled) {
 		D("%s: already disabled\n", __func__);
+		return 0;
 	}
-	return 0;
+
+	rc = data->pdata->power(PS_PWR_ON, 0);
+	if (rc < 0)
+		return rc;
+
+	data->enabled = 0;
+
+	input_event(data->input_dev, EV_SYN, SYN_CONFIG, 0);
+	return rc;
 }
 
 static int capella_cm3602_setup(struct capella_cm3602_data *ip)
@@ -105,11 +124,18 @@ static int capella_cm3602_setup(struct capella_cm3602_data *ip)
 		goto done;
 	}
 
+	rc = gpio_request(pdata->p_en, "gpio_proximity_en");
+	if (rc < 0) {
+		pr_err("%s: gpio %d request failed (%d)\n",
+			__func__, pdata->p_en, rc);
+		goto fail_free_p_out;
+	}
+
 	rc = gpio_direction_input(pdata->p_out);
 	if (rc < 0) {
 		pr_err("%s: failed to set gpio %d as input (%d)\n",
 			__func__, pdata->p_out, rc);
-		goto fail_free_p_out;
+		goto fail_free_p_en;
 	}
 
 	rc = request_irq(irq,
@@ -121,7 +147,7 @@ static int capella_cm3602_setup(struct capella_cm3602_data *ip)
 		pr_err("%s: request_irq(%d) failed for gpio %d (%d)\n",
 			__func__, irq,
 			pdata->p_out, rc);
-		goto fail_free_p_out;
+		goto fail_free_p_en;
 	}
 
 	rc = set_irq_wake(irq, 1);
@@ -136,6 +162,8 @@ static int capella_cm3602_setup(struct capella_cm3602_data *ip)
 
 fail_free_irq:
 	free_irq(irq, 0);
+fail_free_p_en:
+	gpio_free(pdata->p_en);
 fail_free_p_out:
 	gpio_free(pdata->p_out);
 done:
@@ -215,7 +243,7 @@ static int capella_cm3602_probe(struct platform_device *pdev)
 	ip = &the_data;
 	platform_set_drvdata(pdev, ip);
 
-	D("%s: allocating input device\n", __func__);
+	/*D("%s: allocating input device\n", __func__);*/
 	input_dev = input_allocate_device();
 	if (!input_dev) {
 		pr_err("%s: could not allocate input device\n", __func__);
@@ -231,14 +259,14 @@ static int capella_cm3602_probe(struct platform_device *pdev)
 	set_bit(EV_ABS, input_dev->evbit);
 	input_set_abs_params(input_dev, ABS_DISTANCE, 0, 1, 0, 0);
 
-	D("%s: registering input device\n", __func__);
+	/*D("%s: registering input device\n", __func__);*/
 	rc = input_register_device(input_dev);
 	if (rc < 0) {
 		pr_err("%s: could not register input device\n", __func__);
 		goto err_free_input_device;
 	}
 
-	D("%s: registering misc device\n", __func__);
+	/*D("%s: registering misc device\n", __func__);*/
 	rc = misc_register(&capella_cm3602_misc);
 	if (rc < 0) {
 		pr_err("%s: could not register misc device\n", __func__);
@@ -252,7 +280,6 @@ static int capella_cm3602_probe(struct platform_device *pdev)
 	misc_deregister(&capella_cm3602_misc);
 err_unregister_input_device:
 	input_unregister_device(input_dev);
-	goto done;
 err_free_input_device:
 	input_free_device(input_dev);
 done:
