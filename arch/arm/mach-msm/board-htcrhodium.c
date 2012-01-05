@@ -419,33 +419,33 @@ static struct htc_acoustic_wce_board_data htcrhodium_acoustic_data = {
 /******************************************************************************
  * Proximity Sensor (Capella CM3602)
  ******************************************************************************/
-static int htcrhodium_capella_cm3602_power(int enable)
+static int htcrhodium_capella_cm3602_power(int pwr_device, uint8_t enable)
 {
-	static uint8_t gpio_requested = 0;
 	int rc = 0;
 
-	printk(KERN_DEBUG "%s(enable=%d)\n", __func__, enable);
+	printk(KERN_DEBUG "%s(pwr_device=%d, enable=%d)\n", __func__, pwr_device, enable);
 
-	if (!gpio_requested) {
-		rc = gpio_request(RHODIUM_GPIO_PROXIMITY_EN, "gpio_proximity_en");
-		if (rc < 0) {
-			printk(KERN_ERR "%s: gpio %d request failed (%d)\n", __func__,
-				RHODIUM_GPIO_PROXIMITY_EN, rc);
-			return rc;
-		}
-		gpio_requested = 1;
-	}
+	if (pwr_device != PS_PWR_ON) return 0;
+	/* TODO eolsen Add Voltage reg control */
 
-	if (enable) {
-		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN, 1);
+	if ((get_machine_variant_type() < MACHINE_VARIANT_RHOD_4XX)) {
+		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN_GSM, enable);		
 	} else {
-		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN, 0);
+		rc = gpio_direction_output(RHODIUM_GPIO_PROXIMITY_EN, enable);
 	}
+
 	return rc;
 }
 
+static struct capella_cm3602_platform_data htcrhodium_capella_cm3602_pdata_gsm = {
+	.power = htcrhodium_capella_cm3602_power,
+	.p_en  = RHODIUM_GPIO_PROXIMITY_EN_GSM,
+	.p_out = RHODIUM_GPIO_PROXIMITY_INT_N
+};
+
 static struct capella_cm3602_platform_data htcrhodium_capella_cm3602_pdata = {
 	.power = htcrhodium_capella_cm3602_power,
+	.p_en  = RHODIUM_GPIO_PROXIMITY_EN,
 	.p_out = RHODIUM_GPIO_PROXIMITY_INT_N
 };
 
@@ -784,14 +784,17 @@ static void __init htcrhodium_init(void)
 	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
 #endif
 
-	platform_add_devices(devices, ARRAY_SIZE(devices));
-
-	/* Don't register htc_headset_microp for non 35mm variants. */
-	if (get_machine_variant_type() != MACHINE_VARIANT_RHOD_4XX
-			&& get_machine_variant_type() != MACHINE_VARIANT_RHOD_5XX) {
+	if (get_machine_variant_type() < MACHINE_VARIANT_RHOD_4XX) {
+		/* Don't register htc_headset_microp for non 35mm variants. */
 		htcrhodium_microp_led_audio_pdata.nclients =
 			ARRAY_SIZE(htcrhodium_microp_clients) - 1;
+
+		/* Set GSM proximity platform data */
+		htcrhodium_capella_cm3602.dev.platform_data =
+			&htcrhodium_capella_cm3602_pdata_gsm;
 	}
+
+	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
