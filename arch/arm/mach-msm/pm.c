@@ -638,25 +638,17 @@ static uint32_t restart_reason = 0;
 static void msm_pm_power_off(void)
 {
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
-#define MSM_A2M_INT(n) (MSM_CSR_BASE + 0x400 + (n) * 4)
-	unsigned num;
-	/* 1. dex 0x14 without interupts (disable irq + write 0x14 to smem) */
+	struct msm_dex_command dex = { .cmd = PCOM_POWER_OFF };
+	printk(KERN_INFO "++ %s ++\n", __func__);
 	local_irq_disable();
-	writeb(PCOM_POWER_OFF, (unsigned)(MSM_SHARED_RAM_BASE + 0xfc100));
-	/* 2. dex counter ++ */
-	num = readl((unsigned)(MSM_SHARED_RAM_BASE + 0xfc108)) + 1;
-	writel(num, (unsigned)(MSM_SHARED_RAM_BASE + 0xfc108));
-	/* 3.     A2M = -1 */
-	writel(-1, MSM_A2M_INT(6));
-	/* 4. sleep 500ms */
+	msm_proc_comm_wince(&dex, 0);
 	mdelay(500);
-	/* 5. set smem sign 0x55AA00FF */
-	writel(0x55AA00FF, (unsigned)(MSM_SHARED_RAM_BASE + 0xfc08c));
+	writel(0x55AA00FF, (unsigned)(MSM_SHARED_RAM_BASE + 0xfc08C));
 	mdelay(500);
-	/* 6. gpio reset */
 	writel(readl(MSM_GPIOCFG2_BASE + 0x504) | (1 << 9), MSM_GPIOCFG2_BASE + 0x504);
 	mdelay(50);
 	gpio_set_value(0x19, 0);
+	printk(KERN_INFO "-- %s --\n", __func__);
 #else
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
 #endif
