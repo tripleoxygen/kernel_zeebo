@@ -204,6 +204,8 @@ struct bma150_data {
 	struct work_struct irq_work;
 };
 
+static int mEnabled;
+
 static int bma150_smbus_read_byte(struct i2c_client *client,
 		unsigned char reg_addr, unsigned char *data)
 {
@@ -447,10 +449,27 @@ static ssize_t bma150_mode_store(struct device *dev,
 	struct bma150_data *bma150 = i2c_get_clientdata(client);
 
 	error = strict_strtoul(buf, 10, &data);
+
+	printk(KERN_DEBUG "%s, data = %lu\n", __func__, data);
+
+	if (data==0) {
+		if (mEnabled == 0)
+			schedule_delayed_work(&bma150->work,
+				msecs_to_jiffies(atomic_read(&bma150->delay)));
+		mEnabled=1;
+	}
+
 	if (error)
 		return error;
+
 	if (bma150_set_mode(bma150->bma150_client, (unsigned char) data) < 0)
 		return -EINVAL;
+
+	if (data != 0) {
+		if (mEnabled == 1)
+			cancel_delayed_work_sync(&bma150->work);
+		mEnabled=0;
+	}
 
 
 	return count;
@@ -693,9 +712,6 @@ static int bma150_probe(struct i2c_client *client,
 	if (err < 0)
 		goto error_sysfs;
 
-	schedule_delayed_work(&data->work,
-			msecs_to_jiffies(atomic_read(&data->delay)));
-
 	return 0;
 
 error_sysfs:
@@ -728,10 +744,11 @@ static int bma150_resume(struct i2c_client *client)
 	if ((data->platform_data) && (data->platform_data->power_on))
 		data->platform_data->power_on();
 
-	bma150_set_mode(client, BMA150_MODE_NORMAL);
-
-	schedule_delayed_work(&data->work,
-		msecs_to_jiffies(atomic_read(&data->delay)));
+	if (mEnabled) {
+		bma150_set_mode(client, BMA150_MODE_NORMAL);
+		schedule_delayed_work(&data->work,
+			msecs_to_jiffies(atomic_read(&data->delay)));
+	}
 
 	return 0;
 }
