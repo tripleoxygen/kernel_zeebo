@@ -92,7 +92,7 @@ static inline int get_idle_deviceid(void)
 static inline void check_device(int *device)
 {
 	/* Is device ID out of range ? */
-	if (*device > IdleDeviceID) {
+	if (*device > IdleDeviceID || *device < 0) {
 		pr_err("%s: snd device %d out of range: use last device %d\n", __func__,
 			*device, currentDevice);
 		*device = currentDevice;
