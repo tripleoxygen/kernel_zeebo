@@ -69,6 +69,38 @@ struct snd_set_volume_msg {
 
 struct msm_snd_endpoint *get_msm_snd_endpoints(int *size);
 
+static int currentDevice = 0;
+static int IdleDeviceID = 0;
+
+static inline int get_idle_deviceid(void)
+{
+	int i;
+	struct snd_ctxt *snd = &the_snd;
+
+	for (i = 0; i < snd->snd_pdata->num_endpoints; i++) {
+		if (!strcmp("IDLE", snd->snd_pdata->endpoints[i].name)) {
+			printk("Found SND_DEVICE_IDLE id %d\n", snd->snd_pdata->endpoints[i].id);
+			return snd->snd_pdata->endpoints[i].id;
+		}
+	}
+
+	printk("SND_DEVICE_IDLE not found\n");
+	/* default to earcuple */
+	return 0;
+}
+
+static inline void check_device(int *device)
+{
+	/* Is device ID out of range ? */
+	if (*device > IdleDeviceID) {
+		pr_err("%s: snd device %d out of range: use last device %d\n", __func__,
+			*device, currentDevice);
+		*device = currentDevice;
+	} else {
+		currentDevice = *device;
+	}
+}
+
 static inline int check_mute(int mute)
 {
 	return (mute == SND_MUTE_MUTED ||
@@ -122,15 +154,20 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
-		dmsg.args.device = cpu_to_be32(dev.device);
-		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
-		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		if (check_mute(dev.ear_mute) < 0 ||
 				check_mute(dev.mic_mute) < 0) {
 			pr_err("snd_ioctl set device: invalid mute status.\n");
 			rc = -EINVAL;
 			break;
 		}
+
+        /* Prevent wrong device to make the snd processor crashing */
+        check_device(&dev.device);
+
+
+		dmsg.args.device = cpu_to_be32(dev.device);
+		dmsg.args.ear_mute = cpu_to_be32(dev.ear_mute);
+		dmsg.args.mic_mute = cpu_to_be32(dev.mic_mute);
 		dmsg.args.cb_func = -1;
 		dmsg.args.client_data = 0;
 
@@ -260,6 +297,10 @@ static int snd_probe(struct platform_device *pdev)
 	}
 	mutex_init(&snd->lock);
 	snd->snd_pdata = (struct msm_snd_platform_data *)pdev->dev.platform_data;
+
+    /* Find the idle sound device */
+    IdleDeviceID = get_idle_deviceid();
+
 	rc = misc_register(&snd_misc);
 ret:
 	printk("-%s() rc=%d\n", __func__, rc);
