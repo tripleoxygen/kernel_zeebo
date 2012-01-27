@@ -154,17 +154,47 @@ long total_y = 0;
 #define XY_temp 7//10//5//
 int touch_noise_index = TOUCH_QUEUE_NUMBER;
 
-struct msm_tssc_ssbi *tssc_codec = (struct msm_tssc_ssbi *)MSM_SSBI_BASE;
-struct msm_tssc_software_register *tssc_reg = (struct msm_tssc_software_register *)(MSM_TSSC_BASE + 0x100);
+struct msm_tssc_ssbi *tssc_codec;
+struct msm_tssc_software_register *tssc_reg;
 
 enum {
 	DEBUG_TP_OFF = 0,
 	DEBUG_TP_ON = 1,
+	STATISTIC_TP_ON = 2,
 };
 static int debug_tp;
 module_param_named(debug, debug_tp, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-//----------------------------------------------
+#define MAX_TOUCH_CHECK_UP 5
+static int cnt_touch_check_up;
+static int touch_check_up(int pressure)
+{
+	if (debug_tp & STATISTIC_TP_ON) {
+		printk(KERN_DEBUG "touch_check_up(): tssc_reg->tssc_ctl.intr_flag2=0x%x\t", tssc_reg->tssc_ctl.intr_flag2);
+		printk(KERN_DEBUG "tssc_ssbi_fsm_state =0x%x\t", tssc_reg->tssc_status.tssc_ssbi_fsm_state);
+		printk(KERN_DEBUG "tssc_fsm_state =0x%x\t", tssc_reg->tssc_status.tssc_fsm_state);
+		printk(KERN_DEBUG "busy =0x%x\t", tssc_reg->tssc_status.busy);
+		printk(KERN_DEBUG "error_code =0x%x\n", tssc_reg->tssc_status.error_code);
+		printk(KERN_DEBUG "adc_eoc_status =0x%x\t", tssc_reg->tssc_status.adc_eoc_status);
+		printk(KERN_DEBUG "penirq_status =0x%x\t", tssc_reg->tssc_status.penirq_status);
+		printk(KERN_DEBUG "operation =0x%x\t", tssc_reg->tssc_status.operation);
+		printk(KERN_DEBUG "samples_collected =0x%x\t", tssc_reg->tssc_status.samples_collected);
+		printk(KERN_DEBUG "error =0x%x\t", tssc_reg->tssc_status.error);
+		printk(KERN_DEBUG "pressure =%d\t", pressure);
+		printk(KERN_DEBUG "\n");
+	}
+
+	if ((1 == tssc_reg->tssc_status.penirq_status) &&
+	    (0 == tssc_reg->tssc_status.busy || tssc_reg->tssc_ctl.intr_flag2 == 1) &&
+	    (0 == tssc_reg->tssc_status.operation) &&
+	    (0 == tssc_reg->tssc_status.tssc_fsm_state)) {
+		cnt_touch_check_up++;
+		return 1;
+	} else {
+		cnt_touch_check_up = 0;
+		return 0;
+	}
+}
 
 /* The Touchscreen of Blackstone tends to track
  * wrong data. We have to check the input to prevent 
@@ -375,23 +405,20 @@ static void touch_finish_queue(struct input_dev *dev)
 static void tssc_manager_work_func(struct work_struct *work)
 {
 	struct tssc_manager_data *ts;
-	
+
 	ts = container_of(work, struct tssc_manager_data, work);
-    
-	
+
 	hrtimer_start(&ts->timer, ktime_set(0, 0), HRTIMER_MODE_REL);
 }
 
 static int tssc_manager_polling_func(struct tssc_manager_data *ts)
 {
-
 	//struct tssc_manager_data *ts;
 
 	int pressure;
 
 	//ts = container_of(polling_work, struct tssc_manager_data, polling_work);
 
- 
 	if (tssc_reg->tssc_ctl.data_flag == 0) { /* Check if TSSC data ready */
 		//tssc_reg->tssc_ctl.command_wr = 1; /* Trigger next operation */
 
@@ -400,16 +427,6 @@ static int tssc_manager_polling_func(struct tssc_manager_data *ts)
 			ts->y = 0;
 			ts->z1 = 0;
 			ts->z2 = 0;
-
-			/* When data is not available, we need to differentiate
-			 * whether this is a queue finish event, or a missing
-			 * data glitch. Otherwise, false "double taps" get reported.
-			 * -bzo
-			 */
-			if ((tssc_reg->tssc_status.penirq_status != 1) || (tssc_reg->tssc_status.busy != 0)) {
-				tssc_reg->tssc_ctl.intr_flag1 = 0;
-				return 0;
-			}
 		}
 	}
 
@@ -432,7 +449,8 @@ static int tssc_manager_polling_func(struct tssc_manager_data *ts)
 	tssc_reg->tssc_ctl.intr_flag1 = 0; /* Clear INTR_FLAG1 for next point */
 	tssc_reg->tssc_ctl.data_flag = 0; /* Clear DATA_FLAG for next point */
 	
-	if(debug_tp & DEBUG_TP_ON) printk(KERN_DEBUG "tssc_manager_polling_func(): ts->z1=%d ts->z2=%d\n", ts->z1, ts->z2);
+	if (debug_tp & DEBUG_TP_ON)
+		printk(KERN_DEBUG "tssc_manager_polling_func(): ts->z1=%d ts->z2=%d\n", ts->z1, ts->z2);
 	if (ts->z1) {
 		pressure = (ts->x * ((ts->z2 * 100 / ts->z1) - 100)) / 900;
 		//pressure = 350 - pressure;
@@ -445,25 +463,28 @@ static int tssc_manager_polling_func(struct tssc_manager_data *ts)
 	} else {
 		pressure = 0;
 		//printk(KERN_DEBUG "tssc_manager_polling_func(): ts->z1==0\n");
-    	}
+	}
 
 	if (ts->x!=0 && ts->y!=0 && ts->z1!=0 && ts->z2!=0 && pressure) {
 		if (touch_add_queue(ts->x, ts->x16, ts->y, ts->y16, pressure)) {
 			touch_process_queue(ts->input_dev);
-	    	}
+		}
 	} else {
-        //printk(KERN_DEBUG "tssc_manager_polling_func(): !(ts->x!=0 && ts->y!=0 && ts->z1!=0 && ts->z2!=0)\n");
-        //printk(KERN_DEBUG "tssc_manager_polling_func(): pressure==0)\n");
-    	}
-
-	if ((tssc_reg->tssc_status.penirq_status == 1) && (tssc_reg->tssc_status.busy == 0)) {
-		touch_finish_queue(ts->input_dev);
-	    	//hrtimer_cancel(&ts->timer);
-        	enable_irq(msm7225_irq_down);
-			first_touch=true;
-        	return 1;
+		//printk(KERN_DEBUG "tssc_manager_polling_func(): !(ts->x!=0 && ts->y!=0 && ts->z1!=0 && ts->z2!=0)\n");
+		//printk(KERN_DEBUG "tssc_manager_polling_func(): pressure==0)\n");
 	}
-    	return 0;
+
+	if (touch_check_up(pressure)) {
+		if (cnt_touch_check_up >= MAX_TOUCH_CHECK_UP) {
+			touch_finish_queue(ts->input_dev);
+			//hrtimer_cancel(&ts->timer);
+			enable_irq(msm7225_irq_down);
+			cnt_touch_check_up = 0;
+			first_touch=true;
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static enum hrtimer_restart tssc_polling_timer_func (struct hrtimer *timer)
@@ -471,10 +492,9 @@ static enum hrtimer_restart tssc_polling_timer_func (struct hrtimer *timer)
 	struct tssc_manager_data *ts = container_of(timer, struct tssc_manager_data, timer);
 
 	//schedule_work(&ts->polling_work);
-	if(!tssc_manager_polling_func(ts))
-	{
+	if (!tssc_manager_polling_func(ts)) {
 		hrtimer_start(&ts->timer, ktime_set(0, TOUCH_POLLING_NSEC), HRTIMER_MODE_REL);
-    	}		
+	}
 	return HRTIMER_NORESTART;
 }
 
@@ -577,6 +597,12 @@ static int tssc_manager_input_init(void)
 	struct tssc_manager_data *ts;
 	int ret = 0;
 	int ret_down = 0;
+
+	cnt_touch_check_up = 0;
+
+	printk(KERN_DEBUG "tssc_manager_input_init():\n");
+	tssc_codec = (struct msm_tssc_ssbi *)ioremap(MSM_SSBI_PHYS, sizeof(struct msm_tssc_ssbi));
+	tssc_reg = (struct msm_tssc_software_register *)ioremap(MSM_TSSC_PHYS + 0x100, sizeof(struct msm_tssc_ssbi));
 
 	ts = kzalloc(sizeof(*ts), GFP_KERNEL);
 	if (ts == NULL) {
