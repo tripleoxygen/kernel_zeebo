@@ -11,6 +11,8 @@
  *
  */
 
+#define USE_MSM_TS 0
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -46,7 +48,9 @@
 #include <mach/io.h>
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
+#if USE_MSM_TS
 #include <linux/input/msm_ts.h>
+#endif
 #include <linux/mfd/microp-ng.h>
 
 #include <mach/board_htc.h>
@@ -182,7 +186,11 @@ static struct platform_device htctopaz_h2w = {
 };
 #endif
 
-static struct ts_virt_key htctopaz_ts_keys_y[] = {
+/******************************************************************************
+ * Touchscreen
+ ******************************************************************************/
+#if USE_MSM_TS
+ static struct ts_virt_key htctopaz_ts_keys_y[] = {
 	// key      min   max
 	{KEY_UP,    105, 267}, //  420, 1068},
 	{KEY_DOWN,  268, 429}, // 1069, 1716},
@@ -208,6 +216,12 @@ static struct msm_ts_platform_data htctopaz_ts_pdata = {
 	.virt_y_start = 862, // 3450, // 3350 + space
 	.vkeys_y	= &htctopaz_ts_virtual_keys_y,
 };
+#else
+static struct platform_device htctopaz_tssc_touchscreen = {
+	.name	= "tssc-manager",
+	.id		= -1,
+};
+#endif
 
 /******************************************************************************
  * Bluetooth
@@ -305,7 +319,11 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm2,
 #endif
+#if USE_MSM_TS
 	&msm_device_touchscreen,
+#else
+	&htctopaz_tssc_touchscreen,
+#endif
 };
 
 extern struct sys_timer msm_timer;
@@ -343,7 +361,9 @@ static void __init htctopaz_init(void)
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	msm_device_htc_battery_smem.dev.platform_data = &htctopaz_htc_battery_smem_pdata;
 #endif
+#if USE_MSM_TS
 	msm_device_touchscreen.dev.platform_data = &htctopaz_ts_pdata;
+#endif
 
 #ifdef CONFIG_SERIAL_MSM_HS
 	msm_device_uart_dm2.dev.platform_data = &msm_uart_dm2_pdata;
