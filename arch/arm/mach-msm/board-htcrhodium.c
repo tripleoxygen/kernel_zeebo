@@ -11,6 +11,8 @@
  *
  */
 
+#define USE_MSM_TS 0
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -55,7 +57,9 @@
 #include <linux/delay.h>
 #include <linux/gpio_keys.h>
 #include <linux/microp-keypad.h>
+#if USE_MSM_TS
 #include <linux/input/msm_ts.h>
+#endif
 #include <linux/mfd/microp-ng.h>
 
 #ifdef CONFIG_HTC_HEADSET
@@ -508,6 +512,7 @@ static struct platform_device rhodium_h2w = {
 /******************************************************************************
  * Touchscreen
  ******************************************************************************/
+#if USE_MSM_TS
 #if 0
 static struct ts_virt_key htcrhodium_ts_keys_y[] = {
 	// key      min   max
@@ -538,6 +543,12 @@ static struct msm_ts_platform_data htcrhodium_ts_pdata = {
 	.vkeys_y	= &htcrhodium_ts_virtual_keys_y,
 #endif
 };
+#else
+static struct platform_device htcrhodium_tssc_touchscreen = {
+	.name	= "tssc-manager",
+	.id		= -1,
+};
+#endif
 
 /******************************************************************************
  * GPIO Keys
@@ -703,7 +714,11 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
 	&bcm_bt_lpm_device,
 #endif
+#if USE_MSM_TS
 	&msm_device_touchscreen,
+#else
+	&htcrhodium_tssc_touchscreen,
+#endif
 	&htcrhodium_capella_cm3602,
 #ifdef CONFIG_HTC_HEADSET
 	&rhodium_h2w,
@@ -775,7 +790,9 @@ static void __init htcrhodium_init(void)
 #ifdef CONFIG_MSM_SMEM_BATTCHG
 	msm_device_htc_battery_smem.dev.platform_data = &htcrhodium_htc_battery_smem_pdata;
 #endif
+#if USE_MSM_TS
 	msm_device_touchscreen.dev.platform_data = &htcrhodium_ts_pdata;
+#endif
 
 	// Set acoustic device specific parameters
 	htc_acoustic_wce_board_data = &htcrhodium_acoustic_data;
