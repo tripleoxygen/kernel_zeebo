@@ -52,6 +52,8 @@ static struct map_desc msm_io_desc[] __initdata = {
 	MSM_DEVICE(DEBUG_UART),
 #endif
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+	MSM_DEVICE(SSBI),
+	MSM_DEVICE(TSSC),
 	MSM_DEVICE(AXIGS),
 	MSM_DEVICE(AXI),
 	MSM_DEVICE(IMEM),

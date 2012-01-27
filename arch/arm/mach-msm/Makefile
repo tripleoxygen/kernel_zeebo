@@ -72,7 +72,7 @@ obj-$(!CONFIG_MSM_AMSS_VERSION_WINCE) += amss_android.o
 
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += amss_5225.o amss_6125.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += devices_htc.o devices-msm7x00.o
-obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += htc_acoustic_wince.o htc_hw.o htc_ls_microp.o
+obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += htc_acoustic_wince.o htc_hw.o htc_ls_microp.o htc_tp_cal.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += mmc.o msm7200a-rfkill.o msm_vibrator.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += pmem.o pwrsink.o
 obj-$(CONFIG_MSM_AMSS_VERSION_WINCE) += smd_diag.o

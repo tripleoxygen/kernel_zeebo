@@ -633,4 +633,10 @@ config TOUCHSCREEN_TPS6507X
 	  To compile this driver as a module, choose M here: the
 	  module will be called tps6507x_ts.
 
+config TOUCHSCREEN_TSSC_MANAGER
+	bool "TSSC touchscreen"
+	default y
+	help
+	  This enables support for MSM TSSC IF touchscreens.
+
 endif
