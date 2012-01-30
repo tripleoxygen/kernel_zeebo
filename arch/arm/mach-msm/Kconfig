@@ -89,6 +89,8 @@ config MSM_AMSS_VERSION_WINCE
 	default y if MSM_AMSS_VERSION_6125
 	default y if MSM_AMSS_VERSION_6150
 
+config MSM_AMSS_BREW
+	bool "BREW compatible AMSS (Zeebo) (research mode)"
 
 choice
 	prompt "AMSS modem firmware version"
@@ -240,6 +242,13 @@ config MACH_MSM7X30_SURF
 	bool "QCT SURF7x30 Board"
 	help
 	  Select this to support the Qualcomm SURF7X30 development board
+
+config MACH_ZEEBO
+	depends on ARCH_MSM7X00A
+	default n
+	bool "Zeebo"
+	help
+	  Support for the Zeebo console.
 
 config HTC_HEADSET
 	tristate "HTC 2 Wire detection driver"
