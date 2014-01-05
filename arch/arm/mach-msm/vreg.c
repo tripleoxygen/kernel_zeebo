@@ -36,7 +36,7 @@ enum {
 	VREG_DEBUG_LEVEL = 1U << 2
 };
 
-static int debug_mask = 0;
+static int debug_mask = 0b111;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 struct vreg {
@@ -140,6 +140,9 @@ int vreg_enable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
 
+	printk("[%s] vreg->id=%d\n", __func__, id);
+	return 0;
+
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	struct msm_dex_command dex;
 	id = 1U << id;
@@ -167,6 +170,10 @@ int vreg_enable(struct vreg *vreg)
 int vreg_disable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
+
+	printk("[%s] vreg->id=%d\n", __func__, id);
+	return 0;
+	
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	struct msm_dex_command dex;
 #endif

@@ -33,6 +33,8 @@ static void stop_drawing_early_suspend(struct early_suspend *h)
 	int ret;
 	unsigned long irq_flags;
 
+	printk("[%s]\n", __func__);
+	
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	fb_state = FB_STATE_REQUEST_STOP_DRAWING;
 	spin_unlock_irqrestore(&fb_state_lock, irq_flags);
@@ -50,6 +52,8 @@ static void stop_drawing_early_suspend(struct early_suspend *h)
 static void start_drawing_late_resume(struct early_suspend *h)
 {
 	unsigned long irq_flags;
+
+	printk("[%s]\n", __func__);
 
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	fb_state = FB_STATE_DRAWING_OK;
@@ -69,6 +73,8 @@ static ssize_t wait_for_fb_sleep_show(struct kobject *kobj,
 	char *s = buf;
 	int ret;
 
+	printk("[%s]\n", __func__);
+
 	ret = wait_event_interruptible(fb_state_wq,
 				       fb_state != FB_STATE_DRAWING_OK);
 	if (ret && fb_state == FB_STATE_DRAWING_OK)
@@ -85,6 +91,10 @@ static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
 	int ret;
 	unsigned long irq_flags;
 
+	printk("[%s]\n", __func__);
+	//s += sprintf(buf, "awake");
+	//return s - buf;
+
 	spin_lock_irqsave(&fb_state_lock, irq_flags);
 	if (fb_state == FB_STATE_REQUEST_STOP_DRAWING) {
 		fb_state = FB_STATE_STOPPED_DRAWING;
@@ -99,6 +109,7 @@ static ssize_t wait_for_fb_wake_show(struct kobject *kobj,
 	else
 		s += sprintf(buf, "awake");
 
+	printk("-[%s] %s\n", __func__, s - buf);
 	return s - buf;
 }
 

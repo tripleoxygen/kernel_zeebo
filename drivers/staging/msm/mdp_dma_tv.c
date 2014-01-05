@@ -50,6 +50,8 @@ int mdp_dma3_on(struct platform_device *pdev)
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
+	printk("[%s]\n", __func__);
+
 	if (!mfd)
 		return -ENODEV;
 
@@ -64,6 +66,8 @@ int mdp_dma3_on(struct platform_device *pdev)
 	buf = (uint8 *) fbi->fix.smem_start;
 	buf += fbi->var.xoffset * bpp +
 		fbi->var.yoffset * fbi->fix.line_length;
+
+	printk("[%s] buf=%p\n", __func__, buf);
 
 	/* starting address[31..8] of Video frame buffer is CS0 */
 	MDP_OUTP(MDP_BASE + 0xC0008, (uint32) buf >> 3);
@@ -126,6 +130,7 @@ void mdp_dma3_update(struct msm_fb_data_type *mfd)
 	buf += fbi->var.xoffset * bpp +
 		fbi->var.yoffset * fbi->fix.line_length;
 	MDP_OUTP(MDP_BASE + 0xC0008, (uint32) buf >> 3);
+	printk("[%s] buf=%p\n", __func__, buf);
 
 	spin_lock_irqsave(&mdp_spin_lock, flag);
 	mdp_enable_irq(MDP_DMA3_TERM);

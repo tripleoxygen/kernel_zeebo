@@ -69,6 +69,8 @@ static int tvenc_off(struct platform_device *pdev)
 {
 	int ret = 0;
 
+	printk("+[%s]\n", __func__);
+	
 	ret = panel_next_off(pdev);
 
 	clk_disable(tvenc_clk);
@@ -84,12 +86,15 @@ static int tvenc_off(struct platform_device *pdev)
 		printk(KERN_ERR "%s: pm_vid_en(off) failed! %d\n",
 		__func__, ret);
 
+	printk("-[%s]\n", __func__);
 	return ret;
 }
 
 static int tvenc_on(struct platform_device *pdev)
 {
 	int ret = 0;
+
+	printk("+[%s]\n", __func__);
 
 //	pm_qos_update_requirement(PM_QOS_SYSTEM_BUS_FREQ , "tvenc",
 //				128000);
@@ -106,6 +111,8 @@ static int tvenc_on(struct platform_device *pdev)
 	clk_enable(tvdac_clk);
 
 	ret = panel_next_on(pdev);
+
+	printk("-[%s]\n", __func__);
 
 	return ret;
 }
@@ -176,6 +183,14 @@ static int tvenc_probe(struct platform_device *pdev)
 	struct msm_fb_panel_data *pdata = NULL;
 	int rc;
 
+	if(!pdev) {
+		printk(KERN_ERR
+			"tvenc_base pdev is null!\n");
+		return -ENOMEM;
+	}
+
+	printk("[%s] tvenc_base = ioremap(pdev->resource[0].start...\n", __func__);
+
 	if (pdev->id == 0) {
 		tvenc_base = ioremap(pdev->resource[0].start,
 					pdev->resource[0].end -
@@ -193,6 +208,7 @@ static int tvenc_probe(struct platform_device *pdev)
 	if (!tvenc_resource_initialized)
 		return -EPERM;
 
+	printk("[%s] mfd = platform_get_drvdata(pdev);\n", __func__);
 	mfd = platform_get_drvdata(pdev);
 
 	if (!mfd)
@@ -207,16 +223,19 @@ static int tvenc_probe(struct platform_device *pdev)
 	if (tvenc_base == NULL)
 		return -ENOMEM;
 
-	mdp_dev = platform_device_alloc("mdp", pdev->id);
+	printk("[%s] mdp_dev = platform_device_alloc(\"msm_mdp\", pdev->id);\n", __func__);
+	mdp_dev = platform_device_alloc("msm_mdp", pdev->id);
 	if (!mdp_dev)
 		return -ENOMEM;
 
+	printk("[%s] mfd->pdev\n", __func__);
 	/*
 	 * link to the latest pdev
 	 */
 	mfd->pdev = mdp_dev;
 	mfd->dest = DISPLAY_TV;
 
+	printk("[%s] platform_device_add_data\n", __func__);
 	/*
 	 * alloc panel device data
 	 */
@@ -230,6 +249,7 @@ static int tvenc_probe(struct platform_device *pdev)
 	/*
 	 * data chain
 	 */
+	printk("[%s] data chain\n", __func__);
 	pdata = mdp_dev->dev.platform_data;
 	pdata->on = tvenc_on;
 	pdata->off = tvenc_off;
@@ -249,11 +269,14 @@ static int tvenc_probe(struct platform_device *pdev)
 	/*
 	 * register in mdp driver
 	 */
+	printk("+[%s] platform device add\n", __func__);
+	
 	rc = platform_device_add(mdp_dev);
 	if (rc)
 		goto tvenc_probe_err;
 
 	pdev_list[pdev_list_cnt++] = pdev;
+	printk("-[%s]\n", __func__);
 	return 0;
 
 tvenc_probe_err:
@@ -274,6 +297,8 @@ static int tvenc_register_driver(void)
 
 static int __init tvenc_driver_init(void)
 {
+	printk("[%s]\n", __func__);
+
 	tvenc_clk = clk_get(NULL, "tv_enc_clk");
 	tvdac_clk = clk_get(NULL, "tv_dac_clk");
 

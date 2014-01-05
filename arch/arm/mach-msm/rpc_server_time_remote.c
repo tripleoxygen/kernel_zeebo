@@ -32,7 +32,8 @@ struct rpc_time_tod_set_apps_bases_args {
 };
 
 static int handle_rpc_call(struct msm_rpc_server *server,
-			   struct rpc_request_hdr *req, unsigned len)
+			   struct rpc_request_hdr *req, unsigned len,
+			   void **reply, unsigned *reply_len)
 {
 	if (req->procedure == RPC_TIME_REMOTE_MTOA_NULL)
 		return 0;
@@ -73,9 +74,9 @@ static int __init rpc_server_init(void)
 		return -1;
 	}
 	rpc_server.vers = time_vers;
+	tod_app_bases = 1;
 	/* Dual server registration to support backwards compatibility vers */
 	return msm_rpc_create_server(&rpc_server);
 }
-
 
 module_init(rpc_server_init);

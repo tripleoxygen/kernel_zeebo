@@ -39,7 +39,7 @@ enum {
 	DEBUG_MDNS = 1 << 2,
 	DEBUG_UNKNOWN_CMD = 1 << 3,
 };
-static int debug_mask = 0;
+static int debug_mask = 0xf;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static unsigned a11_clk_is_enabled(unsigned id);
@@ -161,7 +161,7 @@ static struct msm_clock_params msm_clock_parameters[NR_CLKS] = {
 	[SDC2_P_CLK] = {.idx = 8,.name = "SDC2_P_CLK",},
 	[SDC3_P_CLK] = {.idx = 27,.name = "SDC3_P_CLK",},
 	[SDC4_P_CLK] = {.idx = 28,.name = "SDC4_P_CLK",},
-//	[UART1_CLK] = {.offset = 0xe0,.name = "UART1_CLK",},
+	[UART1_CLK] = {.offset = 0xe0,.name = "UART1_CLK",},
 //	[UART2_CLK] = {.offset = 0xe0,.name = "UART2_CLK",},
 //	[UART3_CLK] = {.offset = 0xe0,.name = "UART3_CLK",},
 	[UART1DM_CLK] = {.idx = 17,.offset = 0xd4,.setup_mdns = 1,.name =
@@ -314,9 +314,10 @@ static void set_grp_rail(int enable)
 		REG_OR(MSM_CLK_CTL_BASE, 0x8);	// grp idx
 
 		REG_AND(MSM_RAIL_CLAMP_IO, 0x4);
-
+		/* BREW-amss doesn't allow AXI access */
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_AND(MSM_AXI_BASE + 0x10080, 0x1);
-
+#endif
 		REG_AND(MSM_AXI_RESET, 0x20);
 		REG_AND(MSM_ROW_RESET, 0x20000);
 	} else {
@@ -325,14 +326,14 @@ static void set_grp_rail(int enable)
 		REG_OR(MSM_GRP_NS_REG, 0x200);
 
 		REG_OR(MSM_CLK_CTL_BASE, 0x8);	// grp idx
-
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_OR(MSM_AXI_BASE + 0x10080, 0x1);
 
 		while (status == 0 && i < 100) {
 			i++;
 			status = readl(MSM_AXI_BASE + 0x10084) & 0x1;
 		}
-
+#endif
 		REG_OR(MSM_AXI_RESET, 0x20);
 		REG_OR(MSM_ROW_RESET, 0x20000);
 
@@ -391,8 +392,9 @@ static void set_vdc_rail(int on)
 		mdelay(2);
 
 		REG_AND(MSM_RAIL_CLAMP_IO, 0x2);
-
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_AND(MSM_AXI_BASE + 0x10080, 0x4);
+#endif
 
 		REG_AND(MSM_AXI_RESET, 0x2);
 		REG_AND(MSM_ROW_RESET, 1);
@@ -405,6 +407,7 @@ static void set_vdc_rail(int on)
 		REG_OR(MSM_CLK_CTL_BASE + 0xF0, 0x200);
 		REG_OR(MSM_CLK_CTL_BASE, 0x8);
 
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_OR(MSM_AXI_BASE + 0x10080, 0x4);
 
 		i = status = 0;
@@ -412,14 +415,15 @@ static void set_vdc_rail(int on)
 			i++;
 			status = readl(MSM_AXI_BASE + 0x10084) & 0x4;
 		}
+#endif
 
 		REG_OR(MSM_AXI_RESET, 0x2);
 		REG_OR(MSM_ROW_RESET, 0x1);
-
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_AND(MSM_AXI_BASE + 0xF0, 0x200);
 		REG_AND(MSM_AXI_BASE + 0xF0, 0x100);
 		REG_AND(MSM_AXI_BASE + 0xF0, 0x800);
-
+#endif
 		REG_OR(MSM_RAIL_CLAMP_IO, 0x2);
 
 		REG_SET(MSM_VDD_VDC_GFS_CTL, 0x1f);
@@ -452,7 +456,9 @@ static void set_vfe_rail(int enable)
 
 		REG_AND_MASK(MSM_RAIL_CLAMP_IO, 0x37);
 
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_AND_MASK(MSM_AXI_BASE + 0x20080, 0xFE);
+#endif
 
 		REG_AND_MASK(MSM_AXI_RESET, 0x3FFE);
 		REG_AND_MASK(MSM_APPS_RESET, 0x1FFE);
@@ -463,11 +469,13 @@ static void set_vfe_rail(int enable)
 		REG_OR(MSM_CLK_CTL_BASE + 0x44, 1 << 11);
 		REG_AND(MSM_CLK_CTL_BASE + 0x44, (1 << 1 | 1 << 2));
 
+#if !defined(CONFIG_MSM_AMSS_BREW)
 		REG_OR(MSM_AXI_BASE + 0x20080, 0x1);
 		while (status == 0 && i < 100) {
 			i++;
 			status = readl(MSM_AXI_BASE + 0x20084) & 0x1;
 		}
+#endif
 
 		REG_ANDM_OR(MSM_AXI_RESET, 0x3FFF, 1);
 		REG_ANDM_OR(MSM_APPS_RESET, 0x1FFF, 1);
@@ -651,6 +659,8 @@ static int a11_clk_enable(unsigned id)
 	struct msm_clock_params params;
 	int done = 0;
 
+	//printk("[%s] %d\n", __func__, id);
+
 	params = msm_clk_get_params(id);
 	switch (id) {
 	case MDP_CLK:
@@ -684,13 +694,13 @@ static int a11_clk_enable(unsigned id)
 		done = 1;
 		break;
 
-//	case UART1_CLK:
-//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10,
-//		       MSM_CLK_CTL_BASE + params.offset);
-//		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20,
-//		       MSM_CLK_CTL_BASE + params.offset);
-//		done = 1;
-//		break;
+	case UART1_CLK:
+		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x10,
+		       MSM_CLK_CTL_BASE + params.offset);
+		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x20,
+		       MSM_CLK_CTL_BASE + params.offset);
+		done = 1;
+		break;
 //
 //	case UART2_CLK:
 //		writel(readl(MSM_CLK_CTL_BASE + params.offset) | 0x400,
@@ -784,6 +794,13 @@ static void a11_clk_disable(unsigned id)
 	struct msm_clock_params params;
 	params = msm_clk_get_params(id);
 
+	//printk("[%s] %d (%s)\n", __func__, id, (params.name)?params.name:"");
+
+	if(id == UART1_CLK) {
+		done = 1;
+		return;
+	}
+
 	// GRP and IMEM use special order.But do they really need it?
 	// disabling ADM crashes ARM9
 	if (params.idx && (id != GRP_3D_CLK && id != IMEM_CLK && id != ADM_CLK)) {
@@ -799,14 +816,14 @@ static void a11_clk_disable(unsigned id)
 		return;
 		break;
 
-//	case UART1_CLK:
-//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20,
-//		       MSM_CLK_CTL_BASE + params.offset);
-//		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10,
-//		       MSM_CLK_CTL_BASE + params.offset);
-//		done = 1;
-//		break;
-//
+	case UART1_CLK:
+		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x20,
+		       MSM_CLK_CTL_BASE + params.offset);
+		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x10,
+		       MSM_CLK_CTL_BASE + params.offset);
+		done = 1;
+		break;
+
 //	case UART2_CLK:
 //		writel(readl(MSM_CLK_CTL_BASE + params.offset) & ~0x800,
 //		       MSM_CLK_CTL_BASE + params.offset);
@@ -957,6 +974,10 @@ static unsigned a11_clk_get_rate(unsigned id)
 	case SDC3_P_CLK:
 	case SDC4_P_CLK:
 		return 64000000;
+		break;
+	case UART1_CLK:
+		return TCXO_RATE;
+		break;
 	}
 
 	return get_mdns_host_clock(id);;
@@ -982,6 +1003,8 @@ static int a11_clk_set_flags(unsigned id, unsigned flags)
 
 static unsigned a11_clk_is_enabled(unsigned id)
 {
+	printk("+[%s] %d\n", __func__, id);
+	
 	unsigned is_enabled = 0;
 	unsigned bit;
 	bit = msm_clk_enable_bit(id);
@@ -990,6 +1013,7 @@ static unsigned a11_clk_is_enabled(unsigned id)
 	} else if (debug_mask & DEBUG_UNKNOWN_CMD) {
 		D("%s not implemented for clock: id=%d\n", __func__, id);
 	}
+	printk("- [%s] %d\n", __func__, is_enabled);
 	return is_enabled;
 }
 

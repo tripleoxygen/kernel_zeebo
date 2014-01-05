@@ -27,7 +27,7 @@
 #define ECODEC_CLK	5   /* External CODEC clock */
 #define EMDH_CLK	6   /* External MDDI host clock */
 #define GP_CLK		7   /* General purpose clock */
-#define GRP_3D_CLK		8   /* Graphics clock */
+#define GRP_3D_CLK	8   /* Graphics clock */
 #define I2C_CLK		9   /* I2C clock */
 #define ICODEC_RX_CLK	10  /* Internal CODEX RX clock */
 #define ICODEC_TX_CLK	11  /* Internal CODEX TX clock */

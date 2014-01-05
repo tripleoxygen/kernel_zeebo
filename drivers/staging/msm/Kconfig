@@ -18,7 +18,7 @@ config FB_MSM_LCDC_HW
 
 choice
 	prompt "MDP HW version"
-	default FB_MSM_MDP31
+	default FB_MSM_MDP22
 
 config FB_MSM_MDP31
 	select FB_MSM_LCDC_HW
@@ -26,6 +26,13 @@ config FB_MSM_MDP31
 	---help---
 	  Support for MSM MDP HW revision 3.1
 	  Say Y here if this is msm8x50 variant platform.
+
+config FB_MSM_MDP22
+	select FB_MSM_LCDC_HW
+	bool "MDP HW ver2.2"
+	---help---
+	  Support for MSM MDP HW revision 2.2
+
 endchoice
 
 config FB_MSM_LCDC

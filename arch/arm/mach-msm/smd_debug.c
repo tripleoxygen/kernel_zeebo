@@ -232,6 +232,35 @@ static void debug_create(const char *name, mode_t mode,
 	debugfs_create_file(name, mode, dent, fill, &debug_ops);
 }
 
+#define PM_LIBPROG	  0x30000061
+#if defined(CONFIG_ARCH_MSM7X30)
+#define PM_LIBVERS        0x00030001
+#elif defined(CONFIG_MSM_LEGACY_7X00A_AMSS)
+#define PM_LIBVERS	  0xfb837d0b
+#else
+#define PM_LIBVERS	  MSM_RPC_VERS(1,1)
+#endif
+
+#if defined(CONFIG_ARCH_QSD8X50)  || defined(CONFIG_ARCH_MSM7X30)
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	22
+#else
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	21
+#endif
+#define PMIC_VIBRATOR_LEVEL	(3000)
+
+#include <mach/msm_rpcrouter.h>
+#include "pmic.h"
+
+static int try_rpc_vibe(char *buf, int max)
+{
+	int i = sprintf(buf, "!\n");
+	pr_info("[%s]\n", __func__);
+
+	pmic_vid_en(1);
+
+	return i;
+}
+
 static int smd_debugfs_init(void)
 {
 	struct dentry *dent;
@@ -246,6 +275,7 @@ static int smd_debugfs_init(void)
 	debug_create("version", 0444, dent, debug_read_version);
 	debug_create("tbl", 0444, dent, debug_read_alloc_tbl);
 	debug_create("build", 0444, dent, debug_read_build_id);
+	debug_create("vibe", 0444, dent, try_rpc_vibe);
 
 	return 0;
 }

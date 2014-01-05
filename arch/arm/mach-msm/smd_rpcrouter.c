@@ -135,7 +135,7 @@ static struct platform_device rpcrouter_pdev = {
 
 static struct msm_smd_platform_data *pdata = NULL;
 
-int hot_boot = 1;
+int hot_boot = 0;
 module_param_named(hot_boot, hot_boot, int, 0);
 
 static int rpcrouter_send_control_msg(union rr_control_msg *msg)
@@ -263,6 +263,10 @@ static struct rr_server *rpcrouter_lookup_server_by_dev(dev_t dev)
 	return NULL;
 }
 
+#if defined(CONFIG_MSM_AMSS_BREW)
+static unsigned next_cid = 1;
+#endif
+
 struct msm_rpc_endpoint *msm_rpcrouter_create_local_endpoint(dev_t dev)
 {
 	struct msm_rpc_endpoint *ept;
@@ -279,7 +283,14 @@ struct msm_rpc_endpoint *msm_rpcrouter_create_local_endpoint(dev_t dev)
 	for (i = 0; i < MAX_REPLY_ROUTE; i++)
 		ept->rroute[i].pid = 0xffffffff;
 
+	/* Hardcode local cid to 1. Some BREW AMSS requests does not respect our
+	 * cid and just sends to 1 anyway.
+	 */
+#if defined(CONFIG_MSM_AMSS_BREW)
+	ept->cid = next_cid++;
+#else
 	ept->cid = (uint32_t) ept;
+#endif
 	ept->pid = RPCROUTER_PID_LOCAL;
 	ept->dev = dev;
 
@@ -360,14 +371,14 @@ static int rpcrouter_create_remote_endpoint(uint32_t cid)
 	return 0;
 }
 
-static struct msm_rpc_endpoint *rpcrouter_lookup_local_endpoint(uint32_t cid)
+static struct msm_rpc_endpoint *rpcrouter_lookup_local_endpoint(uint32_t cid, uint32_t pid)
 {
 	struct msm_rpc_endpoint *ept;
 	unsigned long flags;
 
 	spin_lock_irqsave(&local_endpoints_lock, flags);
 	list_for_each_entry(ept, &local_endpoints, list) {
-		if (ept->cid == cid) {
+		if (ept->cid == cid && ept->pid == pid) {
 			spin_unlock_irqrestore(&local_endpoints_lock, flags);
 			return ept;
 		}
@@ -376,14 +387,14 @@ static struct msm_rpc_endpoint *rpcrouter_lookup_local_endpoint(uint32_t cid)
 	return NULL;
 }
 
-static struct rr_remote_endpoint *rpcrouter_lookup_remote_endpoint(uint32_t cid)
+static struct rr_remote_endpoint *rpcrouter_lookup_remote_endpoint(uint32_t cid, uint32_t pid)
 {
 	struct rr_remote_endpoint *ept;
 	unsigned long flags;
 
 	spin_lock_irqsave(&remote_endpoints_lock, flags);
 	list_for_each_entry(ept, &remote_endpoints, list) {
-		if (ept->cid == cid) {
+		if (ept->cid == cid && ept->pid == pid) {
 			spin_unlock_irqrestore(&remote_endpoints_lock, flags);
 			return ept;
 		}
@@ -443,9 +454,10 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 
 		initialized = 1;
 
-		if (hot_boot && pdata) {
-			for (i = 0; i < pdata->n_early_servers; i++)
-					early_server(&pdata->early_servers[i]);
+		if (/*hot_boot && */ pdata) {
+			for (i = 0; i < pdata->n_early_servers; i++) {
+				early_server(&pdata->early_servers[i]);
+			}
 		}
 
 		/* Send list of servers one at a time */
@@ -473,7 +485,7 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 	case RPCROUTER_CTRL_CMD_RESUME_TX:
 		RR("o RESUME_TX id=%d:%08x\n", msg->cli.pid, msg->cli.cid);
 
-		r_ept = rpcrouter_lookup_remote_endpoint(msg->cli.cid);
+		r_ept = rpcrouter_lookup_remote_endpoint(msg->cli.cid, msg->cli.pid);
 		if (!r_ept) {
 			printk(KERN_ERR
 			       "rpcrouter: Unable to resume client\n");
@@ -502,7 +514,7 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 			 * client to our remote client list
 			 * if we get a NEW_SERVER notification
 			 */
-			if (!rpcrouter_lookup_remote_endpoint(msg->srv.cid)) {
+			if (!rpcrouter_lookup_remote_endpoint(msg->srv.cid, msg->srv.pid)) {
 				rc = rpcrouter_create_remote_endpoint(
 					msg->srv.cid);
 				if (rc < 0)
@@ -539,7 +551,7 @@ static int process_control_msg(union rr_control_msg *msg, int len)
 			       "local client\n");
 			break;
 		}
-		r_ept = rpcrouter_lookup_remote_endpoint(msg->cli.cid);
+		r_ept = rpcrouter_lookup_remote_endpoint(msg->cli.cid, msg->cli.pid);
 		if (r_ept) {
 			spin_lock_irqsave(&remote_endpoints_lock, flags);
 			list_del(&r_ept->list);
@@ -641,6 +653,27 @@ static int rr_read(void *data, int len)
 
 static uint32_t r2r_buf[RPCROUTER_MSGSIZE_MAX];
 
+static void fs_rapi_dump_request(uint8_t *req, unsigned len, const char *type)
+{
+	int i;
+/*
+	if(len % 4) {
+		printk("[dump] len is not multiple of 4. len=%d\n", len);
+		return;
+	}
+*/
+	printk("[dump] ---------------- %s ----------------\n", type);
+	printk("[dump] ");
+
+	for(i = 0; i < len/*(len / 4)*/; i++) {
+		printk("%02x ", req[i] & 0xff);
+
+		if(!((i + 1) % 8))
+			printk("\n[dump] ");
+	}
+	printk("\n[dump] ---------------- %s ----------------\n", type);
+}
+
 static void do_read_data(struct work_struct *work)
 {
 	struct rr_header hdr;
@@ -653,6 +686,8 @@ static void do_read_data(struct work_struct *work)
 	if (rr_read(&hdr, sizeof(hdr)))
 		goto fail_io;
 
+	//fs_rapi_dump_request((uint8_t *)&hdr, sizeof(hdr), "READ - HEADER");
+	
 #if TRACE_R2R_RAW
 	RR("- ver=%d type=%d src=%d:%08x crx=%d siz=%d dst=%d:%08x\n",
 	   hdr.version, hdr.type, hdr.src_pid, hdr.src_cid,
@@ -690,7 +725,9 @@ static void do_read_data(struct work_struct *work)
 	if (rr_read(frag->data, hdr.size))
 		goto fail_io;
 
-	ept = rpcrouter_lookup_local_endpoint(hdr.dst_cid);
+	//fs_rapi_dump_request((uint8_t *)frag->data, hdr.size, "READ - DATA");
+
+	ept = rpcrouter_lookup_local_endpoint(hdr.dst_cid, hdr.dst_pid);
 	if (!ept) {
 		DIAG("no local ept for dst cid %08x\n", hdr.dst_cid);
 		kfree(frag);
@@ -854,6 +891,9 @@ int msm_rpc_write(struct msm_rpc_endpoint *ept, void *buffer, int count)
 	int ret;
 	int total;
 
+	pr_info("[%s] ept=%p, buffer=%p, count=%d\n", __func__, ept, buffer, count);
+	//fs_rapi_dump_request((uint8_t *)buffer, count, "WRITE");
+
 	/* snoop the RPC packet and enforce permissions */
 
 	/* has to have at least the xid and type fields */
@@ -920,7 +960,7 @@ found_rroute:
 		   be32_to_cpu(rq->xid), hdr.dst_pid, hdr.dst_cid, count);
 	}
 
-	r_ept = rpcrouter_lookup_remote_endpoint(hdr.dst_cid);
+	r_ept = rpcrouter_lookup_remote_endpoint(hdr.dst_cid, hdr.dst_pid);
 
 	if (!r_ept) {
 		printk(KERN_ERR
@@ -1122,7 +1162,8 @@ int __msm_rpc_read(struct msm_rpc_endpoint *ept,
 	unsigned long flags;
 	int rc;
 
-	IO("READ on ept %p\n", ept);
+	IO("READ on ept %p (pid:cid=%d:%08x dst_pid:dst_cid=%d:%08x\n", ept,
+		ept->pid, ept->cid, ept->dst_pid, ept->dst_cid);
 
 	if (ept->flags & MSM_RPC_UNINTERRUPTIBLE) {
 		if (timeout < 0) {

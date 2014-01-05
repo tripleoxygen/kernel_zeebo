@@ -94,7 +94,8 @@
 #define PMIC_RPC_TIMEOUT (5*HZ)
 
 #define PMIC_RPC_PROG	0x30000061
-#define PMIC_RPC_VER	0x00010001
+//#define PMIC_RPC_VER	0x00010001
+#define PMIC_RPC_VER	0x0
 
 /* error bit flags defined by modem side */
 #define PM_ERR_FLAG__PAR1_OUT_OF_RANGE		(0x0001)
@@ -203,6 +204,8 @@ static int pmic_rpc_set_only(uint data0, uint data1, uint data2, uint data3,
 	} msg;
 	struct pmic_reply rep;
 	int r;
+
+	pr_info("[%s]\n", __func__);
 
 	if (num > 4)
 		return -EINVAL;

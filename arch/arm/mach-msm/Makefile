@@ -93,4 +93,5 @@ obj-$(CONFIG_HTC_35MM_JACK) += htc_35mm_jack.o
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi-tpa2018d1.o
 obj-$(CONFIG_MACH_MAHIMAHI) += board-mahimahi-smb329.o
 
-obj-$(CONFIG_MACH_ZEEBO) += board-zeebo.o board-zeebo-mmc.o amss_brew.o rpc_server_fs_rapi.o
+obj-$(CONFIG_MACH_ZEEBO) += board-zeebo.o board-zeebo-mmc.o amss_brew.o
+obj-$(CONFIG_MACH_ZEEBO) += rpc_server_fs_rapi.o rpc_server_fffx.o rpc_server_keypad.o rpc_server_wlan_cp_cm.o

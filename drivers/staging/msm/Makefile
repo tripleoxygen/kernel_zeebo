@@ -1,4 +1,4 @@
-obj-y := msm_fb.o staging-devices.o memory.o
+obj-y := msm_fb.o staging-devices.o
 
 obj-$(CONFIG_FB_MSM_LOGO) += logo.o
 obj-$(CONFIG_FB_BACKLIGHT) += msm_fb_bl.o

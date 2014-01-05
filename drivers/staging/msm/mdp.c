@@ -336,6 +336,8 @@ void mdp_pipe_kickoff(uint32 term, struct msm_fb_data_type *mfd)
 
 	dmb();	/* memory barrier */
 
+	printk("+[%s]\n", __func__);
+
 	/* kick off PPP engine */
 	if (term == MDP_PPP_TERM) {
 		if (mdp_debug[MDP_PPP_BLOCK])
@@ -656,6 +658,8 @@ static void mdp_drv_init(void)
 		mdp_debug[i] = 0;
 	}
 
+	printk("[%s]\n", __func__);
+
 	/* initialize spin lock and workqueue */
 	spin_lock_init(&mdp_spin_lock);
 	mdp_dma_wq = create_singlethread_workqueue("mdp_dma_wq");
@@ -762,7 +766,7 @@ static struct platform_driver mdp_driver = {
 		 * Driver name must match the device name added in
 		 * platform.c.
 		 */
-		.name = "mdp",
+		.name = "msm_mdp",
 	},
 };
 
@@ -791,16 +795,20 @@ static int mdp_on(struct platform_device *pdev)
 
 	int ret = 0;
 
+	printk("+[%s]\n", __func__);
+
 #ifdef MDP_HW_VSYNC
 	mdp_hw_vsync_clk_enable(mfd);
 #endif
 
 	ret = panel_next_on(pdev);
 
+	printk("-[%s]\n", __func__);
+
 	return ret;
 }
 
-static int mdp_irq_clk_setup(void)
+static int mdp_irq_clk_setup(struct platform_device *pdev)
 {
 	int ret;
 
@@ -815,7 +823,7 @@ static int mdp_irq_clk_setup(void)
 	}
 	disable_irq(INT_MDP);
 
-	mdp_clk = clk_get(NULL, "mdp_clk");
+	mdp_clk = clk_get(&pdev->dev, "mdp_clk");
 
 	if (IS_ERR(mdp_clk)) {
 		ret = PTR_ERR(mdp_clk);
@@ -824,7 +832,7 @@ static int mdp_irq_clk_setup(void)
 		return ret;
 	}
 
-	mdp_pclk = clk_get(NULL, "mdp_pclk");
+	mdp_pclk = clk_get(&pdev->dev, "mdp_pclk");
 	if (IS_ERR(mdp_pclk))
 		mdp_pclk = NULL;
 
@@ -859,6 +867,8 @@ static int mdp_probe(struct platform_device *pdev)
 	unsigned long flag;
 #endif
 
+	printk("+[%s]\n", __func__);
+
 	if ((pdev->id == 0) && (pdev->num_resources > 0)) {
 		mdp_pdata = pdev->dev.platform_data;
 
@@ -872,7 +882,7 @@ static int mdp_probe(struct platform_device *pdev)
 			return -ENOMEM;
 
 		printk("irq clk setup\n");
-		rc = mdp_irq_clk_setup();
+		rc = mdp_irq_clk_setup(pdev);
 		printk("irq clk setup done\n");
 		if (rc)
 			return rc;
@@ -891,6 +901,7 @@ static int mdp_probe(struct platform_device *pdev)
 	if (!mdp_resource_initialized)
 		return -EPERM;
 
+	printk(" [%s] mfd = platform_get_drvdata(pdev);\n", __func__);
 	mfd = platform_get_drvdata(pdev);
 
 	if (!mfd)
@@ -902,6 +913,7 @@ static int mdp_probe(struct platform_device *pdev)
 	if (pdev_list_cnt >= MSM_FB_MAX_DEV_LIST)
 		return -ENOMEM;
 
+	printk(" [%s] msm_fb_dev = platform_device_alloc\n", __func__);
 	msm_fb_dev = platform_device_alloc("msm_fb", pdev->id);
 	if (!msm_fb_dev)
 		return -ENOMEM;
@@ -917,6 +929,8 @@ static int mdp_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto mdp_probe_err;
 	}
+
+	printk(" [%s] data chain\n", __func__);
 	/* data chain */
 	pdata = msm_fb_dev->dev.platform_data;
 	pdata->on = mdp_on;
@@ -1014,6 +1028,7 @@ static int mdp_probe(struct platform_device *pdev)
 		break;
 
 	case TV_PANEL:
+		printk("[%s] TVPANEL\n", __func__);
 		pdata->on = mdp_dma3_on;
 		pdata->off = mdp_dma3_off;
 		mfd->hw_refresh = TRUE;
@@ -1027,19 +1042,24 @@ static int mdp_probe(struct platform_device *pdev)
 		goto mdp_probe_err;
 	}
 
+	printk(" [%s] platform_set_drvdata(msm_fb_dev, mfd);\n", __func__);
+
 	/* set driver data */
 	platform_set_drvdata(msm_fb_dev, mfd);
 
+	printk(" [%s] platform_device_add(msm_fb_dev);\n", __func__);
 	rc = platform_device_add(msm_fb_dev);
 	if (rc) {
 		goto mdp_probe_err;
 	}
 
 	pdev_list[pdev_list_cnt++] = pdev;
+	printk("-[%s]\n", __func__);
 	return 0;
 
-      mdp_probe_err:
+mdp_probe_err:
 	platform_device_put(msm_fb_dev);
+	printk("--[%s]\n", __func__);
 	return rc;
 }
 
@@ -1093,6 +1113,8 @@ static int mdp_register_driver(void)
 static int __init mdp_driver_init(void)
 {
 	int ret;
+
+	printk("[%s]\n", __func__);
 
 	mdp_drv_init();
 

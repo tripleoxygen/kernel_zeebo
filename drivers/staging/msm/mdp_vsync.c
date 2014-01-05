@@ -258,7 +258,7 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 				MSM_FB_INFO("vsync_gpio not defined!\n");
 				goto err_handle;
 			}
-
+/*
 			ret = gpio_tlmm_config(GPIO_CFG
 					(vsync_gpio,
 					(mfd->use_mdp_vsync) ? 1 : 0,
@@ -267,7 +267,7 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 					GPIO_2MA),
 					GPIO_ENABLE);
 			if (ret)
-				goto err_handle;
+				goto err_handle;*/
 
 			if (!mfd->use_mdp_vsync) {
 				mfd->channel_irq = MSM_GPIO_TO_INT(vsync_gpio);

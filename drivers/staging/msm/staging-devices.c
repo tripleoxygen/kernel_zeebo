@@ -19,6 +19,8 @@
 #include "memory_ll.h"
 //#include "android_pmem.h"
 #include <mach/board.h>
+#include <mach/board_htc.h>
+#include <mach/devices.h>
 
 #ifdef CONFIG_MSM_SOC_REV_A
 #define MSM_SMI_BASE 0xE0000000
@@ -56,7 +58,7 @@
 #define MSM_PMEM_SMI_BASE	(MSM_SMI_BASE + 0x02B00000)
 #define MSM_PMEM_SMI_SIZE	0x01500000
 
-#define MSM_FB_BASE		MSM_PMEM_SMI_BASE
+#define MSM_FB_BASE		0x3c4400 //MSM_PMEM_SMI_BASE
 #define MSM_GPU_PHYS_BASE 	(MSM_FB_BASE + MSM_FB_SIZE)
 #define MSM_PMEM_SMIPOOL_BASE	(MSM_GPU_PHYS_BASE + MSM_GPU_PHYS_SIZE)
 #define MSM_PMEM_SMIPOOL_SIZE	(MSM_PMEM_SMI_SIZE - MSM_FB_SIZE \
@@ -76,8 +78,11 @@
 
 #define PMEM_KERNEL_EBI1_SIZE	(CONFIG_PMEM_KERNEL_SIZE * 1024 * 1024)
 
+/*
 static struct resource msm_fb_resources[] = {
 	{
+		.start  = MSM_FB_BASE,
+		.end    = MSM_FB_BASE + MSM_FB_SIZE - 1,
 		.flags  = IORESOURCE_DMA,
 	}
 };
@@ -88,7 +93,7 @@ static struct resource msm_mdp_resources[] = {
 		.start  = MDP_BASE,
 		.end    = MDP_BASE + 0x000F0000 - 1,
 		.flags  = IORESOURCE_MEM,
-	}
+	},
 };
 
 static struct platform_device msm_mdp_device = {
@@ -96,11 +101,27 @@ static struct platform_device msm_mdp_device = {
 	.id     = 0,
 	.num_resources  = ARRAY_SIZE(msm_mdp_resources),
 	.resource       = msm_mdp_resources,
-};
+};*/
 
 static struct platform_device msm_lcdc_device = {
 	.name   = "lcdc",
 	.id     = 0,
+};
+
+static struct resource msm_tvenc_resources[] = {
+	{
+		.name   = "tvenc",
+		.start  = TVENC_BASE,
+		.end    = TVENC_BASE + 0x1000 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device msm_tvenc_device = {
+	.name   = "tvenc",
+	.id     = 0,
+	.num_resources  = ARRAY_SIZE(msm_tvenc_resources),
+	.resource = msm_tvenc_resources,
 };
 
 static int msm_fb_detect_panel(const char *name)
@@ -154,13 +175,14 @@ static struct msm_fb_platform_data msm_fb_pdata = {
 static struct platform_device msm_fb_device = {
 	.name   = "msm_fb",
 	.id     = 0,
-	.num_resources  = ARRAY_SIZE(msm_fb_resources),
-	.resource       = msm_fb_resources,
+	.num_resources  = 1, //ARRAY_SIZE(resources_msm_fb),
+	.resource       = resources_msm_fb,
 	.dev    = {
 		.platform_data = &msm_fb_pdata,
 	}
 };
 
+#if 0
 static void __init qsd8x50_allocate_memory_regions(void)
 {
 	void *addr;
@@ -170,7 +192,7 @@ static void __init qsd8x50_allocate_memory_regions(void)
 	else
 		size = MSM_FB_SIZE;
 
-	addr = alloc_bootmem(size); // (void *)MSM_FB_BASE;
+	addr = (void *)MSM_FB_BASE; //alloc_bootmem(size); // (void *)MSM_FB_BASE;
 	if (!addr)
 		printk("Failed to allocate bootmem for framebuffer\n");
 
@@ -180,6 +202,7 @@ static void __init qsd8x50_allocate_memory_regions(void)
 	pr_info(KERN_ERR "using %lu bytes of SMI at %lx physical for fb\n",
 		size, (unsigned long)addr);
 }
+#endif
 
 static int msm_fb_lcdc_gpio_config(int on)
 {
@@ -227,13 +250,14 @@ static struct lcdc_platform_data lcdc_pdata = {
 };
 
 static struct msm_gpio msm_fb_st15_gpio_config_data[] = {
+	/*
 	{ GPIO_CFG(17, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "lcdc_en0" },
 	{ GPIO_CFG(19, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "dat_pwr_sv" },
 	{ GPIO_CFG(20, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "lvds_pwr_dn" },
 	{ GPIO_CFG(22, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "lcdc_en1" },
 	{ GPIO_CFG(32, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "lcdc_en2" },
 	{ GPIO_CFG(103, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA), "hdmi_irq" },
-	{ GPIO_CFG(155, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "hdmi_3v3" },
+	{ GPIO_CFG(155, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), "hdmi_3v3" },*/
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
@@ -260,8 +284,11 @@ static void __init msm_register_device(struct platform_device *pdev, void *data)
 
 void __init msm_fb_register_device(char *name, void *data)
 {
+
+	printk("[%s] name = %s\n", __func__, name);
+	
 	if (!strncmp(name, "mdp", 3))
-		msm_register_device(&msm_mdp_device, data);
+		msm_register_device(&msm_device_mdp, data);
 /*
 	else if (!strncmp(name, "pmdh", 4))
 		msm_register_device(&msm_mddi_device, data);
@@ -269,9 +296,9 @@ void __init msm_fb_register_device(char *name, void *data)
 		msm_register_device(&msm_mddi_ext_device, data);
 	else if (!strncmp(name, "ebi2", 4))
 		msm_register_device(&msm_ebi2_lcd_device, data);
-	else if (!strncmp(name, "tvenc", 5))
+	*/else if (!strncmp(name, "tvenc", 5))
 		msm_register_device(&msm_tvenc_device, data);
-	else */
+	else
 
 	if (!strncmp(name, "lcdc", 4))
 		msm_register_device(&msm_lcdc_device, data);
@@ -286,8 +313,8 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("mdp", &mdp_pdata);
 //	msm_fb_register_device("pmdh", &mddi_pdata);
 //	msm_fb_register_device("emdh", &mddi_pdata);
-//	msm_fb_register_device("tvenc", 0);
-
+	msm_fb_register_device("tvenc", 0);
+#if 0
 	if (machine_is_qsd8x50a_st1_5()) {
 /*		rc = st15_hdmi_vreg_init();
 		if (rc)
@@ -304,11 +331,12 @@ static void __init msm_fb_add_devices(void)
 		msm_fb_register_device("lcdc", &lcdc_pdata);
 	} else
 		msm_fb_register_device("lcdc", 0);
+#endif
 }
 
 int __init staging_init_pmem(void)
 {
-	qsd8x50_allocate_memory_regions();
+	//qsd8x50_allocate_memory_regions();
 	return 0;
 }
 
@@ -319,5 +347,5 @@ int __init staging_init_devices(void)
 	return 0;
 }
 
-arch_initcall(staging_init_pmem);
-arch_initcall(staging_init_devices);
+device_initcall(staging_init_pmem);
+device_initcall(staging_init_devices);

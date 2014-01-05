@@ -39,6 +39,7 @@
 #include <linux/console.h>
 #include <linux/leds.h>
 #include <asm/dma-mapping.h>
+#include <linux/android_pmem.h>
 
 
 #define MSM_FB_C
@@ -341,6 +342,7 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 	int ret = 0;
 
 	MSM_FB_DEBUG("msm_fb_suspend\n");
+	printk("[%s]\n", __func__);
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
@@ -368,7 +370,7 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
-
+printk("[%s]\n", __func__);
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
@@ -744,14 +746,17 @@ static struct fb_ops msm_fb_ops = {
 static int msm_fb_register(struct msm_fb_data_type *mfd)
 {
 	int ret = -ENODEV;
-	int bpp;
+	int bpp, cnt = 0;
 	struct msm_panel_info *panel_info = &mfd->panel_info;
 	struct fb_info *fbi = mfd->fbi;
 	struct fb_fix_screeninfo *fix;
 	struct fb_var_screeninfo *var;
 	int *id;
 	int fbram_offset;
+	char *fb_addr;
 
+	printk("+[%s]\n", __func__);
+	
 	/*
 	 * fb info initialization
 	 */
@@ -887,10 +892,10 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->xres_virtual = panel_info->xres;
 	var->yres_virtual = panel_info->yres * mfd->fb_page;
 	var->bits_per_pixel = bpp * 8,	/* FrameBuffer color depth */
-		/*
-		 * id field for fb app
-		 */
-	    id = (int *)&mfd->panel;
+	/*
+	 * id field for fb app
+	 */
+	id = (int *)&mfd->panel;
 
 #if defined(CONFIG_FB_MSM_MDP22)
 	snprintf(fix->id, sizeof(fix->id), "msmfb22_%x", (__u32) *id);
@@ -903,7 +908,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 #else
 	error CONFIG_FB_MSM_MDP undefined !
 #endif
-	 fbi->fbops = &msm_fb_ops;
+	fbi->fbops = &msm_fb_ops;
 	fbi->flags = FBINFO_FLAG_DEFAULT;
 	fbi->pseudo_palette = msm_fb_pseudo_palette;
 
@@ -922,6 +927,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	fbram_phys += fbram_offset;
 	fbram_size -= fbram_offset;
 
+	printk(KERN_INFO "[%s] fbram=%08x, fbram_phys=%08x, fbram_size=%u, fix->smem_len=%u\n",
+		__func__, fbram, fbram_phys, fbram_size, fix->smem_len);
+
 	if (fbram_size < fix->smem_len) {
 		printk(KERN_ERR "error: no more framebuffer memory!\n");
 		return -ENOMEM;
@@ -930,7 +938,11 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	fbi->screen_base = fbram;
 	fbi->fix.smem_start = (unsigned long)fbram_phys;
 
-	memset(fbi->screen_base, 0x0, fix->smem_len);
+	while(cnt < fix->smem_len) {
+		fbi->screen_base[cnt] = 0x10801080;
+		cnt += 4;
+	} 
+	//memset(fbi->screen_base, 0x0, fix->smem_len);
 
 	mfd->op_enable = TRUE;
 	mfd->panel_power_on = FALSE;
@@ -1451,6 +1463,11 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 {
 	int ret;
 	struct file *p_src_file = 0, *p_dst_file = 0;
+
+	printk("+[%s] src_rect.h=%d, src_rect.w=%d, dst_rect.h=%d, dst_rect.w=%d\n",
+		__func__, req->src_rect.h, req->src_rect.w,
+		req->dst_rect.h, req->dst_rect.w);
+	
 	if (unlikely(req->src_rect.h == 0 || req->src_rect.w == 0)) {
 		printk(KERN_ERR "mpd_ppp: src img of zero size!\n");
 		return -EINVAL;
@@ -1460,6 +1477,11 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 
 	ret = mdp_ppp_blit(info, req, &p_src_file, &p_dst_file);
 	mdp_ppp_put_img(p_src_file, p_dst_file);
+
+	if(!ret) {
+		printk("[%s] blitting to yuv buffer\n", __func__);
+	}
+	
 	return ret;
 }
 
@@ -1709,6 +1731,8 @@ static int msmfb_async_blit(struct fb_info *info, void __user *p)
 
 	int count, i, req_list_count;
 
+	printk("+[%s]\n", __func__);
+
 	/* Get the count size for the total BLIT request. */
 	if (copy_from_user(&req_list_header, p, sizeof(req_list_header)))
 		return -EFAULT;
@@ -1746,6 +1770,10 @@ static int msmfb_async_blit(struct fb_info *info, void __user *p)
 			if (!(req_list[i].flags & MDP_NO_BLIT)) {
 				int ret = 0;
 				struct mdp_ppp_djob *job = NULL;
+
+				printk("+[%s] req_list[%d] src_rect.h=%d, src_rect.w=%d, dst_rect.h=%d, dst_rect.w=%d\n",
+					__func__, i, req_list[i].src_rect.h, req_list[i].src_rect.w,
+					req_list[i].dst_rect.h, req_list[i].dst_rect.w);
 
 				if (unlikely(req_list[i].src_rect.h == 0 ||
 					req_list[i].src_rect.w == 0)) {
@@ -1808,16 +1836,31 @@ static int msmfb_blit(struct fb_info *info, void __user *p)
 	 * make sense.
 	 */
 	const int MAX_LIST_WINDOW = 16;
-	struct mdp_blit_req req_list[MAX_LIST_WINDOW];
+	struct mdp_blit_req req_list; //[MAX_LIST_WINDOW];
 	struct mdp_blit_req_list req_list_header;
 
-	int count, i, req_list_count;
+	int count, i, req_list_count, ret;
+
+	printk("+[%s]\n", __func__);
 
 	/* Get the count size for the total BLIT request. */
 	if (copy_from_user(&req_list_header, p, sizeof(req_list_header)))
 		return -EFAULT;
-	p += sizeof(req_list_header);
+	//p += sizeof(req_list_header);
 	count = req_list_header.count;
+	printk("+[%s] count=%d\n", __func__, count);
+
+	for (i = 0; i < count; i++) {
+		struct mdp_blit_req_list *list =
+			(struct mdp_blit_req_list *)p;
+		if (copy_from_user(&req_list, &list->req[i], sizeof(req_list)))
+			return -EFAULT;
+		ret = mdp_blit(info, &req_list);
+		if (ret)
+			return ret;
+	}
+
+#if 0
 	while (count > 0) {
 		/*
 		 * Access the requests through a narrow window to decrease copy
@@ -1873,6 +1916,7 @@ static int msmfb_blit(struct fb_info *info, void __user *p)
 		count -= req_list_count;
 		p += sizeof(struct mdp_blit_req)*req_list_count;
 	}
+#endif
 	return 0;
 }
 #endif
@@ -1972,6 +2016,8 @@ DEFINE_MUTEX(msm_fb_ioctl_hist_sem);
 static void msmfb_set_color_conv(struct mdp_ccs *p)
 {
 	int i;
+
+	printk("+[%s]\n", __func__);
 
 	if (p->direction == MDP_CCS_RGB2YUV) {
 		/* MDP cmd block enable */
@@ -2258,6 +2304,9 @@ void msm_fb_add_device(struct platform_device *pdev)
 
 	if (!pdev)
 		return;
+
+	printk("+[%s]\n", __func__);
+
 	id = pdev->id;
 
 	pdata = pdev->dev.platform_data;
@@ -2284,6 +2333,7 @@ void msm_fb_add_device(struct platform_device *pdev)
 		return;
 	}
 
+	printk("[%s] alloc framebuffer\n", __func__);
 	/*
 	 * alloc framebuffer info + par data
 	 */
@@ -2314,6 +2364,7 @@ void msm_fb_add_device(struct platform_device *pdev)
 	 */
 	platform_set_drvdata(this_dev, mfd);
 
+	printk("[%s] platform_device_add\n", __func__);
 	if (platform_device_add(this_dev)) {
 		printk(KERN_ERR "msm_fb: platform_device_add failed!\n");
 		platform_device_put(this_dev);

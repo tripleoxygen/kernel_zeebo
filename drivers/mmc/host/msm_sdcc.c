@@ -1334,8 +1334,8 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 		if (host->plat->built_in)
 			mmc->pm_flags |= MMC_PM_KEEP_POWER;
 
-		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
-			rc = mmc_suspend_host(mmc);
+		//if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
+			//rc = mmc_suspend_host(mmc);
 		if (!rc)
 			msmsdcc_writel(host, 0, MMCIMASK0);
 		if (host->clks_on)
@@ -1356,8 +1356,8 @@ msmsdcc_resume(struct platform_device *dev)
 
 		msmsdcc_writel(host, host->saved_irq0mask, MMCIMASK0);
 
-		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
-			mmc_resume_host(mmc);
+		//if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
+		//	mmc_resume_host(mmc);
 		if (host->stat_irq)
 			enable_irq(host->stat_irq);
 #if BUSCLK_PWRSAVE

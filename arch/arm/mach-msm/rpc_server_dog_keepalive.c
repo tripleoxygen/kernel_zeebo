@@ -25,12 +25,13 @@ static uint32_t dog_beacon;
 static const uint32_t dog_null = 0;
 
 static int handle_rpc_call(struct msm_rpc_server *server,
-			   struct rpc_request_hdr *req, unsigned len)
+			   struct rpc_request_hdr *req, unsigned len,
+			   void **reply, unsigned *reply_len)
 {
 	if (req->procedure == dog_null)
 		return 0;
 	if (req->procedure == dog_beacon) {
-		printk(KERN_INFO "DOG KEEPALIVE PING\n");
+		//printk(KERN_INFO "DOG KEEPALIVE PING\n");
 		return 0;
 	}
 	return -ENODEV;

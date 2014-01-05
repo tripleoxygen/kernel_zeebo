@@ -1,0 +1,45 @@
+/* linux/arch/arm/mach-msm/board-zeebo.h
+ * Copyright (C) 2012 Triple Oxygen
+ */
+#ifndef __ARCH_ARM_MACH_MSM_BOARD_ZEEBO_H
+#define __ARCH_ARM_MACH_MSM_BOARD_ZEEBO_H
+
+#define TOPA100_BAT_IN				28
+
+#define TOPA100_USB_AC_PWR			32
+#define TOPA100_CHARGE_EN_N			44
+
+#define TOPA100_VOLDOWN_KEY			24
+#define TOPA100_VOLUP_KEY			25
+#define TOPA100_POWER_KEY			83
+
+/* BT */
+#define TOPA100_BT_RST				101
+
+/* H2W */
+#define TOPA100_CABLE_IN1			18
+#define TOPA100_CABLE_IN2			45
+#define TOPA100_H2W_DATA			31
+#define TOPA100_H2W_CLK				46
+#define TOPA100_AUD_HSMIC_DET_N		17
+
+#define TOPA100_USBPHY_RST			100
+
+#define TOPA100_LCD_P1				57
+#define TOPA100_LCD_P2				58
+#define TOPA100_LCD_PWR				87
+#define TOPA100_LCD_VSYNC			97
+
+#define TOPA100_CAMERA_SWITCH		30
+#define TOPA100_CAMERA_VCMPDP		91
+#define TOPA100_CAMERA1_RST			92
+#define TOPA100_CAMERA2_RST			93
+#define TOPA100_CAMERA1_PWR			107
+#define TOPA100_CAMERA2_PWR			109
+
+/* MICROP */
+#define TOPA_MICROP_VERSION_REG			0x30
+#define TOPA_MICROP_VERSION				0x0a0e
+#define TOPA_MICROP_COLOR_LED_ADDRESS	0x51
+
+#endif /* GUARD */

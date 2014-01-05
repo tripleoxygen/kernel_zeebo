@@ -28,6 +28,7 @@
 
 #include <mach/hardware.h>
 #include <linux/io.h>
+#include <linux/android_pmem.h>
 
 #include <asm/system.h>
 #include <asm/mach-types.h>
@@ -602,6 +603,8 @@ struct mdp_blit_req *req, struct file *p_src_file, struct file *p_dst_file)
 	ppp_dst_cfg_reg = 0;
 	ppp_src_cfg_reg = 0;
 
+	printk("+[%s]\n", __func__);
+
 	/* Wait for the pipe to clear */
 	do { } while (mdp_ppp_pipe_wait() <= 0);
 
@@ -839,7 +842,7 @@ struct mdp_blit_req *req, struct file *p_src_file, struct file *p_dst_file)
 						 8);
 
 		ppp_operation_reg |= PPP_OP_COLOR_SPACE_RGB |
-		    PPP_OP_SRC_CHROMA_RGB | PPP_OP_DST_CHROMA_RGB;
+		    PPP_OP_SRC_CHROMA_RGB | PPP_OP_DST_CHROMA_RGB | PPP_OP_BLEND_ON | PPP_OP_ROT_ON;
 		break;
 
 	case MDP_Y_CBCR_H2V2:
@@ -1067,9 +1070,11 @@ struct mdp_blit_req *req, struct file *p_src_file, struct file *p_dst_file)
 			   &ppp_operation_reg);
 
 	if (ppp_operation_reg & PPP_OP_BLEND_ON) {
+		printk("[%s] PPP_OP_BLEND_ON\n", __func__);
 		mdp_ppp_setbg(iBuf);
 
 		if (iBuf->ibuf_type == MDP_YCRYCB_H2V1) {
+			printk("[%s] MDP_YCRYCB_H2V1\n", __func__);
 			ppp_operation_reg |= PPP_OP_BG_CHROMA_H2V1;
 
 			if (iBuf->mdpImg.mdpOp & MDPOP_TRANSP) {
@@ -1126,6 +1131,11 @@ struct mdp_blit_req *req, struct file *p_src_file, struct file *p_dst_file)
 		 (dest0_ystride << 16 | dest0_ystride));
 
 	flush_imgs(req, inpBpp, iBuf->bpp, p_src_file, p_dst_file);
+
+	printk("[%s] src0=%08x, src1=%08x, dest0=%08x, dest1=%08x, ppp_src_cfg_reg=%08x, packPattern=%08x, \
+ppp_operation_reg=%08x, ppp_dst_cfg_reg=%08x\n", __func__, src0, src1, dest0, dest1,
+		ppp_src_cfg_reg, packPattern, ppp_operation_reg, ppp_dst_cfg_reg);
+	
 #ifdef CONFIG_MDP_PPP_ASYNC_OP
 	mdp_ppp_process_curr_djob();
 #else
@@ -1227,6 +1237,9 @@ int get_img(struct mdp_img *img, struct fb_info *info, unsigned long *start,
 	int put_needed, ret = 0;
 	struct file *file;
 	unsigned long vstart;
+
+	printk("+[%s]\n", __func__);
+	
 #ifdef CONFIG_ANDROID_PMEM
 	if (!get_pmem_file(img->memory_id, start, &vstart, len, pp_file))
 		return 0;
@@ -1257,10 +1270,20 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 	struct file *p_src_file = 0 , *p_dst_file = 0;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
+	req->dst.format = MDP_YCRYCB_H2V1;
+	//req->transp_mask = MDP_TRANSP_NOP;
+
+	printk("+[%s]\n", __func__);
+	printk("+[%s] req->src.format=%d, req->dst.format=%d\n", __func__,
+		req->src.format, req->dst.format);
+
 	if (req->dst.format == MDP_FB_FORMAT)
 		req->dst.format =  mfd->fb_imgType;
 	if (req->src.format == MDP_FB_FORMAT)
 		req->src.format = mfd->fb_imgType;
+
+	printk("+[%s] req->src.format=%d, req->dst.format=%d\n", __func__,
+		req->src.format, req->dst.format);
 
 	if (req->flags & MDP_BLIT_SRC_GEM) {
 		if (get_gem_img(&req->src, &src_start, &src_len) < 0)
@@ -1285,6 +1308,9 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 		       "memory\n");
 		return -1;
 	}
+
+	printk("+[%s] p_src_file=%p, p_dst_file=%p\n", __func__, p_src_file, p_dst_file);
+	
 	*pp_src_file = p_src_file;
 	*pp_dst_file = p_dst_file;
 	if (mdp_ppp_verify_req(req)) {
@@ -1322,6 +1348,7 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 
 	/* blending check */
 	if (req->transp_mask != MDP_TRANSP_NOP) {
+		printk("[%s] blending check\n", __func__);
 		iBuf.mdpImg.mdpOp |= MDPOP_TRANSP;
 		iBuf.mdpImg.tpVal = req->transp_mask;
 		iBuf.mdpImg.tpVal = mdp_calc_tpval(&iBuf.mdpImg);
@@ -1343,14 +1370,17 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 	if (req->flags & MDP_DITHER)
 		iBuf.mdpImg.mdpOp |= MDPOP_DITHER;
 
+
+	printk("+[%s] MDP_BLEND_FG_PREMULT\n", __func__);
 	if (req->flags & MDP_BLEND_FG_PREMULT) {
 #ifdef CONFIG_FB_MSM_MDP31
 		iBuf.mdpImg.mdpOp |= MDPOP_FG_PM_ALPHA;
 #else
-		return -EINVAL;
+		//return -EINVAL;
 #endif
 	}
 
+	printk("+[%s] MDP_DEINTERLACE\n", __func__);
 	if (req->flags & MDP_DEINTERLACE) {
 #ifdef CONFIG_FB_MSM_MDP31
 		if ((req->src.format != MDP_Y_CBCR_H2V2) &&
@@ -1377,31 +1407,34 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 			printk(KERN_WARNING
 				"mdp: MDP_SHARPENING is set with MDP_BLUR!\n");
 		req->flags |= MDP_SHARPENING;
-		req->sharpening_strength = -127;
+		//req->sharpening_strength = -127;
 #else
 		iBuf.mdpImg.mdpOp |= MDPOP_ASCALE | MDPOP_BLUR;
 
 #endif
 	}
 
+	printk("+[%s] MDP_SHARPENING\n", __func__);
 	if (req->flags & MDP_SHARPENING) {
 #ifdef CONFIG_FB_MSM_MDP31
-		if ((req->sharpening_strength > 127) ||
+		/*if ((req->sharpening_strength > 127) ||
 			(req->sharpening_strength < -127)) {
 			printk(KERN_ERR
 				"%s: sharpening strength out of range\n",
 				__func__);
 			return -EINVAL;
-		}
+		}*/
 
 		iBuf.mdpImg.mdpOp |= MDPOP_ASCALE | MDPOP_SHARPENING;
-		iBuf.mdpImg.sp_value = req->sharpening_strength & 0xff;
+		iBuf.mdpImg.sp_value = 0; //req->sharpening_strength & 0xff;
 #else
 		return -EINVAL;
 #endif
 	}
 
 	down(&mdp_ppp_mutex);
+
+	printk("+[%s] MDP cmd block enable\n", __func__);
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
@@ -1437,6 +1470,7 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 				    (MDP_SCALE_Q_FACTOR * iBuf.roi.dst_height) /
 				    MDP_MIN_X_SCALE_FACTOR;
 
+			printk("+[%s] mdp_start_ppp 1\n", __func__);
 			mdp_start_ppp(mfd, &iBuf, req, p_src_file, p_dst_file);
 
 			/* next tile location */
@@ -1487,13 +1521,17 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req,
 				iBuf.roi.width = tmp_v;
 			}
 
+			printk("+[%s] mdp_start_ppp 2\n", __func__);
+
 			mdp_start_ppp(mfd, &iBuf, req, p_src_file, p_dst_file);
 		}
 	} else {
+		printk("+[%s] mdp_start_ppp 3\n", __func__);
 		mdp_start_ppp(mfd, &iBuf, req, p_src_file, p_dst_file);
 	}
 #endif
 
+	printk("+[%s] MDP cmd block disable\n", __func__);
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	up(&mdp_ppp_mutex);

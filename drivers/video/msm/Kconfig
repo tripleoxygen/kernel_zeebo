@@ -1,5 +1,5 @@
 config FB_MSM
-	tristate
+	bool "MSM Framebuffer"
 	depends on FB && ARCH_MSM
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA

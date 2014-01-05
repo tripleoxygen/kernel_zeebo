@@ -137,7 +137,7 @@ static int __init htc_hw_init(void)
 	return platform_driver_register(&htc_hw_driver);
 }
 
-module_init(htc_hw_init);
+//module_init(htc_hw_init);
 MODULE_DESCRIPTION("HTC hardware platform driver");
 MODULE_AUTHOR("Joe Hansche <madcoder@gmail.com>");
 MODULE_LICENSE("GPL");

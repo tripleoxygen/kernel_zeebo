@@ -81,6 +81,8 @@ void notify_usb_connected(int online);
 
 char *board_serialno(void);
 
+extern struct resource resources_msm_fb[];
+
 #if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #define MACHINE_VARIANT_UNDEFINED	0x0
 #define MACHINE_VARIANT_RHOD_1XX	0x0101

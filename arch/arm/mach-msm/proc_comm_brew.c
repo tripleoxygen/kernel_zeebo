@@ -1,6 +1,7 @@
-/* arch/arm/mach-msm/proc_comm_wince.c
+/* arch/arm/mach-msm/proc_comm_brew.c
  *
  * Author: maejrep
+ * Copyright (C) 2012 Triple Oxygen
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,8 +37,8 @@ static inline void notify_other_proc_comm(void)
 	writel(1, MSM_A2M_INT(6));
 }
 
-#define PC_DEBUG 1
-#define PC_DEBUG_INT 1
+#define PC_DEBUG 0
+#define PC_DEBUG_INT 0
 
 #define PC_COMMAND      0x00
 #define PC_STATUS       0x04
@@ -100,9 +101,7 @@ int (*msm_check_for_modem_crash)(void);
 
 int msm_proc_comm_wince(struct msm_dex_command * in, unsigned *out)
 {
-	DDEX("waiting for modem; command=0x%02x data=0x%x", in->cmd, in->data);
-	
-#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE) || defined(CONFIG_MSM_AMSS_BREW)
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
   #warning NON-WinCE compatible AMSS version selected. WinCE proc_comm implementation is disabled and stubbed to return -EIO.
         return -EIO;
 #else
@@ -293,7 +292,7 @@ static void msm_proc_comm_wince_interrupt_do_work(struct work_struct *work)
          * be locking up in the usb power sequence)
          */
         if ( msm_proc_comm_wince_device_sleeping == false ) {
-            //htc_cable_status_update(0);
+            htc_cable_status_update(0);
             processed_int |= DEX_INT_VBUS;
         }
     }
@@ -381,7 +380,7 @@ static irqreturn_t msm_proc_comm_wince_irq(int irq, void *dev_id)
 
     return IRQ_HANDLED;
 }
-/*
+
 void msm_proc_comm_wince_enter_sleep(void)
 {
     msm_proc_comm_wince_device_sleeping = true;
@@ -415,13 +414,11 @@ static struct early_suspend early_suspend = {
 	.resume = msm_proc_comm_wince_late_resume,
 	.level = 48,
 };
-*/
 
 // Initialize PCOM registers
 int msm_proc_comm_wince_init()
 {
-#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE) || defined(CONFIG_MSM_AMSS_BREW)
-	dump_debug_stuff();
+#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
         return 0;
 #else
 	unsigned base = (unsigned)(MSM_SHARED_RAM_BASE + 0xfc100);

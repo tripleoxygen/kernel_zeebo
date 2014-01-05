@@ -54,12 +54,18 @@ struct smem_proc_comm
 #define VERSION_APPS      8
 #define VERSION_MODEM     9
 
+#define BREW_AMSS_HEAP_SIZE	138
+
 struct smem_shared
 {
 	struct smem_proc_comm proc_comm[4];
 	unsigned version[32];
 	struct smem_heap_info heap_info;
+#if defined(CONFIG_MSM_AMSS_BREW)
+	struct smem_heap_entry heap_toc[BREW_AMSS_HEAP_SIZE];
+#else
 	struct smem_heap_entry heap_toc[512];
+#endif
 };
 
 #define SMSM_V1_SIZE		(sizeof(unsigned) * 8)

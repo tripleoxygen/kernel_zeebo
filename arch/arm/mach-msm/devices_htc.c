@@ -21,7 +21,7 @@
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
 #include "gpio_chip.h"
-#include "devices.h"
+#include <mach/devices.h>
 #include <mach/board.h>
 #include <mach/board_htc.h>
 #include <mach/msm_hsusb.h>
@@ -87,7 +87,7 @@ static int hsusb_phy_init_seq[] = { 0x40, 0x31, 0x1D, 0x0D, 0x1D, 0x10, -1 };
 struct msm_hsusb_platform_data msm_hsusb_pdata = {
 	.phy_reset = internal_phy_reset,
 	.phy_init_seq = hsusb_phy_init_seq,
-	.usb_connected = notify_usb_connected,
+	//.usb_connected = notify_usb_connected,
 };
 
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
@@ -525,7 +525,7 @@ int __init parse_tag_monodie(const struct tag *tags)
 	/* We need CONFIG_DEBUG_LL, otherwise our readl() will freeze the device
 	 * on boot. (HaRET boot at least.)
 	 */
-#if !defined(CONFIG_DEBUG_LL)
+#if !defined(CONFIG_DEBUG_LL) && !defined(CONFIG_MSM_AMSS_BREW)
 #error CONFIG_DEBUG_LL is required!
 #endif
 

@@ -50,6 +50,9 @@ struct resource resources_msm_fb[] = {
 
 static int __init msm_pmem_init(void) {
     long pmem_shift = 0;
+
+	printk("+[%s]\n", __func__);
+    
     switch(__machine_arch_type) {
         case MACH_TYPE_HTCDIAMOND:
         case MACH_TYPE_HTCRAPHAEL_CDMA500:
@@ -150,6 +153,23 @@ static int __init msm_pmem_init(void) {
             pmem_setting.ram_console_start=0x8e0000;
             pmem_setting.ram_console_size=0x20000;
             break;
+
+        case MACH_TYPE_ZEEBO:
+            //SMI 32 + EBI 128
+            pmem_setting.pmem_start = MSM_EBI_BASE + 81 * 1024 * 1024;
+            pmem_setting.pmem_size = 16 * 1024 * 1024;            // 8MB
+            //CALC_PMEM(pmem_adsp, pmem, 8 * 1024 * 1024);        // 8Mb for ADSP Jpeg + Video  processing
+            //CALC_PMEM(pmem_camera, pmem_adsp, 8*1024*1024); // 8Mb for Camera preview buffers ( 3MP sensor : 2064 * 1544 * (3 / 2) = 4780224 bytes = 4.56Mb)
+            CALC_PMEM(fb, pmem, 4 * 1024 * 1024);        // 720 * 480 * 2 (2byte/pixel) * 2 * 2
+            //Total 50MB
+
+            pmem_setting.pmem_gpu1_start = MSM_EBI_BASE + 105 * 1024 * 1024;
+            pmem_setting.pmem_gpu1_size = 8 * 1024 * 1024;
+
+            pmem_setting.ram_console_start = 0x8e0000;
+            pmem_setting.ram_console_size = 0x20000;
+            break;
+            
         default:
             //SMI 32 + EBI 128
             //So much things for so few memory
@@ -161,11 +181,11 @@ static int __init msm_pmem_init(void) {
             CALC_PMEM(pmem_camera, fb, 0x100000);//1MB
     }
     //GPU0 must be in SMI1
-    pmem_setting.pmem_gpu0_start=MSM_SMI_BASE+1024*1024;
-    pmem_setting.pmem_gpu0_size=0x700000;
-    resources_msm_fb[0].start=pmem_setting.fb_start;
-    resources_msm_fb[0].end=pmem_setting.fb_start+pmem_setting.fb_size;
-    resources_msm_fb[0].flags=IORESOURCE_MEM;
+    pmem_setting.pmem_gpu0_start = 0x3c4400; //MSM_SMI_BASE+1024*1024;
+    pmem_setting.pmem_gpu0_size  = 4 * 1024 * 1024;
+    resources_msm_fb[0].start = pmem_setting.fb_start;
+    resources_msm_fb[0].end = pmem_setting.fb_start + pmem_setting.fb_size;
+    resources_msm_fb[0].flags = IORESOURCE_MEM;
     msm_add_mem_devices(&pmem_setting);
 
     return 0;

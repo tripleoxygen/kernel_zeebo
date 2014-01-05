@@ -128,9 +128,49 @@ static int rpc_send_accepted_void_reply(struct msm_rpc_endpoint *client,
 	return rc;
 }
 
+static int rpc_send_accepted_reply(struct msm_rpc_endpoint *client,
+					uint32_t xid, void *reply_data, unsigned len,
+					uint32_t accept_status)
+{
+	int rc = 0;
+	uint8_t reply_buf[sizeof(struct rpc_reply_hdr) + len];
+	struct rpc_reply_hdr *reply = (struct rpc_reply_hdr *)reply_buf;
+
+	if(len < 1 || !reply_data) {
+		printk(KERN_ERR "%s: called without reply data, denying request.\n",
+		       __FUNCTION__);
+
+		return rpc_send_accepted_void_reply(client, xid,
+				RPC_ACCEPTSTAT_PROG_UNAVAIL);;
+	}
+
+	//pr_info("[%s] reply_data=%p. len=%d, sizeof(rpc_reply_hdr)=%d, sizeof(reply_buf)=%d\n",
+	//	__func__, reply_data, len, sizeof(struct rpc_reply_hdr), sizeof(reply_buf));
+
+	reply->xid = cpu_to_be32(xid);
+	reply->type = cpu_to_be32(1); /* reply */
+	reply->reply_stat = cpu_to_be32(RPCMSG_REPLYSTAT_ACCEPTED);
+
+	reply->data.acc_hdr.accept_stat = cpu_to_be32(accept_status);
+	reply->data.acc_hdr.verf_flavor = 0;
+	reply->data.acc_hdr.verf_length = 0;
+
+	memcpy(reply_buf + sizeof(struct rpc_reply_hdr), reply_data, len);
+
+	rc = msm_rpc_write(client, reply_buf, sizeof(reply_buf));
+	if (rc < 0)
+		printk(KERN_ERR
+		       "%s: could not write response: %d\n",
+		       __FUNCTION__, rc);
+
+	return rc;
+}
+
 static int rpc_servers_thread(void *data)
 {
 	void *buffer;
+	void *reply;
+	int len;
 	struct rpc_request_hdr *req;
 	struct msm_rpc_server *server;
 	int rc;
@@ -168,7 +208,10 @@ static int rpc_servers_thread(void *data)
 			continue;
 		}
 
-		rc = server->rpc_call(server, req, rc);
+		rc = server->rpc_call(server, req, rc, &reply, &len);
+
+		//pr_info("[%s] rpc_call returned %d. reply=%p len=%d\n",
+		//	__func__, rc, reply, len);
 
 		switch (rc) {
 		case 0:
@@ -176,10 +219,18 @@ static int rpc_servers_thread(void *data)
 				endpoint, req->xid,
 				RPC_ACCEPTSTAT_SUCCESS);
 			break;
-		default:
+		case -ENODEV:
 			rpc_send_accepted_void_reply(
 				endpoint, req->xid,
 				RPC_ACCEPTSTAT_PROG_UNAVAIL);
+			break;
+		default:
+			rpc_send_accepted_reply(
+				endpoint, req->xid, reply, len,
+				RPC_ACCEPTSTAT_SUCCESS);
+
+			reply = NULL;
+			len = 0;
 			break;
 		}
 

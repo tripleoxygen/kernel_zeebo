@@ -53,7 +53,7 @@ enum {
 	MSM_PM_DEBUG_IDLE = 1U << 6,
 	MSM_PM_DEBUG_CLOCK_VOTE = 1U << 7
 };
-static int msm_pm_debug_mask = MSM_PM_DEBUG_CLOCK_VOTE;
+static int msm_pm_debug_mask = 0; //0xff & ~(MSM_PM_DEBUG_IDLE);
 module_param_named(debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 enum {
@@ -833,6 +833,8 @@ static void __init msm_pm_axi_init(void)
 
 static int __init msm_pm_init(void)
 {
+	printk("[%s]\n", __func__);
+	
 	pm_power_off = msm_pm_power_off;
 	arm_pm_restart = msm_pm_restart;
 	msm_pm_max_sleep_time = 0;
@@ -840,7 +842,7 @@ static int __init msm_pm_init(void)
 
 	register_reboot_notifier(&msm_reboot_notifier);
 
-#if defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#if 0 //defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	/* We need to disable SMI memory protection in order to be able to write
 	 * to the resume vector.
 	 */

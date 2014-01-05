@@ -592,6 +592,8 @@ void mdp_hw_init(void)
 {
 	int i;
 
+	printk("+[%s]\n", __func__);
+
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
@@ -717,4 +719,6 @@ void mdp_hw_init(void)
 
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+
+	printk("-[%s]\n", __func__);
 }

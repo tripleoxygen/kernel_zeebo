@@ -21,7 +21,7 @@
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
 #include <mach/dma.h>
-#include "devices.h"
+#include <mach/devices.h>
 #if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 #include "proc_comm.h"
 #else
@@ -534,6 +534,8 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat,
 	struct platform_device	*pdev;
 	struct resource *res;
 
+	printk("+[%s]\n", __func__);
+
 	if (controller < 1 || controller > 4)
 		return -EINVAL;
 
@@ -548,6 +550,8 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat,
 		res->flags &= ~IORESOURCE_DISABLED;
 		res->flags |= stat_irq_flags;
 	}
+
+	printk("-[%s]\n", __func__);
 
 	return platform_device_register(pdev);
 }

@@ -172,7 +172,8 @@ struct msm_rpc_server
 	uint32_t vers;
 
 	int (*rpc_call)(struct msm_rpc_server *server,
-			struct rpc_request_hdr *req, unsigned len);
+			struct rpc_request_hdr *req, unsigned len,
+			void **reply, unsigned *reply_len);
 };
 
 int msm_rpc_create_server(struct msm_rpc_server *server);

@@ -49,7 +49,8 @@ static int vibe_state;
 
 static void set_pmic_vibrator(int on)
 {
-#if !defined(CONFIG_MSM_AMSS_VERSION_WINCE)
+#if 1
+//!defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 	static struct msm_rpc_endpoint *vib_endpoint;
 	struct set_vib_on_off_req {
 		struct rpc_request_hdr hdr;

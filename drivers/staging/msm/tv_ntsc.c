@@ -35,8 +35,8 @@
 #include "msm_fb.h"
 #include "tvenc.h"
 
-#define NTSC_TV_DIMENSION_WIDTH      720
-#define NTSC_TV_DIMENSION_HEIGHT     480
+#define NTSC_TV_DIMENSION_WIDTH		720
+#define NTSC_TV_DIMENSION_HEIGHT	480
 
 static int ntsc_off(struct platform_device *pdev);
 static int ntsc_on(struct platform_device *pdev);
@@ -46,6 +46,8 @@ static int ntsc_on(struct platform_device *pdev)
 	uint32 reg = 0;
 	int ret = 0;
 	struct msm_fb_data_type *mfd;
+
+	printk("+[%s]\n", __func__);
 
 	mfd = platform_get_drvdata(pdev);
 
@@ -103,6 +105,8 @@ static int ntsc_on(struct platform_device *pdev)
 	reg |= TVENC_CTL_ENC_EN;
 	TV_OUT(TV_ENC_CTL, reg);
 
+	printk("-[%s]\n", __func__);
+
 	return ret;
 }
 
@@ -149,6 +153,8 @@ static struct platform_device this_device = {
 static int __init ntsc_init(void)
 {
 	int ret;
+
+	printk("[%s]\n", __func__);
 
 	ret = platform_driver_register(&this_driver);
 	if (!ret) {

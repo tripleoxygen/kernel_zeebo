@@ -1,5 +1,6 @@
 /* linux/arch/arm/mach-msm/board-trout-mmc.c
 ** Author: Brian Swetland <swetland@google.com>
+ * Copyright (C) 2012 Triple Oxygen
 */
 
 #include <linux/kernel.h>
@@ -59,7 +60,7 @@ static unsigned sdc1_on_gpio_table[] = {
 	GPIO_CFG(55, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),	/* CMD */
 	GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* CLK */
 
-	GPIO_CFG(29, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),	/* WLAN IRQ */
+	//GPIO_CFG(29, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),	/* WLAN IRQ */
 };
 
 static unsigned sdc1_off_gpio_table[] = {
@@ -70,7 +71,7 @@ static unsigned sdc1_off_gpio_table[] = {
 	GPIO_CFG(55, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* CMD */
 	GPIO_CFG(56, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* CLK */
 
-	GPIO_CFG(29, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* WLAN IRQ */
+	//GPIO_CFG(29, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* WLAN IRQ */
 };
 
 /* ---- SDCARD ---- */
@@ -224,6 +225,10 @@ static unsigned int sdslot_status(struct device *dev)
 {
 	unsigned int status;
 
+	printk(KERN_ERR "%s\n", __func__);
+
+	return 1;
+
 	// For Diamond devices the MMC (MoviNAND) is built-in and always connected
 	if (machine_is_htcdiamond() || machine_is_htcdiamond_cdma()) {
 		return 1;
@@ -293,154 +298,154 @@ static unsigned int wifi_status(struct device *dev)
 }
 
 // trout_wifi_set_carddetect() is hard-coded in wlan driver...
-int trout_wifi_set_carddetect(int val)
-{
-	printk("%s: %d\n", __func__, val);
-	wifi_cd = val;
-	if (wifi_status_cb) {
-		wifi_status_cb(val, wifi_status_cb_devid);
-	} else
-		printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
-	return 0;
-}
+//int trout_wifi_set_carddetect(int val)
+//{
+	//printk("%s: %d\n", __func__, val);
+	//wifi_cd = val;
+	//if (wifi_status_cb) {
+		//wifi_status_cb(val, wifi_status_cb_devid);
+	//} else
+		//printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
+	//return 0;
+//}
 
-#ifndef CONFIG_WIFI_CONTROL_FUNC
-EXPORT_SYMBOL(trout_wifi_set_carddetect);
-#endif
+//#ifndef CONFIG_WIFI_CONTROL_FUNC
+//EXPORT_SYMBOL(trout_wifi_set_carddetect);
+//#endif
 
-static int wifi_power_state;
+//static int wifi_power_state;
 
-//XXX: trout_wifi_power() is hard-coded in wlan driver
-int trout_wifi_power(int on)
-{
-	int rc;
+////XXX: trout_wifi_power() is hard-coded in wlan driver
+//int trout_wifi_power(int on)
+//{
+	//int rc;
 
-	printk("%s: %d\n", __func__, on);
+	//printk("%s: %d\n", __func__, on);
 
-	if (on) {
-		config_gpio_table(mmc_pdata.sdc1_on_gpio_table,
-				  mmc_pdata.sdc1_on_gpio_table_size);
+	//if (on) {
+		//config_gpio_table(mmc_pdata.sdc1_on_gpio_table,
+				  //mmc_pdata.sdc1_on_gpio_table_size);
 
-		rc = vreg_enable(vreg_wifi_osc);
-		if (rc)
-			return rc;
-		rc = vreg_enable(vreg_wifi_2);
-		if (rc)
-			return rc;
+		//rc = vreg_enable(vreg_wifi_osc);
+		//if (rc)
+			//return rc;
+		//rc = vreg_enable(vreg_wifi_2);
+		//if (rc)
+			//return rc;
 
-		if (machine_is_htctopaz()) {
-			rc = vreg_enable(vreg_wifi_3);
-			if (rc)
-				return rc;
-		}
-		mdelay(100);
-		htc_pwrsink_set(PWRSINK_WIFI, 70);
-		gpio_direction_output(mmc_pdata.wifi_power_gpio1, 0);
-		if (mmc_pdata.wifi_power_gpio2 >= 0) {
-			mdelay(50);
-			gpio_direction_output(mmc_pdata.wifi_power_gpio2, 0);
-		}
-		mdelay(200);
+		//if (machine_is_htctopaz()) {
+			//rc = vreg_enable(vreg_wifi_3);
+			//if (rc)
+				//return rc;
+		//}
+		//mdelay(100);
+		//htc_pwrsink_set(PWRSINK_WIFI, 70);
+		//gpio_direction_output(mmc_pdata.wifi_power_gpio1, 0);
+		//if (mmc_pdata.wifi_power_gpio2 >= 0) {
+			//mdelay(50);
+			//gpio_direction_output(mmc_pdata.wifi_power_gpio2, 0);
+		//}
+		//mdelay(200);
 
-	} else {
-		config_gpio_table(mmc_pdata.sdc1_off_gpio_table,
-				  mmc_pdata.sdc1_off_gpio_table_size);
-		htc_pwrsink_set(PWRSINK_WIFI, 0);
-	}
-	gpio_direction_output(mmc_pdata.wifi_power_gpio1, on);
-	mdelay(50);
-	if (mmc_pdata.wifi_power_gpio2 >= 0) {
-		gpio_direction_output(mmc_pdata.wifi_power_gpio2, on);
-	}
-	if (!machine_is_htcrhodium()) {
-		/* Only used for TI WLAN */
-		gpio_direction_input(29);
-		set_irq_wake(gpio_to_irq(29), on);
-	}
-	mdelay(150);
+	//} else {
+		//config_gpio_table(mmc_pdata.sdc1_off_gpio_table,
+				  //mmc_pdata.sdc1_off_gpio_table_size);
+		//htc_pwrsink_set(PWRSINK_WIFI, 0);
+	//}
+	//gpio_direction_output(mmc_pdata.wifi_power_gpio1, on);
+	//mdelay(50);
+	//if (mmc_pdata.wifi_power_gpio2 >= 0) {
+		//gpio_direction_output(mmc_pdata.wifi_power_gpio2, on);
+	//}
+	//if (!machine_is_htcrhodium()) {
+		///* Only used for TI WLAN */
+		//gpio_direction_input(29);
+		//set_irq_wake(gpio_to_irq(29), on);
+	//}
+	//mdelay(150);
 
-	if (!on) {
-		if (machine_is_htctopaz()) {
-			vreg_disable(vreg_wifi_3);
-			//These vregs shuts the phone off raph/diam(/blac?)
-			//So don't disable it for them.
-			//The radio chip is fair enough not to drain everything anyway.
-			//vreg_disable(vreg_wifi_osc);
-			//vreg_disable(vreg_wifi_2);
-		}
-	}
-	wifi_power_state = on;
-	return 0;
-}
+	//if (!on) {
+		//if (machine_is_htctopaz()) {
+			//vreg_disable(vreg_wifi_3);
+			////These vregs shuts the phone off raph/diam(/blac?)
+			////So don't disable it for them.
+			////The radio chip is fair enough not to drain everything anyway.
+			////vreg_disable(vreg_wifi_osc);
+			////vreg_disable(vreg_wifi_2);
+		//}
+	//}
+	//wifi_power_state = on;
+	//return 0;
+//}
 
-#ifndef CONFIG_WIFI_CONTROL_FUNC
-EXPORT_SYMBOL(trout_wifi_power);
-#endif
+//#ifndef CONFIG_WIFI_CONTROL_FUNC
+//EXPORT_SYMBOL(trout_wifi_power);
+//#endif
 
-static int wifi_reset_state;
-int trout_wifi_reset(int on)
-{
-	printk("%s: %d\n", __func__, on);
-//      gpio_set_value( TROUT_GPIO_CFG_WIFI_PA_RESETX, !on );
-	wifi_reset_state = on;
-	gpio_direction_output(mmc_pdata.wifi_power_gpio1, on);
-	mdelay(100);
-	gpio_direction_output(mmc_pdata.wifi_power_gpio1, !on);
-	return 0;
-}
+//static int wifi_reset_state;
+//int trout_wifi_reset(int on)
+//{
+	//printk("%s: %d\n", __func__, on);
+////      gpio_set_value( TROUT_GPIO_CFG_WIFI_PA_RESETX, !on );
+	//wifi_reset_state = on;
+	//gpio_direction_output(mmc_pdata.wifi_power_gpio1, on);
+	//mdelay(100);
+	//gpio_direction_output(mmc_pdata.wifi_power_gpio1, !on);
+	//return 0;
+//}
 
-#ifndef CONFIG_WIFI_CONTROL_FUNC
-EXPORT_SYMBOL(trout_wifi_reset);
-#endif
+//#ifndef CONFIG_WIFI_CONTROL_FUNC
+//EXPORT_SYMBOL(trout_wifi_reset);
+//#endif
 
-/* bcm_wlan_power_ hardcoded in bcm4329 driver */
-void bcm_wlan_power_off(unsigned power_mode)
-{
-	printk("%s: power_mode %d\n", __FUNCTION__, power_mode);
+///* bcm_wlan_power_ hardcoded in bcm4329 driver */
+//void bcm_wlan_power_off(unsigned power_mode)
+//{
+	//printk("%s: power_mode %d\n", __FUNCTION__, power_mode);
 
-	switch (power_mode) {
-	case 1:
-		/* Unload driver */
-		trout_wifi_power(0);
-		trout_wifi_set_carddetect(0);
-		msleep_interruptible(100);
-		break;
-	case 2:
-		/* Stop driver */
-		trout_wifi_power(0);
-		break;
-	default:
-		printk("%s: ERROR unsupported power_mode %d\n", __FUNCTION__,
-		       power_mode);
-		break;
-	}
-}
+	//switch (power_mode) {
+	//case 1:
+		///* Unload driver */
+		//trout_wifi_power(0);
+		//trout_wifi_set_carddetect(0);
+		//msleep_interruptible(100);
+		//break;
+	//case 2:
+		///* Stop driver */
+		//trout_wifi_power(0);
+		//break;
+	//default:
+		//printk("%s: ERROR unsupported power_mode %d\n", __FUNCTION__,
+		       //power_mode);
+		//break;
+	//}
+//}
 
-EXPORT_SYMBOL(bcm_wlan_power_off);
+//EXPORT_SYMBOL(bcm_wlan_power_off);
 
-void bcm_wlan_power_on(unsigned power_mode)
-{
-	printk("%s: power_mode %d\n", __FUNCTION__, power_mode);
+//void bcm_wlan_power_on(unsigned power_mode)
+//{
+	//printk("%s: power_mode %d\n", __FUNCTION__, power_mode);
 
-	switch (power_mode) {
-	case 1:
-		/* Load driver */
-		trout_wifi_power(1);
-		trout_wifi_set_carddetect(1);
-		msleep_interruptible(100);
-		break;
-	case 2:
-		/* Start driver */
-		trout_wifi_power(1);
-		break;
-	default:
-		printk("%s: ERROR unsupported power_mode %d\n", __FUNCTION__,
-		       power_mode);
-		break;
-	}
-}
+	//switch (power_mode) {
+	//case 1:
+		///* Load driver */
+		//trout_wifi_power(1);
+		//trout_wifi_set_carddetect(1);
+		//msleep_interruptible(100);
+		//break;
+	//case 2:
+		///* Start driver */
+		//trout_wifi_power(1);
+		//break;
+	//default:
+		//printk("%s: ERROR unsupported power_mode %d\n", __FUNCTION__,
+		       //power_mode);
+		//break;
+	//}
+//}
 
-EXPORT_SYMBOL(bcm_wlan_power_on);
+//EXPORT_SYMBOL(bcm_wlan_power_on);
 
 static struct mmc_platform_data wifi_data = {
 	.ocr_mask = MMC_VDD_28_29,
@@ -483,28 +488,48 @@ static struct mmc_dev_data gsm_mmc_pdata = {
 	.sdc1_off_gpio_table_size = ARRAY_SIZE(sdc1_off_gpio_table),
 };
 
+static struct mmc_dev_data zeebo_mmc_pdata = {
+	.sdcard_status_gpio = 23,
+	.sdcard_device_id = 1,
+	.wifi_power_gpio1 = 0,
+	.wifi_power_gpio2 = 0,
+	// gpio config tables
+	.sdcard_on_gpio_table = sdc1_on_gpio_table,
+	.sdcard_off_gpio_table = sdc1_off_gpio_table,
+	//.sdc1_on_gpio_table = sdc1_on_gpio_table,
+	//.sdc1_off_gpio_table = sdc1_off_gpio_table,
+	// table sizes
+	.sdcard_on_gpio_table_size = ARRAY_SIZE(sdc1_on_gpio_table),
+	.sdcard_off_gpio_table_size = ARRAY_SIZE(sdc1_off_gpio_table),
+	//.sdc1_on_gpio_table_size = ARRAY_SIZE(sdc1_on_gpio_table),
+	//.sdc1_off_gpio_table_size = ARRAY_SIZE(sdc1_off_gpio_table),
+};
+
 static int mmc_request_gpios(void) {
 	int n, w, ret = 0;
+
+	printk("+[%s]\n", __func__);
+	
 	for (n = 0; n < 6; n++) {
 		ret = gpio_request(GPIO_PIN(mmc_pdata.sdcard_on_gpio_table[n]), "MSM SDCC");
 		if (ret)
 			goto free_sd;
 	}
 	printk("%s: requested sd card gpios\n", __func__);
-	
+	/*
 	for (w = 0; w < 7; w++) {
 		ret = gpio_request(GPIO_PIN(mmc_pdata.sdc1_on_gpio_table[w]), "MSM SDCC");
 		if (ret)
 			goto free_wifi;
 	}
 	printk("%s: requested wifi mmc gpios\n", __func__);
-
+	*/
 	if (mmc_pdata.sdcard_status_gpio > 0) {
 		ret = gpio_request(mmc_pdata.sdcard_status_gpio, "MSM SDCC");
 		if (ret)
 			goto free_wifi;
 	}
-
+	/*
 	if (mmc_pdata.wifi_power_gpio1 > 0) {
 		ret = gpio_request(mmc_pdata.wifi_power_gpio1, "MSM SDCC");
 		if (ret)
@@ -517,6 +542,7 @@ static int mmc_request_gpios(void) {
 			goto free_pin1;
 	}
 	printk("%s: requested misc mmc gpios\n", __func__);
+	*/
 	return 0;
 
 free_pin1:
@@ -536,10 +562,12 @@ free_sd:
 	return ret;
 }
 
-int __init init_mmc(void)
+int __init zeebo_init_mmc(void)
 {
 	int ret;
 	wifi_status_cb = NULL;
+
+	printk("+[%s]\n", __func__);
 
 	sdslot_vreg_enabled = 0;
 
@@ -569,13 +597,16 @@ int __init init_mmc(void)
 	case MACH_TYPE_HTCRAPHAEL_CDMA500:
 		mmc_pdata = cdma_mmc_pdata;
 		break;
+	case MACH_TYPE_ZEEBO:
+		mmc_pdata = zeebo_mmc_pdata;
+		break;
 	default:
 		printk(KERN_ERR "Unsupported device for mmc driver\n");
 		return -1;
 		break;
 	}
 	
-	ret = mmc_request_gpios();	
+	ret = mmc_request_gpios();
 	if (ret) {
 		printk(KERN_ERR "Failed to request MMC gpios\n");
 		//return -ENOSYS;
@@ -597,7 +628,7 @@ int __init init_mmc(void)
 	if (IS_ERR(vreg_wifi_3))
 		return PTR_ERR(vreg_wifi_3);
 
-	if (!opt_disable_wifi) {
+	if (0) {
 		printk(KERN_INFO "MMC: WiFi device enable\n");
 		msm_add_sdcc(1, &wifi_data, 0, 0);
 	} else
@@ -611,25 +642,27 @@ int __init init_mmc(void)
 			     IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING);
 	} else
 		printk(KERN_INFO "MMC: SD-Card interface disabled\n");
+
+	printk("-[%s]\n", __func__);
 	return 0;
 }
 
 #if defined(CONFIG_DEBUG_FS)
 static int mmc_dbg_wifi_reset_set(void *data, u64 val)
 {
-	trout_wifi_reset((int)val);
+	//trout_wifi_reset((int)val);
 	return 0;
 }
 
 static int mmc_dbg_wifi_reset_get(void *data, u64 * val)
 {
-	*val = wifi_reset_state;
+	//*val = wifi_reset_state;
 	return 0;
 }
 
 static int mmc_dbg_wifi_cd_set(void *data, u64 val)
 {
-	trout_wifi_set_carddetect((int)val);
+	//trout_wifi_set_carddetect((int)val);
 	return 0;
 }
 
@@ -641,14 +674,14 @@ static int mmc_dbg_wifi_cd_get(void *data, u64 * val)
 
 static int mmc_dbg_wifi_pwr_set(void *data, u64 val)
 {
-	trout_wifi_power((int)val);
+	//trout_wifi_power((int)val);
 	return 0;
 }
 
 static int mmc_dbg_wifi_pwr_get(void *data, u64 * val)
 {
 
-	*val = wifi_power_state;
+	//*val = wifi_power_state;
 	return 0;
 }
 

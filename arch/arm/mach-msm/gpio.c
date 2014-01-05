@@ -26,7 +26,7 @@
 #include "smd_private.h"
 
 enum {
-	GPIO_DEBUG_SLEEP = 1U << 0,
+	GPIO_DEBUG_SLEEP = 1U << 1,
 };
 static int msm_gpio_debug_mask;
 module_param_named(debug_mask, msm_gpio_debug_mask, int,
@@ -687,7 +687,14 @@ static int __init msm_init_gpio(void)
 
 postcore_initcall(msm_init_gpio);
 
-#ifdef CONFIG_MSM_AMSS_VERSION_WINCE
+#if defined(CONFIG_MSM_AMSS_BREW)
+int gpio_tlmm_config(unsigned config, unsigned disable)
+{
+	printk("[%s BREW] config=0x%08x (pin=%d / func=%d) disable=0x%08x\n",
+		__func__, config, GPIO_PIN(config), GPIO_FUNC(config), disable);
+	return 0;
+}
+#elif defined(CONFIG_MSM_AMSS_VERSION_WINCE)
 //All tlmm operations go over just two registers, so no per-chip lock
 static DEFINE_SPINLOCK(gpio_tlmm_lock);
 
@@ -698,7 +705,10 @@ int gpio_tlmm_config(unsigned config, unsigned disable)
 	unsigned cfg, gpio, i;
 	unsigned long flags_gpio;
 
+	printk("+[%s]\n", __func__);
+
 	gpio = GPIO_PIN(config);
+	printk("+[%s] gpio=%d\n", __func__, gpio);
 
 	for (i = 0; i < ARRAY_SIZE(msm_gpio_chips); i++) {
 		if (msm_gpio_chips[i].chip.start <= gpio &&

@@ -83,6 +83,8 @@ struct clk *clk_get(struct device *dev, const char *id)
 	struct clk *clk;
 	struct hlist_node *pos;
 
+	printk("[%s] dev=%p, id=%s\n", __func__, dev, id);
+
 	mutex_lock(&clocks_mutex);
 
 	hlist_for_each_entry(clk, pos, &clocks, list)
@@ -537,5 +539,5 @@ static int __init clock_late_init(void)
 	return 0;
 }
 
-late_initcall(clock_late_init);
+//late_initcall(clock_late_init);
 
