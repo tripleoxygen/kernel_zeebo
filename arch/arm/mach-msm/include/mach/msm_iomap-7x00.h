@@ -143,9 +143,11 @@
 #define MSM_UART1DM_PHYS      0xA0200000
 #define MSM_UART2DM_PHYS      0xA0300000
 
+#define MSM_SSBI_BASE         IOMEM(0xF9008000)
 #define MSM_SSBI_PHYS         0xA8100000
 #define MSM_SSBI_SIZE         SZ_4K
 
+#define MSM_TSSC_BASE         IOMEM(0xF9009000)
 #define MSM_TSSC_PHYS         0xAA300000
 #define MSM_TSSC_SIZE         SZ_4K
 
